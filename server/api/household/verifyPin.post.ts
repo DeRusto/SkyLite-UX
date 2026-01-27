@@ -23,8 +23,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Simple comparison - in production, this should use proper hashing
-  const isValid = settings.parentPin === body.pin;
+  const isValid = await verifyPin(settings.parentPin, body.pin);
 
   return { valid: isValid };
 });
