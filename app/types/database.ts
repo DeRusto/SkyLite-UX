@@ -116,6 +116,10 @@ export type Integration = {
   icon: string | null;
   enabled: boolean;
   settings: JsonObject | null;
+  accessToken?: string | null;
+  refreshToken?: string | null;
+  tokenExpiry?: Date | null;
+  tokenType?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

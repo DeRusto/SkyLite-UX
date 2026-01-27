@@ -88,6 +88,7 @@ export async function createIntegrationService(integration: Integration): Promis
       return null;
     }
 
+    // @ts-expect-error - Dynamic factory dispatch with varying arguments
     return serviceFactory.factory(integration.id, integration.apiKey || "", integration.baseUrl || "", integration.settings as ICalSettings);
   }
   catch (error) {
