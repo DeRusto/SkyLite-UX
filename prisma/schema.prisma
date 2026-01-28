@@ -108,28 +108,29 @@ model TodoColumn {
 }
 
 model Todo {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   description String?
-  completed   Boolean  @default(false)
-  priority    Priority @default(MEDIUM)
+  completed   Boolean   @default(false)
+  priority    Priority  @default(MEDIUM)
   dueDate     DateTime?
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   todoColumnId String?
   todoColumn   TodoColumn? @relation(fields: [todoColumnId], references: [id], onDelete: Cascade)
 
+  @@index([todoColumnId])
   @@map("todos")
 }
 
 model ShoppingList {
-  id        String            @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  order     Int               @default(0)
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   items ShoppingListItem[]
 
@@ -148,25 +149,26 @@ model ShoppingListItem {
   shoppingListId String
   shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
 
+  @@index([shoppingListId])
   @@map("shopping_list_items")
 }
 
 model Integration {
-  id        String   @id @default(cuid())
-  name      String
-  type      String
-  service   String
-  apiKey    String?
-  baseUrl   String?
-  icon      String?
-  enabled   Boolean  @default(true)
-  settings  Json?
-  accessToken     String?
-  refreshToken    String?
-  tokenExpiry     DateTime?
-  tokenType       String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String    @id @default(cuid())
+  name         String
+  type         String
+  service      String
+  apiKey       String?
+  baseUrl      String?
+  icon         String?
+  enabled      Boolean   @default(true)
+  settings     Json?
+  accessToken  String?
+  refreshToken String?
+  tokenExpiry  DateTime?
+  tokenType    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([name])
   @@map("integrations")
@@ -179,7 +181,7 @@ model CalendarEvent {
   start       DateTime
   end         DateTime
   allDay      Boolean  @default(false)
-  color       Json?  
+  color       Json?
   location    String?
   ical_event  Json?
   createdAt   DateTime @default(now())
@@ -193,28 +195,29 @@ model CalendarEvent {
 }
 
 model CalendarEventUser {
-  id             String        @id @default(cuid())
+  id              String   @id @default(cuid())
   calendarEventId String
-  userId         String
-  createdAt      DateTime      @default(now())
+  userId          String
+  createdAt       DateTime @default(now())
 
   calendarEvent CalendarEvent @relation(fields: [calendarEventId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([calendarEventId, userId])
+  @@index([userId])
   @@map("calendar_event_users")
 }
 
 model CalendarEventMapping {
-  id                String   @id @default(cuid())
-  skyliteEventId    String
-  googleEventId     String
-  googleCalendarId  String
-  integrationId     String
-  lastSyncedAt      DateTime @default(now())
-  syncDirection     String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String   @id @default(cuid())
+  skyliteEventId   String
+  googleEventId    String
+  googleCalendarId String
+  integrationId    String
+  lastSyncedAt     DateTime @default(now())
+  syncDirection    String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@unique([skyliteEventId, integrationId])
   @@unique([googleEventId, googleCalendarId, integrationId])
@@ -237,9 +240,10 @@ model Chore {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  assignedUser   User?             @relation("AssignedChores", fields: [assignedUserId], references: [id], onDelete: SetNull)
-  completions    ChoreCompletion[]
+  assignedUser User?             @relation("AssignedChores", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  completions  ChoreCompletion[]
 
+  @@index([assignedUserId])
   @@map("chores")
 }
 
@@ -253,10 +257,12 @@ model ChoreCompletion {
   status           ChoreCompletionStatus @default(PENDING_APPROVAL)
   pointsAwarded    Int                   @default(0)
 
-  chore       Chore @relation(fields: [choreId], references: [id], onDelete: Cascade)
-  user        User  @relation("ChoreCompletions", fields: [userId], references: [id], onDelete: Cascade)
-  verifiedBy  User? @relation("ChoreVerifications", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  chore      Chore @relation(fields: [choreId], references: [id], onDelete: Cascade)
+  user       User  @relation("ChoreCompletions", fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy User? @relation("ChoreVerifications", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
 
+  @@index([choreId])
+  @@index([userId])
   @@map("chore_completions")
 }
 
@@ -293,15 +299,17 @@ model RewardRedemption {
   user       User   @relation("RewardRedemptions", fields: [userId], references: [id], onDelete: Cascade)
   approvedBy User?  @relation("RewardApprovals", fields: [approvedByUserId], references: [id], onDelete: SetNull)
 
+  @@index([rewardId])
+  @@index([userId])
   @@map("reward_redemptions")
 }
 
 model UserPoints {
-  id           String @id @default(cuid())
-  userId       String @unique
-  currentBalance Int  @default(0)
-  totalEarned  Int    @default(0)
-  totalSpent   Int    @default(0)
+  id             String @id @default(cuid())
+  userId         String @unique
+  currentBalance Int    @default(0)
+  totalEarned    Int    @default(0)
+  totalSpent     Int    @default(0)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -332,8 +340,8 @@ model ScreensaverSettings {
   enabled             Boolean                   @default(false)
   activationMode      ScreensaverActivationMode @default(IDLE)
   idleTimeoutMinutes  Int                       @default(10)
-  scheduleStart       String?                   // Time in HH:mm format
-  scheduleEnd         String?                   // Time in HH:mm format
+  scheduleStart       String? // Time in HH:mm format
+  scheduleEnd         String? // Time in HH:mm format
   photoDisplaySeconds Int                       @default(15)
   transitionEffect    TransitionEffect          @default(FADE)
   showClock           Boolean                   @default(true)
@@ -343,13 +351,13 @@ model ScreensaverSettings {
 }
 
 model PhotoAlbum {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   integrationId   String
   externalAlbumId String
   name            String
-  enabled         Boolean  @default(true)
+  enabled         Boolean   @default(true)
   lastSync        DateTime?
-  photoCount      Int      @default(0)
+  photoCount      Int       @default(0)
 
   @@unique([integrationId, externalAlbumId])
   @@map("photo_albums")
@@ -363,8 +371,8 @@ model HouseholdSettings {
   id                      String              @id @default(cuid())
   familyName              String              @default("Our Family")
   choreCompletionMode     ChoreCompletionMode @default(SELF_CLAIM)
-  rewardApprovalThreshold Int?                // Points threshold requiring parent approval
-  parentPin               String?             // Encrypted PIN for parent verification
+  rewardApprovalThreshold Int? // Points threshold requiring parent approval
+  parentPin               String? // Encrypted PIN for parent verification
 
   @@map("household_settings")
 }
