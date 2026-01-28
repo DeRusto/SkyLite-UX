@@ -137,10 +137,13 @@ function handleDelete() {
           {{ error }}
         </div>
 
-        <template v-for="field in fields" :key="field.key">
+        <template v-for="(field, index) in fields" :key="field.key">
           <div v-if="field.key === 'quantity'" class="flex gap-4">
             <div class="w-1/2 space-y-2">
-              <label class="block text-sm font-medium text-highlighted flex items-center gap-1">
+              <label
+                class="block text-sm font-medium text-highlighted flex items-center gap-1"
+                for="quantity"
+              >
                 {{ field.label }}
                 <UIcon
                   v-if="field.disabled"
@@ -149,17 +152,23 @@ function handleDelete() {
                 />
               </label>
               <UInput
+                id="quantity"
                 v-model.number="formData[field.key]"
                 type="number"
                 :min="field.min"
                 :disabled="field.disabled"
+                :autofocus="index === 0"
                 class="w-full"
                 :ui="{ base: 'w-full' }"
+                @keydown.enter="handleSave"
               />
             </div>
 
             <div v-if="fields.find((f: DialogField) => f.key === 'unit')" class="w-1/2 space-y-2">
-              <label class="block text-sm font-medium text-highlighted flex items-center gap-1">
+              <label
+                class="block text-sm font-medium text-highlighted flex items-center gap-1"
+                for="unit"
+              >
                 Unit
                 <UIcon
                   v-if="fields.find((f: DialogField) => f.key === 'unit')?.disabled"
@@ -168,17 +177,22 @@ function handleDelete() {
                 />
               </label>
               <UInput
+                id="unit"
                 v-model="formData.unit"
                 :placeholder="fields.find((f: DialogField) => f.key === 'unit')?.placeholder || 'Unit'"
                 :disabled="fields.find((f: DialogField) => f.key === 'unit')?.disabled"
                 class="w-full"
                 :ui="{ base: 'w-full' }"
+                @keydown.enter="handleSave"
               />
             </div>
           </div>
 
           <div v-else-if="field.key !== 'unit'" class="space-y-2">
-            <label class="block text-sm font-medium text-highlighted flex items-center gap-1">
+            <label
+              class="block text-sm font-medium text-highlighted flex items-center gap-1"
+              :for="field.key"
+            >
               {{ field.label }}
               <UIcon
                 v-if="field.disabled"
@@ -189,28 +203,39 @@ function handleDelete() {
 
             <UInput
               v-if="field.type === 'text'"
+              :id="field.key"
               v-model="formData[field.key]"
               :placeholder="field.placeholder"
               :disabled="field.disabled"
+              :required="field.required"
+              :autofocus="index === 0"
               class="w-full"
               :ui="{ base: 'w-full' }"
+              @keydown.enter="handleSave"
             />
 
             <UInput
               v-else-if="field.type === 'number'"
+              :id="field.key"
               v-model.number="formData[field.key]"
               type="number"
               :min="field.min"
               :disabled="field.disabled"
+              :required="field.required"
+              :autofocus="index === 0"
               class="w-full"
               :ui="{ base: 'w-full' }"
+              @keydown.enter="handleSave"
             />
 
             <UTextarea
               v-else-if="field.type === 'textarea'"
+              :id="field.key"
               v-model="formData[field.key]"
               :placeholder="field.placeholder"
               :disabled="field.disabled"
+              :required="field.required"
+              :autofocus="index === 0"
               :rows="2"
               class="w-full"
               :ui="{ base: 'w-full' }"
