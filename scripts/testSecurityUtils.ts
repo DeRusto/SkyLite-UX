@@ -1,4 +1,4 @@
-import { hashPin, verifyPin } from "../server/utils/security";
+import { hashPin, timingSafeStringEqual, verifyPin } from "../server/utils/security";
 
 /* eslint-disable no-console */
 async function runTests() {
@@ -39,6 +39,23 @@ async function runTests() {
   // Test 5: Verify invalid hash format
   const isGarbageInvalid = await verifyPin(pin, "garbage");
   assert(!isGarbageInvalid, "Rejects garbage hash");
+
+  // Test 6: Timing safe string equal - equal strings
+  const isEqual = timingSafeStringEqual("test", "test");
+  assert(isEqual, "timingSafeStringEqual returns true for equal strings");
+
+  // Test 7: Timing safe string equal - different strings same length
+  const isDifferent = timingSafeStringEqual("test", "best");
+  assert(!isDifferent, "timingSafeStringEqual returns false for different strings");
+
+  // Test 8: Timing safe string equal - different lengths
+  const isDifferentLength = timingSafeStringEqual("test", "testing");
+  assert(!isDifferentLength, "timingSafeStringEqual returns false for different lengths");
+
+  // Test 9: Timing safe string equal - invalid types
+  // @ts-expect-error testing invalid type
+  const isInvalidType = timingSafeStringEqual("test", 123);
+  assert(!isInvalidType, "timingSafeStringEqual returns false for invalid types");
 
   console.log(`\nTests completed. Passed: ${passed}, Failed: ${failed}`);
   if (failed > 0) {

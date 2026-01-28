@@ -19,6 +19,29 @@ export async function hashPin(pin: string): Promise<string> {
 }
 
 /**
+ * Compares two strings in constant time (for equal lengths).
+ * Returns false if lengths differ (not constant time for length check).
+ */
+export function timingSafeStringEqual(a: string, b: string): boolean {
+  if (typeof a !== "string" || typeof b !== "string") {
+    return false;
+  }
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+
+  try {
+    return timingSafeEqual(bufA, bufB);
+  }
+  catch {
+    return false;
+  }
+}
+
+/**
  * Verifies a PIN against a stored hash.
  * Returns false if the hash format is invalid or verification fails.
  */

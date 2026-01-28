@@ -7,7 +7,7 @@ type VerifyPinBody = {
 export default defineEventHandler(async (event) => {
   const body = await readBody<VerifyPinBody>(event);
 
-  if (!body.pin) {
+  if (!body.pin || typeof body.pin !== "string") {
     throw createError({
       statusCode: 400,
       statusMessage: "PIN is required",
@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
   let isValid = await verifyPin(body.pin, settings.parentPin);
 
   // Migration: If verification failed, check if it's a legacy plaintext PIN
-  if (!isValid && settings.parentPin === body.pin) {
+  if (!isValid && timingSafeStringEqual(settings.parentPin, body.pin)) {
     isValid = true;
 
     // Upgrade to hashed PIN
