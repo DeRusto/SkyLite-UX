@@ -1084,16 +1084,20 @@ function handleDelete() {
   <div
     v-if="showUnsavedWarning"
     class="fixed inset-0 z-[110] flex items-center justify-center bg-black/50"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="unsaved-title"
+    aria-describedby="unsaved-desc"
     @click="cancelClose"
   >
     <div
       class="w-full max-w-sm mx-4 bg-default rounded-lg border border-default shadow-lg p-4"
       @click.stop
     >
-      <h3 class="text-base font-semibold mb-2">
+      <h3 id="unsaved-title" class="text-base font-semibold mb-2">
         Unsaved Changes
       </h3>
-      <p class="text-sm text-muted mb-4">
+      <p id="unsaved-desc" class="text-sm text-muted mb-4">
         You have unsaved changes. Are you sure you want to close without saving?
       </p>
       <div class="flex gap-2 justify-end">
@@ -1118,6 +1122,9 @@ function handleDelete() {
   <div
     v-if="isOpen"
     class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="event-dialog-title"
     @click="handleClose"
   >
     <div
@@ -1125,7 +1132,7 @@ function handleDelete() {
       @click.stop
     >
       <div class="flex items-center justify-between p-4 border-b border-default">
-        <h2 class="text-base font-semibold leading-6">
+        <h2 id="event-dialog-title" class="text-base font-semibold leading-6">
           {{ event?.id ? 'Edit Event' : 'Create Event' }}
         </h2>
         <UButton
@@ -1520,6 +1527,8 @@ function handleDelete() {
                 class="p-1"
                 :class="selectedUsers.includes(user.id) ? 'ring-2 ring-primary-500' : ''"
                 :disabled="isReadOnly"
+                :aria-label="selectedUsers.includes(user.id) ? `Deselect ${user.name}` : `Select ${user.name}`"
+                :aria-pressed="selectedUsers.includes(user.id)"
                 @click="selectedUsers.includes(user.id) ? selectedUsers = selectedUsers.filter(id => id !== user.id) : selectedUsers.push(user.id)"
               >
                 <UAvatar
