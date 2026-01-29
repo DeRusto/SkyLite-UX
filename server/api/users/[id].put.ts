@@ -7,6 +7,28 @@ export default defineEventHandler(async (event) => {
   }
   const body = await readBody(event);
 
+  if (!body || typeof body !== "object") {
+    throw createError({ statusCode: 400, message: "Invalid request body" });
+  }
+
+  if (body.name !== undefined) {
+    if (typeof body.name !== "string" || !body.name.trim()) {
+      throw createError({
+        statusCode: 400,
+        message: "Name must be a non-empty string",
+      });
+    }
+  }
+
+  if (body.email) {
+    if (
+      typeof body.email !== "string"
+      || !/^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/.test(body.email)
+    ) {
+      throw createError({ statusCode: 400, message: "Invalid email format" });
+    }
+  }
+
   try {
     const [updatedUser] = await prisma.$transaction([
       prisma.user.update({
@@ -31,10 +53,13 @@ export default defineEventHandler(async (event) => {
     ]);
     return updatedUser;
   }
-  catch (error) {
+  catch (error: any) {
+    if (error.statusCode)
+      throw error;
+    console.error("Failed to update user:", error);
     throw createError({
       statusCode: 500,
-      message: `Failed to update user: ${error}`,
+      message: "Failed to update user",
     });
   }
 });
