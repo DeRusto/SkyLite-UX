@@ -49,10 +49,13 @@ export default defineEventHandler(async (event) => {
 
     return { success: true };
   }
-  catch (error) {
+  catch (error: any) {
+    if (error.statusCode)
+      throw error;
+    console.error("Failed to delete user:", error);
     throw createError({
       statusCode: 500,
-      message: `Failed to delete user: ${error}`,
+      message: "Failed to delete user",
     });
   }
 });
