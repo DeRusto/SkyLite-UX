@@ -153,6 +153,10 @@ function handleImmichAlbumsSelected(albumIds: string[]) {
   settingsData.value.selectedAlbums = albumIds;
 }
 
+function handleImmichPeopleSelected(peopleIds: string[]) {
+  settingsData.value.selectedPeople = peopleIds;
+}
+
 watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
     await fetchUsers();
@@ -627,6 +631,15 @@ function handleDelete() {
           :integration-id="integration.id"
           :selected-albums="(settingsData.selectedAlbums as string[]) || []"
           @albums-selected="handleImmichAlbumsSelected"
+        />
+      </div>
+
+      <!-- Immich People Selector UI (Only for existing/saved Immich integrations) -->
+      <div v-if="service === 'immich' && integration?.id" class="p-4 border-t border-default bg-muted/5">
+        <settingsImmichPeopleSelector
+          :integration-id="integration.id"
+          :selected-people="(settingsData.selectedPeople as string[]) || []"
+          @people-selected="handleImmichPeopleSelected"
         />
       </div>
 

@@ -127,7 +127,7 @@ export default defineEventHandler(async (event) => {
         id: person.id,
         name: person.name || "Unknown",
         birthDate: person.birthDate,
-        thumbnailUrl: `/api/integrations/immich/people/${person.id}/thumbnail?integrationId=${integrationId}`,
+        thumbnailUrl: `/api/integrations/immich/thumbnail?integrationId=${integrationId}&assetId=${person.id}&type=person`,
         type: "person" as const,
       }));
 
@@ -137,7 +137,7 @@ export default defineEventHandler(async (event) => {
         id: pet.id,
         name: pet.name || "Unknown Pet",
         birthDate: pet.birthDate,
-        thumbnailUrl: `/api/integrations/immich/people/${pet.id}/thumbnail?integrationId=${integrationId}`,
+        thumbnailUrl: `/api/integrations/immich/thumbnail?integrationId=${integrationId}&assetId=${pet.id}&type=person`,
         type: "pet" as const,
       }));
 

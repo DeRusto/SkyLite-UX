@@ -54,6 +54,12 @@ async function fetchAlbums() {
   }
 }
 
+function getThumbnailUrl(album: ImmichAlbum): string | null {
+  if (!album.thumbnailAssetId)
+    return null;
+  return `/api/integrations/immich/thumbnail?integrationId=${props.integrationId}&assetId=${album.thumbnailAssetId}`;
+}
+
 function toggleAlbum(albumId: string) {
   const index = selectedAlbumIds.value.indexOf(albumId);
   if (index === -1) {
@@ -136,28 +142,63 @@ function deselectAll() {
       </p>
     </div>
 
-    <div v-else class="max-h-64 overflow-y-auto border border-default rounded-lg divide-y divide-default">
-      <div
-        v-for="album in albums"
-        :key="album.id"
-        class="flex items-center gap-3 p-3 hover:bg-muted/20 transition-colors cursor-pointer"
-        @click="toggleAlbum(album.id)"
-      >
-        <UCheckbox
-          :model-value="isSelected(album.id)"
-          @update:model-value="toggleAlbum(album.id)"
-          @click.stop
-        />
-        <div class="flex-1 min-w-0">
-          <p class="font-medium text-highlighted truncate">
-            {{ album.title }}
-          </p>
-          <p class="text-xs text-muted">
-            {{ album.assetCount }} {{ album.assetCount === 1 ? 'photo' : 'photos' }}
-            <span v-if="album.shared" class="ml-2 text-info">
-              <UIcon name="i-lucide-users" class="h-3 w-3 inline" /> Shared
-            </span>
-          </p>
+    <!-- Album Grid with Thumbnails -->
+    <div v-else class="max-h-80 overflow-y-auto">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div
+          v-for="album in albums"
+          :key="album.id"
+          class="relative rounded-lg border-2 overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md"
+          :class="[
+            isSelected(album.id)
+              ? 'border-primary ring-2 ring-primary/30 shadow-sm'
+              : 'border-default hover:border-muted',
+          ]"
+          role="checkbox"
+          :aria-checked="isSelected(album.id)"
+          :aria-label="`${album.title} - ${album.assetCount} photos`"
+          tabindex="0"
+          @click="toggleAlbum(album.id)"
+          @keydown.enter.prevent="toggleAlbum(album.id)"
+          @keydown.space.prevent="toggleAlbum(album.id)"
+        >
+          <!-- Thumbnail Image -->
+          <div class="aspect-square bg-muted/30 relative">
+            <img
+              v-if="getThumbnailUrl(album)"
+              :src="getThumbnailUrl(album)!"
+              :alt="album.title"
+              class="w-full h-full object-cover"
+              loading="lazy"
+            >
+            <div
+              v-else
+              class="w-full h-full flex items-center justify-center"
+            >
+              <UIcon name="i-lucide-image" class="h-10 w-10 text-muted/50" />
+            </div>
+
+            <!-- Selection Checkmark Overlay -->
+            <div
+              v-if="isSelected(album.id)"
+              class="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow"
+            >
+              <UIcon name="i-lucide-check" class="h-4 w-4 text-white" />
+            </div>
+          </div>
+
+          <!-- Album Info -->
+          <div class="p-2">
+            <p class="font-medium text-highlighted text-sm truncate" :title="album.title">
+              {{ album.title }}
+            </p>
+            <p class="text-xs text-muted">
+              {{ album.assetCount }} {{ album.assetCount === 1 ? 'photo' : 'photos' }}
+              <span v-if="album.shared" class="ml-1 text-info">
+                <UIcon name="i-lucide-users" class="h-3 w-3 inline" /> Shared
+              </span>
+            </p>
+          </div>
         </div>
       </div>
     </div>

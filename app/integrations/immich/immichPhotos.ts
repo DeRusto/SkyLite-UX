@@ -2,6 +2,7 @@ import type { IntegrationService, IntegrationStatus } from "~/types/integrations
 
 export type ImmichSettings = {
   selectedAlbums?: string[];
+  selectedPeople?: string[];
 };
 
 export type ImmichAlbum = {
@@ -13,6 +14,12 @@ export type ImmichAlbum = {
   shared: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ImmichPerson = {
+  id: string;
+  name: string;
+  thumbnailPath: string;
 };
 
 /**
@@ -46,12 +53,16 @@ export function createImmichService(
       }
 
       try {
-        // Test connection by calling the server status endpoint
+        // Test connection by calling the server status endpoint with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         const response = await fetch(`${baseUrl}/api/server/ping`, {
           headers: {
             "x-api-key": apiKey,
           },
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           return {
@@ -88,10 +99,13 @@ export function createImmichService(
         }
       }
       catch (error) {
+        const errorMessage = error instanceof Error && error.name === "AbortError"
+          ? "Connection timed out - check your server URL"
+          : error instanceof Error ? error.message : "Failed to connect to Immich";
         return {
           isConnected: false,
           lastChecked: new Date(),
-          error: error instanceof Error ? error.message : "Failed to connect to Immich",
+          error: errorMessage,
         };
       }
     },
@@ -102,11 +116,15 @@ export function createImmichService(
       }
 
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         const response = await fetch(`${baseUrl}/api/server/ping`, {
           headers: {
             "x-api-key": apiKey,
           },
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
         return response.ok;
       }
       catch {

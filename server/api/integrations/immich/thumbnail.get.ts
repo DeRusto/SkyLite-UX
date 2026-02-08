@@ -1,40 +1,39 @@
 import { consola } from "consola";
-import { createError, defineEventHandler, getQuery } from "h3";
+import { createError, defineEventHandler, getQuery, setResponseHeader } from "h3";
+import { Buffer } from "node:buffer";
 
 import prisma from "~/lib/prisma";
-// eslint-disable-next-line perfectionist/sort-imports
+
 import { decryptToken } from "../../../integrations/google-calendar/oauth";
 
 /**
- * Immich Album type from Immich API
- */
-type ImmichAlbum = {
-  id: string;
-  albumName: string;
-  description: string;
-  assetCount: number;
-  albumThumbnailAssetId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  shared: boolean;
-  ownerId: string;
-};
-
-/**
- * GET /api/integrations/immich/albums
- * Fetches available Immich albums
+ * GET /api/integrations/immich/thumbnail
+ * Proxies thumbnail requests to Immich (which requires auth headers)
  *
  * Query params:
  * - integrationId: Required - the ID of the Immich integration
+ * - assetId: Required - the ID of the asset or person to fetch the thumbnail for
+ * - size: Optional - thumbnail size ("thumbnail" or "preview", default "thumbnail")
+ * - type: Optional - "asset" (default) or "person" for face thumbnails
  */
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const integrationId = query.integrationId as string;
+  const assetId = query.assetId as string;
+  const size = (query.size as string) || "thumbnail";
+  const thumbnailType = (query.type as string) || "asset";
 
   if (!integrationId) {
     throw createError({
       statusCode: 400,
       message: "integrationId query parameter is required",
+    });
+  }
+
+  if (!assetId) {
+    throw createError({
+      statusCode: 400,
+      message: "assetId query parameter is required",
     });
   }
 
@@ -79,11 +78,16 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // Fetch albums from Immich API
-    const response = await fetch(`${baseUrl}/api/albums`, {
+    // Build the correct Immich URL based on thumbnail type
+    const thumbnailUrl = thumbnailType === "person"
+      ? `${baseUrl}/api/people/${assetId}/thumbnail`
+      : `${baseUrl}/api/assets/${assetId}/thumbnail?size=${size}`;
+
+    // Fetch thumbnail from Immich API
+    const response = await fetch(thumbnailUrl, {
       headers: {
         "x-api-key": apiKey,
-        "Accept": "application/json",
+        "Accept": "image/*",
       },
     });
 
@@ -97,7 +101,7 @@ export default defineEventHandler(async (event) => {
           errorMessage = "Access denied - API key may lack required permissions";
           break;
         case 404:
-          errorMessage = "Immich API endpoint not found - check your server URL";
+          errorMessage = "Asset not found in Immich";
           break;
         case 500:
         case 502:
@@ -113,34 +117,27 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const albums: ImmichAlbum[] = await response.json();
+    // Get the content type from Immich response
+    const contentType = response.headers.get("content-type") || "image/jpeg";
 
-    consola.info(`Fetched ${albums.length} Immich albums for integration ${integrationId}`);
+    // Set response headers for the image
+    setResponseHeader(event, "Content-Type", contentType);
+    setResponseHeader(event, "Cache-Control", "public, max-age=3600");
 
-    // Transform to a standardized format
-    return {
-      albums: albums.map(album => ({
-        id: album.id,
-        title: album.albumName,
-        description: album.description,
-        assetCount: album.assetCount,
-        thumbnailAssetId: album.albumThumbnailAssetId,
-        shared: album.shared,
-        createdAt: album.createdAt,
-        updatedAt: album.updatedAt,
-      })),
-    };
+    // Return the image binary
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
   }
   catch (error) {
     if (error && typeof error === "object" && "statusCode" in error) {
       throw error; // Re-throw HTTP errors
     }
 
-    consola.error("Error fetching Immich albums:", error);
+    consola.error("Error fetching Immich thumbnail:", error);
 
     throw createError({
       statusCode: 500,
-      message: error instanceof Error ? error.message : "Failed to fetch albums from Immich",
+      message: error instanceof Error ? error.message : "Failed to fetch thumbnail from Immich",
     });
   }
 });
