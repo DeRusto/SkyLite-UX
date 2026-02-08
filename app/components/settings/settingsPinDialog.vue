@@ -21,7 +21,13 @@ watch(() => props.isOpen, (open) => {
     error.value = "";
     isVerifying.value = false;
     nextTick(() => {
-      pinInput.value?.focus();
+      try {
+        const el = (pinInput.value as unknown as { $el?: HTMLElement })?.$el?.querySelector("input");
+        el?.focus();
+      }
+      catch {
+        // Focus is non-critical, ignore errors
+      }
     });
   }
 });
@@ -48,7 +54,13 @@ async function handleVerify() {
     else {
       error.value = "Incorrect PIN";
       pin.value = "";
-      pinInput.value?.focus();
+      try {
+        const el = (pinInput.value as unknown as { $el?: HTMLElement })?.$el?.querySelector("input");
+        el?.focus();
+      }
+      catch {
+        // Focus is non-critical, ignore errors
+      }
     }
   }
   catch (err) {

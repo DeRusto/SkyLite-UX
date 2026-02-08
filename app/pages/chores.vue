@@ -70,8 +70,14 @@ const completing = ref<string | null>(null);
 const { showError, showSuccess } = useAlertToast();
 
 // For now, we'll use a simple user selection (in a real app, this would come from auth)
-const users = ref<Array<{ id: string; name: string; avatar: string | null }>>([]);
+const users = ref<Array<{ id: string; name: string; avatar: string | null; role: string }>>([]);
 const selectedUserId = ref<string | null>(null);
+
+// Check if current user is a parent
+const isParent = computed(() => {
+  const user = users.value.find(u => u.id === selectedUserId.value);
+  return user?.role === "PARENT";
+});
 
 // Filter state
 const activeFilter = ref<"all" | "my-chores" | "available">("all");
@@ -440,6 +446,7 @@ onMounted(() => {
 
     <!-- Floating action button for creating chores (parent only) -->
     <GlobalFloatingActionButton
+      v-if="isParent"
       :icon="hasParentPin && !isChoreManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'"
       :label="hasParentPin && !isChoreManagementUnlocked ? 'Unlock to add chore' : 'Add new chore'"
       color="primary"
