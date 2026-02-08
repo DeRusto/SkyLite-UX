@@ -4,10 +4,12 @@ import type { ICalSettings, IntegrationConfig } from "~/types/integrations";
 import type { DialogField } from "~/types/ui";
 
 import type { HomeAssistantWeatherSettings } from "./home-assistant/homeAssistantWeather";
+import type { ImmichSettings } from "./immich/immichPhotos";
 
 import { createGoogleCalendarService } from "./google-calendar/googleCalendar";
 import { createHomeAssistantWeatherService } from "./home-assistant/homeAssistantWeather";
 import { createICalService } from "./iCal/iCalendar";
+import { createImmichService } from "./immich/immichPhotos";
 import { createMealieService, getMealieFieldsForItem } from "./mealie/mealieShoppingLists";
 import { createTandoorService, getTandoorFieldsForItem } from "./tandoor/tandoorShoppingLists";
 
@@ -181,6 +183,39 @@ export const integrationConfigs: IntegrationConfig[] = [
     dialogFields: [],
     syncInterval: 60,
   },
+  {
+    type: "photos",
+    service: "immich",
+    settingsFields: [
+      {
+        key: "baseUrl",
+        label: "Immich Server URL",
+        type: "url" as const,
+        placeholder: "https://immich.local",
+        required: true,
+        description: "Your Immich server URL",
+      },
+      {
+        key: "apiKey",
+        label: "API Key",
+        type: "password" as const,
+        required: true,
+        description: "Your Immich API key for authentication",
+      },
+      {
+        key: "selectedAlbums",
+        label: "Albums for Screensaver",
+        type: "multiselect" as const,
+        required: false,
+        description: "Select which albums to use for the screensaver slideshow",
+      },
+    ],
+    capabilities: ["get_albums", "get_photos", "get_people"],
+    icon: "https://cdn.jsdelivr.net/gh/selfhst/icons/svg/immich.svg",
+    files: [],
+    dialogFields: [],
+    syncInterval: 60,
+  },
   // ================================================
   // Meal integration configs can support the following list-level capabilities:
   // ================================================
@@ -326,6 +361,7 @@ const serviceFactoryMap = {
   "weather:home-assistant": (id: string, apiKey: string, baseUrl: string, settings?: HomeAssistantWeatherSettings) => {
     return createHomeAssistantWeatherService(id, apiKey, baseUrl, settings);
   },
+  "photos:immich": (id: string, apiKey: string, baseUrl: string, settings?: ImmichSettings) => createImmichService(id, apiKey, baseUrl, settings),
   "shopping:mealie": (id: string, apiKey: string, baseUrl: string, _settings?: unknown) => createMealieService(id, apiKey, baseUrl),
   "shopping:tandoor": (id: string, apiKey: string, baseUrl: string, _settings?: unknown) => createTandoorService(id, apiKey, baseUrl),
 } as const;

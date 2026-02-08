@@ -547,6 +547,10 @@ function getIntegrationIcon(type: string) {
       return "i-lucide-shopping-cart";
     case "meal":
       return "i-lucide-utensils";
+    case "photos":
+      return "i-lucide-image";
+    case "weather":
+      return "i-lucide-cloud-sun";
     default:
       return "i-lucide-plug";
   }
@@ -831,12 +835,12 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
           <!-- Unlocked content -->
           <template v-else>
             <div class="border-b border-default mb-6">
-              <nav class="-mb-px flex space-x-8" aria-label="Integration categories">
+              <nav class="-mb-px flex space-x-6" aria-label="Integration categories">
                 <button
                   v-for="type in availableIntegrationTypes"
                   :key="type"
                   type="button"
-                  class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm"
+                  class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1.5 min-h-[44px]"
                   :class="[
                     activeIntegrationTab === type
                       ? 'border-primary text-primary'
@@ -844,6 +848,7 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
                   ]"
                   @click="activeIntegrationTab = type"
                 >
+                  <UIcon :name="getIntegrationIcon(type)" class="h-4 w-4" />
                   {{ getIntegrationTypeLabel(type) }}
                 </button>
               </nav>
@@ -1057,6 +1062,14 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="bg-default rounded-lg shadow-sm border border-default p-6 mb-6">
+          <h2 class="text-lg font-semibold text-highlighted mb-4">
+            <UIcon name="i-lucide-monitor" class="h-5 w-5 inline mr-1" />
+            Screensaver Settings
+          </h2>
+          <SettingsScreensaver />
         </div>
 
         <div class="bg-default rounded-lg shadow-sm border border-default p-6 mb-6">
