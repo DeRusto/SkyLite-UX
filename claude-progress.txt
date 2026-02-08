@@ -1,5 +1,45 @@
 # SkyLite-UX Development Progress
 
+## Session 25 - Features #183, #186, #187 Implementation (2026-02-08)
+
+### Session Summary
+- Implemented 3 screensaver/photo features in one session
+- Progress: 177/204 features passing (86.8%)
+
+### Features Implemented
+- **#183: User can deselect albums to exclude from slideshow** - PASSING
+  - Added Screensaver Settings section to the settings page
+  - Created screensaver settings GET/PUT API endpoints (`/api/screensaver/settings`)
+  - Settings are persisted in the ScreensaverSettings PostgreSQL table
+  - Integrated Immich album selector in the Screensaver Settings component
+  - Album deselection updates the integration's selectedAlbums setting via PUT API
+  - Registered Immich as a photo integration in integrationConfig.ts
+
+- **#186: User can fetch and view people from Immich** - PASSING
+  - Updated the Immich people API endpoint to separate people and pets by type
+  - People are displayed in a grid with face thumbnails and names
+  - Created person thumbnail proxy endpoint at `/api/integrations/immich/people/[personId]/thumbnail`
+  - The settingsScreensaver.vue component shows People & Pets section when Immich is configured
+  - Includes loading, error, and empty states
+
+- **#187: User can view pets from Immich facial recognition** - PASSING
+  - Pets are separated from people based on Immich's `type === "PET"` field
+  - Pets displayed in their own section with paw-print icon
+  - Pet thumbnails use the same proxy endpoint as people
+  - Fallback avatar generation for failed thumbnail loads
+
+### Key Files Created/Modified
+- `app/components/settings/settingsScreensaver.vue` (new)
+- `app/integrations/integrationConfig.ts` (modified - added Immich service)
+- `app/pages/settings.vue` (modified - added Screensaver Settings section)
+- `server/api/screensaver/settings.get.ts` (new)
+- `server/api/screensaver/settings.put.ts` (new)
+- `server/api/integrations/immich/people.get.ts` (modified - people/pet separation)
+- `server/api/integrations/immich/people/[personId]/thumbnail.get.ts` (new)
+
+### Next Steps
+- Continue with remaining features (~27 left)
+
 ## Session 24 - Feature #180 Implementation (2026-01-20)
 
 ### Session Summary
