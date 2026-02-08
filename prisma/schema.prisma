@@ -328,16 +328,17 @@ model WeatherCache {
 // ============================================
 
 model ScreensaverSettings {
-  id                  String                    @id @default(cuid())
-  enabled             Boolean                   @default(false)
-  activationMode      ScreensaverActivationMode @default(IDLE)
-  idleTimeoutMinutes  Int                       @default(10)
-  scheduleStart       String?                   // Time in HH:mm format
-  scheduleEnd         String?                   // Time in HH:mm format
-  photoDisplaySeconds Int                       @default(15)
-  transitionEffect    TransitionEffect          @default(FADE)
-  showClock           Boolean                   @default(true)
-  clockPosition       String                    @default("bottom-right")
+  id                   String                    @id @default(cuid())
+  enabled              Boolean                   @default(false)
+  activationMode       ScreensaverActivationMode @default(IDLE)
+  idleTimeoutMinutes   Int                       @default(10)
+  scheduleStart        String?                   // Time in HH:mm format
+  scheduleEnd          String?                   // Time in HH:mm format
+  photoDisplaySeconds  Int                       @default(15)
+  transitionEffect     TransitionEffect          @default(FADE)
+  showClock            Boolean                   @default(true)
+  clockPosition        String                    @default("bottom-right")
+  selectedPhotoSource  String?                   // Selected photo integration ID
 
   @@map("screensaver_settings")
 }
@@ -353,6 +354,21 @@ model PhotoAlbum {
 
   @@unique([integrationId, externalAlbumId])
   @@map("photo_albums")
+}
+
+model PhotoCache {
+  id            String   @id @default(cuid())
+  integrationId String
+  assetId       String   // Immich asset ID
+  imageData     Bytes    // Cached image data
+  contentType   String   // e.g., "image/jpeg"
+  size          String   // "thumbnail" or "preview"
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime // Cache expiration time
+
+  @@unique([integrationId, assetId, size])
+  @@index([integrationId, assetId])
+  @@map("photo_cache")
 }
 
 // ============================================

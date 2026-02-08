@@ -24,6 +24,7 @@ type ScreensaverSettingsData = {
   transitionEffect: string;
   showClock: boolean;
   clockPosition: string;
+  selectedPhotoSource: string | null;
   photoIntegrations: Array<{
     id: string;
     name: string;
@@ -44,6 +45,24 @@ const pets = ref<ImmichPerson[]>([]);
 const loadingPeople = ref(false);
 const peopleError = ref<string | null>(null);
 
+// Sync state
+const syncing = ref(false);
+const lastSync = ref<Date | null>(null);
+
+// Get all photo integrations
+const photoIntegrations = computed(() => {
+  if (!settings.value)
+    return [];
+  return settings.value.photoIntegrations;
+});
+
+// Get the selected photo integration
+const selectedPhotoIntegration = computed(() => {
+  if (!settings.value?.selectedPhotoSource)
+    return photoIntegrations.value[0] || null;
+  return photoIntegrations.value.find(i => i.id === settings.value.selectedPhotoSource) || photoIntegrations.value[0] || null;
+});
+
 // Get the active Immich integration (if any)
 const immichIntegration = computed(() => {
   if (!settings.value)
@@ -51,7 +70,12 @@ const immichIntegration = computed(() => {
   return settings.value.photoIntegrations.find(i => i.service === "immich") || null;
 });
 
-// Get selected albums from Immich integration settings
+// Handle photo source selection
+async function handlePhotoSourceChange(integrationId: string) {
+  await saveSettings({ selectedPhotoSource: integrationId });
+}
+
+// Get selected albums from selected photo integration
 const selectedAlbums = computed(() => {
   if (!immichIntegration.value?.settings)
     return [];
@@ -73,6 +97,14 @@ async function fetchSettings() {
   try {
     const data = await $fetch<ScreensaverSettingsData>("/api/screensaver/settings");
     settings.value = data;
+
+    // Initialize lastSync from Immich integration's updatedAt timestamp
+    const immich = data.photoIntegrations.find(i => i.service === "immich");
+    if (immich) {
+      // We'll use the integration's updatedAt as last sync time
+      // For now, set to null - will be updated on first sync
+      lastSync.value = null;
+    }
   }
   catch (err) {
     consola.error("Failed to fetch screensaver settings:", err);
@@ -261,6 +293,69 @@ function clearPets() {
   handlePeopleSelected(currentPeopleIds);
 }
 
+// Manual sync with Immich
+async function syncNow() {
+  if (!immichIntegration.value || syncing.value) {
+    return;
+  }
+
+  syncing.value = true;
+  try {
+    const result = await $fetch<{
+      success: boolean;
+      message: string;
+      lastSync: string;
+    }>("/api/integrations/immich/sync", {
+      method: "POST",
+      body: {
+        integrationId: immichIntegration.value.id,
+      },
+    });
+
+    lastSync.value = new Date(result.lastSync);
+
+    if (result.success) {
+      showSuccess("Sync Complete", "Successfully synced with Immich");
+      // Refresh people to get latest data
+      await fetchPeople();
+    }
+    else {
+      showError("Sync Failed", result.message);
+    }
+  }
+  catch (err) {
+    consola.error("Failed to sync with Immich:", err);
+    showError("Sync Error", "Failed to sync with Immich");
+  }
+  finally {
+    syncing.value = false;
+  }
+}
+
+// Format last sync time for display
+function formatLastSync(date: Date | null): string {
+  if (!date) {
+    return "Never";
+  }
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) {
+    return "Just now";
+  }
+  else if (diffMins < 60) {
+    return `${diffMins} minute${diffMins === 1 ? "" : "s"} ago`;
+  }
+  else if (diffMins < 1440) {
+    const hours = Math.floor(diffMins / 60);
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+  else {
+    return date.toLocaleDateString();
+  }
+}
+
 // Fetch on mount
 onMounted(async () => {
   await fetchSettings();
@@ -395,7 +490,7 @@ watch(immichIntegration, (newVal) => {
           Photo Source
         </h3>
 
-        <div v-if="!immichIntegration" class="text-center py-6 bg-muted/20 rounded-lg">
+        <div v-if="photoIntegrations.length === 0" class="text-center py-6 bg-muted/20 rounded-lg">
           <UIcon name="i-lucide-image-off" class="h-10 w-10 mx-auto mb-3 text-muted" />
           <p class="text-sm text-muted">
             No photo integration configured.
@@ -405,19 +500,104 @@ watch(immichIntegration, (newVal) => {
           </p>
         </div>
 
+        <!-- Photo Source Selector -->
+        <template v-else-if="photoIntegrations.length > 1">
+          <p class="text-sm text-muted mb-3">
+            Select which photo service to use for the screensaver:
+          </p>
+          <div class="space-y-2 mb-4">
+            <div
+              v-for="integration in photoIntegrations"
+              :key="integration.id"
+              class="p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 flex items-center gap-3"
+              :class="
+                selectedPhotoIntegration?.id === integration.id
+                  ? 'border-primary bg-primary/5'
+                  : 'border-default hover:border-muted'
+              "
+              @click="handlePhotoSourceChange(integration.id)"
+            >
+              <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <UIcon :name="integration.service === 'immich' ? 'i-lucide-camera' : 'i-lucide-image'" class="h-4 w-4 text-primary" />
+              </div>
+              <div class="flex-1">
+                <p class="font-medium text-highlighted text-sm">
+                  {{ integration.name }}
+                </p>
+                <p class="text-xs text-muted capitalize">
+                  {{ integration.service === 'google-photos' ? 'Google Photos' : integration.service }}
+                </p>
+              </div>
+              <div v-if="selectedPhotoIntegration?.id === integration.id">
+                <UIcon name="i-lucide-check-circle" class="h-5 w-5 text-primary" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Sync Now Button for selected Immich integration -->
+          <div v-if="selectedPhotoIntegration?.service === 'immich'" class="mb-4 p-3 bg-muted/20 rounded-lg flex items-center gap-3">
+            <div class="flex-1">
+              <p class="text-sm text-muted">
+                Sync with Immich to fetch new photos
+              </p>
+            </div>
+            <UButton
+              size="sm"
+              variant="ghost"
+              color="primary"
+              icon="i-lucide-refresh-cw"
+              :loading="syncing"
+              :disabled="syncing"
+              @click="syncNow"
+            >
+              Sync Now
+            </UButton>
+          </div>
+
+          <!-- Last Sync Status -->
+          <div v-if="selectedPhotoIntegration?.service === 'immich' && (lastSync || syncing)" class="mb-4 text-xs text-muted flex items-center gap-2">
+            <UIcon :name="syncing ? 'i-lucide-loader-2' : 'i-lucide-check-circle'" :class="{ 'animate-spin': syncing }" class="h-3 w-3" />
+            <span>
+              {{ syncing ? "Syncing..." : `Last synced: ${formatLastSync(lastSync)}` }}
+            </span>
+          </div>
+        </template>
+
+        <!-- Single Photo Integration Display -->
         <template v-else>
           <div class="mb-4 p-3 bg-muted/20 rounded-lg flex items-center gap-3">
             <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <UIcon name="i-lucide-camera" class="h-4 w-4 text-primary" />
+              <UIcon :name="photoIntegrations[0].service === 'immich' ? 'i-lucide-camera' : 'i-lucide-image'" class="h-4 w-4 text-primary" />
             </div>
-            <div>
+            <div class="flex-1">
               <p class="font-medium text-highlighted text-sm">
-                {{ immichIntegration.name }}
+                {{ photoIntegrations[0].name }}
               </p>
               <p class="text-xs text-muted capitalize">
-                {{ immichIntegration.service }}
+                {{ photoIntegrations[0].service === 'google-photos' ? 'Google Photos' : photoIntegrations[0].service }}
               </p>
             </div>
+
+            <!-- Sync Now Button -->
+            <UButton
+              size="sm"
+              variant="ghost"
+              color="primary"
+              icon="i-lucide-refresh-cw"
+              :loading="syncing"
+              :disabled="syncing"
+              @click="syncNow"
+            >
+              Sync Now
+            </UButton>
+          </div>
+
+          <!-- Last Sync Status -->
+          <div v-if="lastSync || syncing" class="mb-4 text-xs text-muted flex items-center gap-2">
+            <UIcon :name="syncing ? 'i-lucide-loader-2' : 'i-lucide-check-circle'" :class="{ 'animate-spin': syncing }" class="h-3 w-3" />
+            <span>
+              {{ syncing ? "Syncing..." : `Last synced: ${formatLastSync(lastSync)}` }}
+            </span>
           </div>
 
           <!-- Album Selection -->

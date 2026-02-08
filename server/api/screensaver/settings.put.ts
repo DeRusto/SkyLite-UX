@@ -37,6 +37,7 @@ export default defineEventHandler(async (event) => {
       ...(body.transitionEffect && { transitionEffect: body.transitionEffect }),
       ...(body.showClock !== undefined && { showClock: body.showClock }),
       ...(body.clockPosition && { clockPosition: body.clockPosition }),
+      ...(body.selectedPhotoSource !== undefined && { selectedPhotoSource: body.selectedPhotoSource }),
     },
   });
 

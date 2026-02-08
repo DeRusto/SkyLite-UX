@@ -6,9 +6,13 @@ import prisma from "~/lib/prisma";
 
 import { decryptToken } from "../../../integrations/google-calendar/oauth";
 
+// Cache expiration: 7 days
+const CACHE_EXPIRY_DAYS = 7;
+
 /**
  * GET /api/integrations/immich/thumbnail
  * Proxies thumbnail requests to Immich (which requires auth headers)
+ * Implements server-side caching for improved performance and offline capability
  *
  * Query params:
  * - integrationId: Required - the ID of the Immich integration
@@ -54,6 +58,43 @@ export default defineEventHandler(async (event) => {
       statusCode: 400,
       message: "Invalid integration type - expected Immich photos integration",
     });
+  }
+
+  // Check cache first (only for assets, not person thumbnails)
+  if (thumbnailType === "asset") {
+    try {
+      const cachedPhoto = await prisma.photoCache.findUnique({
+        where: {
+          integrationId_assetId_size: {
+            integrationId,
+            assetId,
+            size,
+          },
+        },
+      });
+
+      if (cachedPhoto && cachedPhoto.expiresAt > new Date()) {
+        consola.debug(`Photo cache hit for ${assetId} (${size})`);
+
+        // Set cache headers for browser
+        setResponseHeader(event, "Content-Type", cachedPhoto.contentType);
+        setResponseHeader(event, "Cache-Control", "public, max-age=3600");
+        setResponseHeader(event, "X-Photo-Cache", "HIT");
+
+        // Return cached image
+        return Buffer.from(cachedPhoto.imageData);
+      }
+      else if (cachedPhoto) {
+        // Cache expired, delete it
+        await prisma.photoCache.delete({
+          where: { id: cachedPhoto.id },
+        });
+      }
+    }
+    catch (err) {
+      consola.warn("Error checking photo cache:", err);
+      // Continue to fetch from Immich
+    }
   }
 
   // Get credentials
@@ -120,13 +161,54 @@ export default defineEventHandler(async (event) => {
     // Get the content type from Immich response
     const contentType = response.headers.get("content-type") || "image/jpeg";
 
+    // Get the image data
+    const arrayBuffer = await response.arrayBuffer();
+    const imageBuffer = Buffer.from(arrayBuffer);
+
+    // Cache the photo (only for assets, not person thumbnails)
+    if (thumbnailType === "asset") {
+      try {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + CACHE_EXPIRY_DAYS);
+
+        await prisma.photoCache.upsert({
+          where: {
+            integrationId_assetId_size: {
+              integrationId,
+              assetId,
+              size,
+            },
+          },
+          create: {
+            integrationId,
+            assetId,
+            size,
+            imageData: imageBuffer,
+            contentType,
+            expiresAt,
+          },
+          update: {
+            imageData: imageBuffer,
+            contentType,
+            expiresAt,
+          },
+        });
+
+        consola.debug(`Cached photo ${assetId} (${size}) until ${expiresAt.toISOString()}`);
+      }
+      catch (err) {
+        consola.warn("Failed to cache photo:", err);
+        // Continue anyway - we have the image
+      }
+    }
+
     // Set response headers for the image
     setResponseHeader(event, "Content-Type", contentType);
     setResponseHeader(event, "Cache-Control", "public, max-age=3600");
+    setResponseHeader(event, "X-Photo-Cache", "MISS");
 
     // Return the image binary
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    return imageBuffer;
   }
   catch (error) {
     if (error && typeof error === "object" && "statusCode" in error) {

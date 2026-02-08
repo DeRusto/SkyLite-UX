@@ -4,9 +4,11 @@ import type { ICalSettings, IntegrationConfig } from "~/types/integrations";
 import type { DialogField } from "~/types/ui";
 
 import type { HomeAssistantWeatherSettings } from "./home-assistant/homeAssistantWeather";
+import type { GooglePhotosSettings } from "./google-photos/googlePhotos";
 import type { ImmichSettings } from "./immich/immichPhotos";
 
 import { createGoogleCalendarService } from "./google-calendar/googleCalendar";
+import { createGooglePhotosService } from "./google-photos/googlePhotos";
 import { createHomeAssistantWeatherService } from "./home-assistant/homeAssistantWeather";
 import { createICalService } from "./iCal/iCalendar";
 import { createImmichService } from "./immich/immichPhotos";
@@ -361,6 +363,7 @@ const serviceFactoryMap = {
   "weather:home-assistant": (id: string, apiKey: string, baseUrl: string, settings?: HomeAssistantWeatherSettings) => {
     return createHomeAssistantWeatherService(id, apiKey, baseUrl, settings);
   },
+  "photos:google-photos": (id: string, _apiKey: string, _baseUrl: string, _settings?: GooglePhotosSettings) => createGooglePhotosService(id),
   "photos:immich": (id: string, apiKey: string, baseUrl: string, settings?: ImmichSettings) => createImmichService(id, apiKey, baseUrl, settings),
   "shopping:mealie": (id: string, apiKey: string, baseUrl: string, _settings?: unknown) => createMealieService(id, apiKey, baseUrl),
   "shopping:tandoor": (id: string, apiKey: string, baseUrl: string, _settings?: unknown) => createTandoorService(id, apiKey, baseUrl),
