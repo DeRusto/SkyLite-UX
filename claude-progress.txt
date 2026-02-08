@@ -1,5 +1,47 @@
 # SkyLite-UX Development Progress
 
+## Session 26 - Features #173, #181, #182 Verification (2026-02-08)
+
+### Session Summary
+- Verified 3 Immich integration features as already implemented
+- Added 10-second timeout to Immich connection testing to prevent hanging
+- Improved error messages for timeout scenarios
+- Progress: 177/204 features passing (86.8%)
+
+### Features Verified
+- **#173: Immich integration validates connection on save** - PASSING
+  - Server POST endpoint tests connection via testConnection() before saving
+  - Server PUT endpoint tests connection when apiKey/baseUrl change
+  - Invalid URLs return 400 "Connection test failed: fetch failed"
+  - UI shows loading state → success/error feedback
+  - Added AbortController timeout (10s) to prevent indefinite hangs
+- **#181: User can select multiple Immich albums for slideshow** - PASSING
+  - settingsImmichAlbumSelector.vue provides multi-select with checkboxes
+  - Albums saved to database via settings.selectedAlbums
+  - Verified API persistence and server restart persistence
+- **#182: User can select all albums option for Immich** - PASSING
+  - "Select All" button in album selector selects all album IDs
+  - "Clear" button deselects all
+  - Both emit albumsSelected event for parent to handle
+
+### Code Changes
+- `app/integrations/immich/immichPhotos.ts` - Added 10s AbortController timeout to getStatus() and testConnection(), improved timeout error message
+
+### Verifications Performed
+- API: POST with invalid Immich URL → 400 "Connection test failed"
+- API: PUT with selectedAlbums → albums persisted to DB
+- Server restart persistence: Album selection survives restart
+- Mock data grep: No mock patterns found in production code
+- globalThis: Only in Prisma singleton (expected)
+
+### Current Statistics
+- Total Features: 204
+- Passing: 177
+- In Progress: 0
+- Completion: 86.8%
+
+---
+
 ## Session 25 - Features #183, #186, #187 Implementation (2026-02-08)
 
 ### Session Summary
