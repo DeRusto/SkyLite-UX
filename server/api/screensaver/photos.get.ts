@@ -95,6 +95,7 @@ export default defineEventHandler(async (event) => {
     };
 
     let photoIds: Set<string> | null = null;
+    let albumFetchErrors = 0;
 
     // If albums are selected, get photos from those albums
     if (selectedAlbums.length > 0) {
@@ -112,15 +113,20 @@ export default defineEventHandler(async (event) => {
               }
             }
           }
+          else {
+            albumFetchErrors++;
+          }
         }
         catch (err) {
           consola.warn(`Failed to fetch album ${albumId}:`, err);
+          albumFetchErrors++;
         }
       }
     }
 
     // If people are selected, get photos of those people
     let personPhotoIds: Set<string> | null = null;
+    let personFetchErrors = 0;
     if (selectedPeople.length > 0) {
       personPhotoIds = new Set<string>();
       for (const personId of selectedPeople) {
@@ -143,9 +149,13 @@ export default defineEventHandler(async (event) => {
               }
             }
           }
+          else {
+            personFetchErrors++;
+          }
         }
         catch (err) {
           consola.warn(`Failed to fetch photos for person ${personId}:`, err);
+          personFetchErrors++;
         }
       }
     }
@@ -198,6 +208,11 @@ export default defineEventHandler(async (event) => {
       url: `/api/integrations/immich/thumbnail?integrationId=${integration.id}&assetId=${id}&size=preview`,
     }));
 
+    // Check if all fetches failed and provide user-friendly error
+    const totalFetchAttempts = (selectedAlbums.length || 0) + (selectedPeople.length || 0);
+    const totalErrors = albumFetchErrors + personFetchErrors;
+    const allFetchesFailed = totalFetchAttempts > 0 && totalErrors === totalFetchAttempts;
+
     return {
       photos,
       total: photos.length,
@@ -205,14 +220,31 @@ export default defineEventHandler(async (event) => {
         albumCount: selectedAlbums.length,
         peopleCount: selectedPeople.length,
       },
+      error: allFetchesFailed && photos.length === 0
+        ? "Could not connect to Immich server. Please check that the server is running and the URL is correct."
+        : undefined,
     };
   }
   catch (error) {
     consola.error("Error fetching screensaver photos:", error);
-    throw createError({
-      statusCode: 500,
-      message: error instanceof Error ? error.message : "Failed to fetch screensaver photos",
-    });
+
+    // Check if this is a network connectivity error
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const isNetworkError = errorMsg.includes("fetch failed")
+      || errorMsg.includes("ECONNREFUSED")
+      || errorMsg.includes("EHOSTUNREACH")
+      || errorMsg.includes("ETIMEDOUT")
+      || errorMsg.includes("ENOTFOUND")
+      || errorMsg.includes("network");
+
+    // Return empty photos with user-friendly message instead of throwing
+    return {
+      photos: [],
+      total: 0,
+      error: isNetworkError
+        ? "Could not connect to Immich server. Please check that the server is running and the URL is correct."
+        : "Failed to fetch photos from Immich. The service may be temporarily unavailable.",
+    };
   }
 });
 

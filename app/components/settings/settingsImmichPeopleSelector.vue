@@ -156,8 +156,8 @@ const petsSelected = computed(() => selectedPeopleIds.value.filter(id => pets.va
       <p class="text-sm text-muted">
         No recognized people or pets found in your Immich library.
       </p>
-      <p class="text-xs text-muted mt-1">
-        Immich will recognize faces as you add more photos.
+      <p class="text-xs text-muted mt-2">
+        Open Immich to identify faces in your photos, then return here to select them.
       </p>
     </div>
 
