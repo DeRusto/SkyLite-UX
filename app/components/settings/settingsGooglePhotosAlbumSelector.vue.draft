@@ -1,0 +1,77 @@
+<script setup lang="ts">
+const props = defineProps<{
+  integration: {
+    id: string;
+    accessToken: string;
+    // other props if needed, though we primarily need integration ID to create session
+  };
+}>();
+
+const emit = defineEmits<{
+  (e: "complete"): void;
+}>();
+
+const loading = ref(false);
+const error = ref<string | null>(null);
+const polling = ref(false);
+const importStatus = ref<string>("");
+const importedCount = ref(0);
+
+// Timer for polling
+let pollTimer: NodeJS.Timeout | null = null;
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer);
+});
+
+async function openPicker() {
+  loading.value = true;
+  error.value = null;
+  importStatus.value = "Initializing Picker...";
+
+  try {
+    // 1. Create Session
+    const session = await $fetch<{ pickerUri: string }>(
+      "/api/integrations/google-photos/session",
+      {
+        method: "POST",
+        body: { integrationId: props.integration.id },
+      }
+    );
+
+    // 2. Open Popup
+    const width = 800;
+    const height = 600;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+    
+    // We open the pickerUri directly. 
+    // The user will pick photos, then click "Done".
+    // The window will close itself OR redirect. 
+    // The Google Picker API guide says "The window closes automatically".
+    const popup = window.open(
+      session.pickerUri,
+      "GooglePhotosPicker",
+      `width=${width},height=${height},top=${top},left=${left},resizable,scrollbars`
+    );
+
+    if (!popup) {
+      throw new Error("Popup blocked. Please allow popups for this site.");
+    }
+
+    // 3. Poll for results 
+    // We poll the backend which checks the session ID (from the session object? Use session ID implied by integration? No, session ID is needed.)
+    // Wait, createPickerSession returns `pickerUri`. Does it return session ID?
+    // My picker.ts implementation `return await response.json()` which includes `id` and `pickerUri`.
+    // I need to update my session endpoint to return `id` too.
+    
+    // Actually, let's fix the session endpoint return type first in my head.
+    // session.post.ts returns `return { pickerUri: session.pickerUri };`
+    // I should update it to return `pickerUri` AND `id`.
+
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "Failed to open picker";
+    loading.value = false;
+  }
+}
+</script>

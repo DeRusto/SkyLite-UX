@@ -10,7 +10,11 @@
     "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
-    "docs": "cd docs && bundle exec jekyll serve --host 0.0.0.0"
+    "docs": "cd docs && bundle exec jekyll serve --host 0.0.0.0",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:settings": "playwright test tests/regression-settings-features.spec.ts"
   },
   "dependencies": {
     "@eslint/plugin-kit": "^0.3.4",
@@ -28,7 +32,8 @@
     "pinia": "^3.0.1",
     "prisma": "^6.9.0",
     "vue": "~3.5.13",
-    "vue-router": "~4.5.0"
+    "vue-router": "~4.5.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.3.0",

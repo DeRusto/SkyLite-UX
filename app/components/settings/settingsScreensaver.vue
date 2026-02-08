@@ -439,7 +439,12 @@ watch(immichIntegration, (newVal) => {
         <p class="text-sm text-muted mb-4">
           Select people and pets to filter which photos appear in the screensaver slideshow.
           <template v-if="selectedAlbums.length > 0">
-            Only photos of selected people/pets <strong>from selected albums</strong> will be shown.
+            <template v-if="selectedPeople.length > 0">
+              Only photos of selected people/pets <strong>from selected albums</strong> will be shown.
+            </template>
+            <template v-else>
+              Photos of <strong>anyone</strong> from selected albums will be shown (no people filter applied).
+            </template>
           </template>
           <template v-else>
             When no albums are selected, all photos of the selected people/pets will be shown.

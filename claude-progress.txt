@@ -655,3 +655,42 @@ During testing, discovered app was crashing with server error:
 ### Screenshots
 - chores-overdue-verification.png - Shows overdue vs future due date display
 
+
+## Session 27 - Features #184, #192, #205 Verification (2026-02-08)
+
+### Session Summary
+- Verified 3 screensaver UI features via browser automation
+- All features already implemented in previous sessions
+- Progress: 184/204 features passing (90.2%)
+
+### Features Verified
+- Feature 184: Album selection UI displays album names and thumbnails - PASSING
+  - Navigated to Settings and verified album grid layout
+  - Each album shows thumbnail, title, and photo count
+  - Touch-friendly tap targets verified
+  - Selection works with visual checkmark overlay
+
+- Feature 192: People selection UI displays face thumbnails - PASSING
+  - Verified People section with circular face thumbnails
+  - 56px by 56px thumbnails with names below
+  - Selection state with blue highlight and checkmark
+  - Toast notification on selection
+
+- Feature 205: Photo source selector has clear visual design - PASSING
+  - Photo Source section clearly labeled with icon
+  - Immich integration shown with camera icon and name
+  - Visual distinction with colored background
+  - All tap targets exceed 44px minimum
+
+### Screenshots Captured
+- feature-205-photo-source-selector.png
+- feature-184-album-selection-ui.png
+- feature-192-people-selection-ui.png
+- features-184-192-205-all-verified.png
+
+### Current Statistics
+- Total Features: 204
+- Passing: 184
+- In Progress: 0
+- Completion: 90.2%
+

@@ -1,20 +1,27 @@
 <script setup lang="ts">
+import { consola } from "consola";
 // Screensaver page - displays photos full-screen and dismisses on touch
 
 const { deactivateScreensaver } = useScreensaver();
 
-// Placeholder photos for demo - in production these would come from Google Photos API
-const photos = ref<string[]>([
+type ScreensaverPhoto = {
+  id: string;
+  url: string;
+};
+
+// Fallback photos in case no Immich integration is configured
+const fallbackPhotos = [
   "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80",
   "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1920&q=80",
   "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1920&q=80",
   "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1920&q=80",
   "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=80",
-]);
+];
 
+const photos = ref<string[]>([...fallbackPhotos]);
 const currentPhotoIndex = ref(0);
 const isTransitioning = ref(false);
-const displayDuration = 8000; // 8 seconds per photo
+const displayDuration = ref(8000); // 8 seconds per photo, updated from settings
 let slideInterval: ReturnType<typeof setInterval> | null = null;
 
 // Current time for clock display
@@ -38,6 +45,48 @@ const formattedDate = computed(() => {
     day: "numeric",
   });
 });
+
+// Fetch real photos from the screensaver API
+async function fetchPhotos() {
+  try {
+    const data = await $fetch<{
+      photos: ScreensaverPhoto[];
+      total: number;
+    }>("/api/screensaver/photos", {
+      query: { count: 30 },
+    });
+
+    if (data.photos && data.photos.length > 0) {
+      photos.value = data.photos.map(p => p.url);
+      consola.info(`Loaded ${data.photos.length} photos for screensaver`);
+    }
+    else {
+      consola.info("No Immich photos available, using fallback photos");
+      photos.value = [...fallbackPhotos];
+    }
+  }
+  catch (err) {
+    consola.warn("Failed to fetch screensaver photos, using fallbacks:", err);
+    photos.value = [...fallbackPhotos];
+  }
+}
+
+// Fetch screensaver settings for display duration
+async function fetchSettings() {
+  try {
+    const settings = await $fetch<{
+      photoDisplaySeconds: number;
+      showClock: boolean;
+    }>("/api/screensaver/settings");
+
+    if (settings.photoDisplaySeconds) {
+      displayDuration.value = settings.photoDisplaySeconds * 1000;
+    }
+  }
+  catch (err) {
+    consola.warn("Failed to fetch screensaver settings:", err);
+  }
+}
 
 function nextPhoto() {
   if (photos.value.length <= 1)
@@ -64,9 +113,13 @@ function handleDismiss() {
   deactivateScreensaver();
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Fetch settings and photos
+  await fetchSettings();
+  await fetchPhotos();
+
   // Start photo slideshow
-  slideInterval = setInterval(nextPhoto, displayDuration);
+  slideInterval = setInterval(nextPhoto, displayDuration.value);
 
   // Start clock updates
   timeInterval = setInterval(() => {
