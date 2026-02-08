@@ -70,16 +70,31 @@ const immichIntegration = computed(() => {
   return settings.value.photoIntegrations.find(i => i.service === "immich") || null;
 });
 
+// Get the active Google Photos integration (if any)
+const googlePhotosIntegration = computed(() => {
+  if (!settings.value)
+    return null;
+  return settings.value.photoIntegrations.find(i => i.service === "google-photos") || null;
+});
+
 // Handle photo source selection
 async function handlePhotoSourceChange(integrationId: string) {
   await saveSettings({ selectedPhotoSource: integrationId });
 }
 
-// Get selected albums from selected photo integration
-const selectedAlbums = computed(() => {
+// Get selected albums from Immich integration
+const selectedImmichAlbums = computed(() => {
   if (!immichIntegration.value?.settings)
     return [];
   const s = immichIntegration.value.settings as Record<string, unknown>;
+  return Array.isArray(s.selectedAlbums) ? s.selectedAlbums as string[] : [];
+});
+
+// Get selected albums from Google Photos integration
+const selectedGooglePhotosAlbums = computed(() => {
+  if (!googlePhotosIntegration.value?.settings)
+    return [];
+  const s = googlePhotosIntegration.value.settings as Record<string, unknown>;
   return Array.isArray(s.selectedAlbums) ? s.selectedAlbums as string[] : [];
 });
 
@@ -137,8 +152,8 @@ async function saveSettings(updates: Partial<ScreensaverSettingsData>) {
   }
 }
 
-// Handle album selection/deselection from the album selector
-async function handleAlbumsSelected(albumIds: string[]) {
+// Handle Immich album selection/deselection from the album selector
+async function handleImmichAlbumsSelected(albumIds: string[]) {
   if (!immichIntegration.value)
     return;
 
@@ -166,6 +181,39 @@ async function handleAlbumsSelected(albumIds: string[]) {
   }
   catch (err) {
     consola.error("Failed to update album selection:", err);
+    showError("Error", "Failed to save album selection");
+  }
+}
+
+// Handle Google Photos album selection/deselection from the album selector
+async function handleGooglePhotosAlbumsSelected(albumIds: string[]) {
+  if (!googlePhotosIntegration.value)
+    return;
+
+  try {
+    // Update the integration settings with new album selection
+    await $fetch(`/api/integrations/${googlePhotosIntegration.value.id}`, {
+      method: "PUT",
+      body: {
+        settings: {
+          ...(googlePhotosIntegration.value.settings as Record<string, unknown> || {}),
+          selectedAlbums: albumIds,
+        },
+      },
+    });
+
+    // Update local state
+    if (googlePhotosIntegration.value.settings) {
+      (googlePhotosIntegration.value.settings as Record<string, unknown>).selectedAlbums = albumIds;
+    }
+    else {
+      googlePhotosIntegration.value.settings = { selectedAlbums: albumIds } as Record<string, unknown>;
+    }
+
+    showSuccess("Albums Updated", `${albumIds.length} album${albumIds.length === 1 ? "" : "s"} selected for screensaver`);
+  }
+  catch (err) {
+    consola.error("Failed to update Google Photos album selection:", err);
     showError("Error", "Failed to save album selection");
   }
 }
@@ -561,6 +609,43 @@ watch(immichIntegration, (newVal) => {
               {{ syncing ? "Syncing..." : `Last synced: ${formatLastSync(lastSync)}` }}
             </span>
           </div>
+
+          <!-- Album Selection for selected integration -->
+          <!-- Immich Album Selector -->
+          <SettingsImmichAlbumSelector
+            v-if="selectedPhotoIntegration?.service === 'immich' && immichIntegration"
+            :integration-id="immichIntegration.id"
+            :selected-albums="selectedImmichAlbums"
+            @albums-selected="handleImmichAlbumsSelected"
+          />
+
+          <!-- Google Photos Album Selector Placeholder -->
+          <div v-else-if="selectedPhotoIntegration?.service === 'google-photos'" class="space-y-4">
+            <div class="flex items-center justify-between">
+              <label class="block text-sm font-medium text-highlighted">
+                Select Albums for Screensaver
+              </label>
+              <div class="flex gap-2">
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  @click="handleGooglePhotosAlbumsSelected([])"
+                >
+                  Clear
+                </UButton>
+              </div>
+            </div>
+
+            <p class="text-sm text-muted">
+              Google Photos albums will appear here once you've authenticated with Google Photos.
+              <br>
+              <span class="text-xs opacity-75">Note: Album selection for Google Photos screensaver is coming soon.</span>
+            </p>
+
+            <div v-if="selectedGooglePhotosAlbums.length > 0" class="text-sm text-muted">
+              {{ selectedGooglePhotosAlbums.length }} {{ selectedGooglePhotosAlbums.length === 1 ? 'album' : 'albums' }} selected
+            </div>
+          </div>
         </template>
 
         <!-- Single Photo Integration Display -->
@@ -600,17 +685,46 @@ watch(immichIntegration, (newVal) => {
             </span>
           </div>
 
-          <!-- Album Selection -->
+          <!-- Album Selection - Immich -->
           <SettingsImmichAlbumSelector
-            :integration-id="immichIntegration.id"
-            :selected-albums="selectedAlbums"
-            @albums-selected="handleAlbumsSelected"
+            v-if="selectedPhotoIntegration?.service === 'immich'"
+            :integration-id="immichIntegration!.id"
+            :selected-albums="selectedImmichAlbums"
+            @albums-selected="handleImmichAlbumsSelected"
           />
+
+          <!-- Album Selection - Google Photos -->
+          <div v-else-if="selectedPhotoIntegration?.service === 'google-photos'" class="space-y-4">
+            <div class="flex items-center justify-between">
+              <label class="block text-sm font-medium text-highlighted">
+                Select Albums for Screensaver
+              </label>
+              <div class="flex gap-2">
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  @click="handleGooglePhotosAlbumsSelected([])"
+                >
+                  Clear
+                </UButton>
+              </div>
+            </div>
+
+            <p class="text-sm text-muted">
+              Google Photos albums will appear here once you've authenticated with Google Photos.
+              <br>
+              <span class="text-xs opacity-75">Note: Album selection for Google Photos screensaver is coming soon.</span>
+            </p>
+
+            <div v-if="selectedGooglePhotosAlbums.length > 0" class="text-sm text-muted">
+              {{ selectedGooglePhotosAlbums.length }} {{ selectedGooglePhotosAlbums.length === 1 ? 'album' : 'albums' }} selected
+            </div>
+          </div>
         </template>
       </div>
 
-      <!-- People / Pets Section -->
-      <div v-if="immichIntegration" class="border-t border-default pt-6">
+      <!-- People / Pets Section (Immich only) -->
+      <div v-if="immichIntegration && selectedPhotoIntegration?.service === 'immich'" class="border-t border-default pt-6">
         <h3 class="text-base font-semibold text-highlighted mb-4">
           <UIcon name="i-lucide-users" class="h-4 w-4 inline mr-1" />
           People & Pets
@@ -618,7 +732,7 @@ watch(immichIntegration, (newVal) => {
 
         <p class="text-sm text-muted mb-4">
           Select people and pets to filter which photos appear in the screensaver slideshow.
-          <template v-if="selectedAlbums.length > 0">
+          <template v-if="selectedImmichAlbums.length > 0">
             <template v-if="selectedPeople.length > 0">
               Only photos of selected people/pets <strong>from selected albums</strong> will be shown.
             </template>
