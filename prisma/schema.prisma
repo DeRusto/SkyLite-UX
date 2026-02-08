@@ -5,7 +5,8 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -14,7 +15,7 @@ datasource db {
 }
 
 // ============================================
-// ENUMS (defined first for Prisma)
+// ENUMS
 // ============================================
 
 enum UserRole {
@@ -121,6 +122,9 @@ model Todo {
   todoColumnId String?
   todoColumn   TodoColumn? @relation(fields: [todoColumnId], references: [id], onDelete: Cascade)
 
+  recurringGroupId  String?
+  rrule             Json?
+
   @@map("todos")
 }
 
@@ -152,21 +156,21 @@ model ShoppingListItem {
 }
 
 model Integration {
-  id        String   @id @default(cuid())
-  name      String
-  type      String
-  service   String
-  apiKey    String?
-  baseUrl   String?
-  icon      String?
-  enabled   Boolean  @default(true)
-  settings  Json?
-  accessToken     String?
-  refreshToken    String?
-  tokenExpiry     DateTime?
-  tokenType       String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  type         String
+  service      String
+  apiKey       String?
+  baseUrl      String?
+  icon         String?
+  enabled      Boolean  @default(true)
+  settings     Json?
+  accessToken  String?
+  refreshToken String?
+  tokenExpiry  DateTime?
+  tokenType    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([name])
   @@map("integrations")
@@ -179,7 +183,7 @@ model CalendarEvent {
   start       DateTime
   end         DateTime
   allDay      Boolean  @default(false)
-  color       Json?  
+  color       Json?
   location    String?
   ical_event  Json?
   createdAt   DateTime @default(now())
@@ -187,8 +191,6 @@ model CalendarEvent {
 
   users CalendarEventUser[]
 
-  @@index([start])
-  @@index([end])
   @@map("calendar_events")
 }
 
@@ -297,11 +299,11 @@ model RewardRedemption {
 }
 
 model UserPoints {
-  id           String @id @default(cuid())
-  userId       String @unique
-  currentBalance Int  @default(0)
-  totalEarned  Int    @default(0)
-  totalSpent   Int    @default(0)
+  id             String @id @default(cuid())
+  userId         String @unique
+  currentBalance Int    @default(0)
+  totalEarned    Int    @default(0)
+  totalSpent     Int    @default(0)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

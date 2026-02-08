@@ -15,12 +15,17 @@ export function useCalendarEvents() {
     error.value = null;
     try {
       await refreshNuxtData("calendar-events");
-      consola.debug("Use Calendar Events: Calendar events refreshed successfully");
+      consola.debug(
+        "Use Calendar Events: Calendar events refreshed successfully",
+      );
       return currentEvents.value;
     }
     catch (err) {
       error.value = "Failed to fetch calendar events";
-      consola.error("Use Calendar Events: Error fetching calendar events:", err);
+      consola.error(
+        "Use Calendar Events: Error fetching calendar events:",
+        err,
+      );
       throw err;
     }
     finally {
@@ -48,10 +53,13 @@ export function useCalendarEvents() {
 
   const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
     try {
-      const updatedEvent = await $fetch<CalendarEvent>(`/api/calendar-events/${id}`, {
-        method: "PUT",
-        body: updates,
-      });
+      const updatedEvent = await $fetch<CalendarEvent>(
+        `/api/calendar-events/${id}`,
+        {
+          method: "PUT",
+          body: updates,
+        },
+      );
 
       await refreshNuxtData("calendar-events");
 
@@ -66,7 +74,8 @@ export function useCalendarEvents() {
 
   const deleteEvent = async (id: string) => {
     try {
-      await ($fetch as (url: string, opts?: { method?: string }) => Promise<void>)(`/api/calendar-events/${id}`, {
+      // eslint-disable-next-line ts/no-unsafe-function-type
+      await ($fetch as Function)(`/api/calendar-events/${id}`, {
         method: "DELETE",
       });
 
