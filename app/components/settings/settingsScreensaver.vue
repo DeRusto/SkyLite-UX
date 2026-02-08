@@ -59,6 +59,14 @@ const selectedAlbums = computed(() => {
   return Array.isArray(s.selectedAlbums) ? s.selectedAlbums as string[] : [];
 });
 
+// Get selected people from Immich integration settings
+const selectedPeople = computed(() => {
+  if (!immichIntegration.value?.settings)
+    return [];
+  const s = immichIntegration.value.settings as Record<string, unknown>;
+  return Array.isArray(s.selectedPeople) ? s.selectedPeople as string[] : [];
+});
+
 // Fetch screensaver settings
 async function fetchSettings() {
   loading.value = true;
@@ -130,6 +138,39 @@ async function handleAlbumsSelected(albumIds: string[]) {
   }
 }
 
+// Handle people/pets selection
+async function handlePeopleSelected(peopleIds: string[]) {
+  if (!immichIntegration.value)
+    return;
+
+  try {
+    // Update the integration settings with new people selection
+    await $fetch(`/api/integrations/${immichIntegration.value.id}`, {
+      method: "PUT",
+      body: {
+        settings: {
+          ...(immichIntegration.value.settings as Record<string, unknown> || {}),
+          selectedPeople: peopleIds,
+        },
+      },
+    });
+
+    // Update local state
+    if (immichIntegration.value.settings) {
+      (immichIntegration.value.settings as Record<string, unknown>).selectedPeople = peopleIds;
+    }
+    else {
+      immichIntegration.value.settings = { selectedPeople: peopleIds } as Record<string, unknown>;
+    }
+
+    showSuccess("People Updated", `${peopleIds.length} ${peopleIds.length === 1 ? "person" : "people/pets"} selected for screensaver`);
+  }
+  catch (err) {
+    consola.error("Failed to update people selection:", err);
+    showError("Error", "Failed to save people selection");
+  }
+}
+
 // Fetch people/pets from Immich
 async function fetchPeople() {
   if (!immichIntegration.value)
@@ -152,12 +193,72 @@ async function fetchPeople() {
   }
   catch (err: unknown) {
     consola.error("Failed to fetch people from Immich:", err);
-    const errorMessage = err instanceof Error ? err.message : "Failed to fetch people from Immich";
-    peopleError.value = errorMessage;
+    const fetchError = err as { data?: { message?: string }; statusMessage?: string; message?: string };
+    const errorMessage = fetchError?.data?.message
+      || fetchError?.statusMessage
+      || (err instanceof Error ? err.message : null)
+      || "Failed to fetch people from Immich";
+
+    // Check if the error indicates Immich is unreachable
+    const isUnreachable = errorMessage.includes("fetch failed")
+      || errorMessage.includes("ECONNREFUSED")
+      || errorMessage.includes("EHOSTUNREACH")
+      || errorMessage.includes("ETIMEDOUT")
+      || errorMessage.includes("ENOTFOUND")
+      || errorMessage.includes("network")
+      || errorMessage.includes("Could not connect");
+
+    peopleError.value = isUnreachable
+      ? "Could not connect to Immich server. Please check that your Immich server is running and accessible."
+      : errorMessage;
   }
   finally {
     loadingPeople.value = false;
   }
+}
+
+// Check if a person/pet is selected
+function isPersonSelected(personId: string): boolean {
+  return selectedPeople.value.includes(personId);
+}
+
+// Toggle a single person/pet selection
+function togglePerson(personId: string) {
+  const current = [...selectedPeople.value];
+  const index = current.indexOf(personId);
+  if (index === -1) {
+    current.push(personId);
+  }
+  else {
+    current.splice(index, 1);
+  }
+  handlePeopleSelected(current);
+}
+
+// Select all people (not pets)
+function selectAllPeople() {
+  const allPeopleIds = people.value.map(p => p.id);
+  const currentPetIds = selectedPeople.value.filter(id => pets.value.some(pet => pet.id === id));
+  handlePeopleSelected([...new Set([...allPeopleIds, ...currentPetIds])]);
+}
+
+// Select all pets
+function selectAllPets() {
+  const allPetIds = pets.value.map(p => p.id);
+  const currentPeopleIds = selectedPeople.value.filter(id => people.value.some(person => person.id === id));
+  handlePeopleSelected([...new Set([...currentPeopleIds, ...allPetIds])]);
+}
+
+// Clear all people selections (keep pet selections)
+function clearPeople() {
+  const currentPetIds = selectedPeople.value.filter(id => pets.value.some(pet => pet.id === id));
+  handlePeopleSelected(currentPetIds);
+}
+
+// Clear all pet selections (keep people selections)
+function clearPets() {
+  const currentPeopleIds = selectedPeople.value.filter(id => people.value.some(person => person.id === id));
+  handlePeopleSelected(currentPeopleIds);
 }
 
 // Fetch on mount
@@ -336,8 +437,29 @@ watch(immichIntegration, (newVal) => {
         </h3>
 
         <p class="text-sm text-muted mb-4">
-          People and pets identified by Immich facial recognition. These can be used to filter photos for the screensaver.
+          Select people and pets to filter which photos appear in the screensaver slideshow.
+          <template v-if="selectedAlbums.length > 0">
+            Only photos of selected people/pets <strong>from selected albums</strong> will be shown.
+          </template>
+          <template v-else>
+            When no albums are selected, all photos of the selected people/pets will be shown.
+          </template>
         </p>
+
+        <!-- Selection summary -->
+        <div v-if="selectedPeople.length > 0" class="mb-4 p-2 bg-primary/10 rounded-lg text-sm text-primary flex items-center gap-2">
+          <UIcon name="i-lucide-check-circle" class="h-4 w-4 flex-shrink-0" />
+          {{ selectedPeople.length }} {{ selectedPeople.length === 1 ? 'person/pet' : 'people/pets' }} selected for screensaver
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="primary"
+            class="ml-auto"
+            @click="handlePeopleSelected([])"
+          >
+            Clear All
+          </UButton>
+        </div>
 
         <!-- Loading state -->
         <div v-if="loadingPeople" class="text-center py-6">
@@ -369,24 +491,71 @@ watch(immichIntegration, (newVal) => {
         <template v-else>
           <!-- People Section -->
           <div v-if="people.length > 0" class="mb-6">
-            <h4 class="text-sm font-medium text-highlighted mb-3">
-              <UIcon name="i-lucide-user" class="h-3.5 w-3.5 inline mr-1" />
-              People ({{ people.length }})
-            </h4>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-medium text-highlighted">
+                <UIcon name="i-lucide-user" class="h-3.5 w-3.5 inline mr-1" />
+                People ({{ people.length }})
+              </h4>
+              <div class="flex gap-2">
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  @click="selectAllPeople"
+                >
+                  Select All
+                </UButton>
+                <UButton
+                  v-if="people.some(p => isPersonSelected(p.id))"
+                  size="xs"
+                  variant="ghost"
+                  @click="clearPeople"
+                >
+                  Clear
+                </UButton>
+              </div>
+            </div>
             <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
               <div
                 v-for="person in people"
                 :key="person.id"
-                class="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-muted/20 transition-colors"
+                class="flex flex-col items-center gap-1.5 p-2 rounded-lg cursor-pointer transition-all duration-200 group"
+                role="checkbox"
+                :aria-checked="isPersonSelected(person.id)"
+                :aria-label="person.name"
+                tabindex="0"
+                @click="togglePerson(person.id)"
+                @keydown.enter.prevent="togglePerson(person.id)"
+                @keydown.space.prevent="togglePerson(person.id)"
               >
-                <img
-                  :src="person.thumbnailUrl"
-                  :alt="person.name"
-                  class="w-14 h-14 rounded-full object-cover border-2 border-default shadow-sm"
-                  loading="lazy"
-                  @error="(e: Event) => (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(person.name)}&size=56&background=6BCBCB&color=fff`"
+                <div
+                  class="relative w-14 h-14 rounded-full overflow-hidden border-2 transition-all duration-200"
+                  :class="[
+                    isPersonSelected(person.id)
+                      ? 'border-primary ring-2 ring-primary/30 shadow-md'
+                      : 'border-default group-hover:border-muted group-hover:shadow-sm',
+                  ]"
                 >
-                <p class="text-xs text-highlighted text-center truncate w-full">
+                  <img
+                    :src="person.thumbnailUrl"
+                    :alt="person.name"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                    @error="(e: Event) => (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(person.name)}&size=56&background=6BCBCB&color=fff`"
+                  >
+                  <!-- Selection checkmark overlay -->
+                  <div
+                    v-if="isPersonSelected(person.id)"
+                    class="absolute inset-0 bg-primary/20 flex items-center justify-center"
+                  >
+                    <div class="w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow">
+                      <UIcon name="i-lucide-check" class="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <p
+                  class="text-xs text-center truncate w-full"
+                  :class="isPersonSelected(person.id) ? 'text-primary font-medium' : 'text-highlighted'"
+                >
                   {{ person.name }}
                 </p>
               </div>
@@ -395,24 +564,71 @@ watch(immichIntegration, (newVal) => {
 
           <!-- Pets Section -->
           <div v-if="pets.length > 0" class="mb-4">
-            <h4 class="text-sm font-medium text-highlighted mb-3">
-              <UIcon name="i-lucide-paw-print" class="h-3.5 w-3.5 inline mr-1" />
-              Pets ({{ pets.length }})
-            </h4>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-medium text-highlighted">
+                <UIcon name="i-lucide-paw-print" class="h-3.5 w-3.5 inline mr-1" />
+                Pets ({{ pets.length }})
+              </h4>
+              <div class="flex gap-2">
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  @click="selectAllPets"
+                >
+                  Select All
+                </UButton>
+                <UButton
+                  v-if="pets.some(p => isPersonSelected(p.id))"
+                  size="xs"
+                  variant="ghost"
+                  @click="clearPets"
+                >
+                  Clear
+                </UButton>
+              </div>
+            </div>
             <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
               <div
                 v-for="pet in pets"
                 :key="pet.id"
-                class="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-muted/20 transition-colors"
+                class="flex flex-col items-center gap-1.5 p-2 rounded-lg cursor-pointer transition-all duration-200 group"
+                role="checkbox"
+                :aria-checked="isPersonSelected(pet.id)"
+                :aria-label="pet.name"
+                tabindex="0"
+                @click="togglePerson(pet.id)"
+                @keydown.enter.prevent="togglePerson(pet.id)"
+                @keydown.space.prevent="togglePerson(pet.id)"
               >
-                <img
-                  :src="pet.thumbnailUrl"
-                  :alt="pet.name"
-                  class="w-14 h-14 rounded-full object-cover border-2 border-default shadow-sm"
-                  loading="lazy"
-                  @error="(e: Event) => (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(pet.name)}&size=56&background=FFD93D&color=fff`"
+                <div
+                  class="relative w-14 h-14 rounded-full overflow-hidden border-2 transition-all duration-200"
+                  :class="[
+                    isPersonSelected(pet.id)
+                      ? 'border-primary ring-2 ring-primary/30 shadow-md'
+                      : 'border-default group-hover:border-muted group-hover:shadow-sm',
+                  ]"
                 >
-                <p class="text-xs text-highlighted text-center truncate w-full">
+                  <img
+                    :src="pet.thumbnailUrl"
+                    :alt="pet.name"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                    @error="(e: Event) => (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(pet.name)}&size=56&background=FFD93D&color=fff`"
+                  >
+                  <!-- Selection checkmark overlay -->
+                  <div
+                    v-if="isPersonSelected(pet.id)"
+                    class="absolute inset-0 bg-primary/20 flex items-center justify-center"
+                  >
+                    <div class="w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow">
+                      <UIcon name="i-lucide-check" class="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <p
+                  class="text-xs text-center truncate w-full"
+                  :class="isPersonSelected(pet.id) ? 'text-primary font-medium' : 'text-highlighted'"
+                >
                   {{ pet.name }}
                 </p>
               </div>

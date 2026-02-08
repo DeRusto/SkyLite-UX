@@ -45,9 +45,24 @@ async function fetchAlbums() {
     );
     albums.value = response.albums;
   }
-  catch (err) {
-    console.error("Failed to fetch Immich albums:", err);
-    error.value = err instanceof Error ? err.message : "Failed to fetch albums from Immich";
+  catch (err: unknown) {
+    const fetchError = err as { data?: { message?: string }; statusMessage?: string; message?: string };
+    const errorMessage = fetchError?.data?.message
+      || fetchError?.statusMessage
+      || (err instanceof Error ? err.message : null)
+      || "Failed to fetch albums from Immich";
+
+    // Check if the error indicates Immich is unreachable
+    const isUnreachable = errorMessage.includes("fetch failed")
+      || errorMessage.includes("ECONNREFUSED")
+      || errorMessage.includes("EHOSTUNREACH")
+      || errorMessage.includes("ETIMEDOUT")
+      || errorMessage.includes("ENOTFOUND")
+      || errorMessage.includes("network");
+
+    error.value = isUnreachable
+      ? "Could not connect to Immich server. Please check that your Immich server is running and accessible."
+      : errorMessage;
   }
   finally {
     loading.value = false;
@@ -119,10 +134,21 @@ function deselectAll() {
     <div
       v-if="error"
       role="alert"
-      class="bg-error/10 text-error rounded-md px-3 py-2 text-sm flex items-center gap-2"
+      class="bg-error/10 text-error rounded-md px-3 py-2 text-sm"
     >
-      <UIcon name="i-lucide-alert-circle" class="h-4 w-4 flex-shrink-0" />
-      {{ error }}
+      <div class="flex items-center gap-2">
+        <UIcon name="i-lucide-alert-circle" class="h-4 w-4 flex-shrink-0" />
+        <span class="flex-1">{{ error }}</span>
+        <UButton
+          size="xs"
+          variant="ghost"
+          icon="i-lucide-refresh-cw"
+          class="flex-shrink-0"
+          @click="fetchAlbums"
+        >
+          Retry
+        </UButton>
+      </div>
     </div>
 
     <div v-if="loading" class="text-center py-8">

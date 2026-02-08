@@ -155,9 +155,20 @@ export default defineEventHandler(async (event) => {
 
     consola.error("Error fetching Immich people:", error);
 
+    // Check if this is a network connectivity error
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const isNetworkError = errorMsg.includes("fetch failed")
+      || errorMsg.includes("ECONNREFUSED")
+      || errorMsg.includes("EHOSTUNREACH")
+      || errorMsg.includes("ETIMEDOUT")
+      || errorMsg.includes("ENOTFOUND")
+      || errorMsg.includes("network");
+
     throw createError({
-      statusCode: 500,
-      message: error instanceof Error ? error.message : "Failed to fetch people from Immich",
+      statusCode: isNetworkError ? 503 : 500,
+      message: isNetworkError
+        ? "Could not connect to Immich server. Please check that the server is running and the URL is correct."
+        : (error instanceof Error ? error.message : "Failed to fetch people from Immich"),
     });
   }
 });
