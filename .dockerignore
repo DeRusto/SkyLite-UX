@@ -16,6 +16,8 @@ node_modules
 
 # Documentation
 docs
+README.md
+CLAUDE.md
 
 # Logs
 logs
@@ -26,8 +28,10 @@ logs
 .env.*
 !.env.example
 
-# Misc
+# OS files
 .DS_Store
+
+# IDE / editor configs
 .fleet
 .idea
 .vscode
@@ -35,10 +39,47 @@ logs
 # Generated files
 /app/generated/prisma
 
-# Docker
+# Docker (prevent recursive context)
 Dockerfile
 docker-compose*.yaml
 .dockerignore
 
 # Dev container configs
 .devcontainer
+
+# AI assistant configs and data
+.claude/
+.cursor/
+.jules/
+.playwright-mcp/
+.claude_assistant_settings.json
+.claude_settings*.json
+
+# Development database files
+*.db
+*.db-shm
+*.db-wal
+
+# Debug and temporary text files
+*.txt
+
+# PID files
+*.pid
+
+# Screenshots and images at root (dev/testing artifacts)
+*.png
+
+# Debug/check scripts
+check-*.js
+check-*.cjs
+test-screenshots.cjs
+
+# Prompt templates and specs
+prompts/
+
+# Misc dev artifacts
+ha_states.json
+
+# Playwright test results
+test-results/
+playwright-report/

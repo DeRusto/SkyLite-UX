@@ -3,9 +3,33 @@ services:
     image: wetzel402/skylite-ux:latest
     restart: unless-stopped
     environment:
+      # ===========================================
+      # DATABASE (Required)
+      # ===========================================
       - DATABASE_URL=postgresql://skylite:password@skylite-ux-db:5432/skylite
+
+      # ===========================================
+      # APPLICATION SETTINGS (Optional)
+      # ===========================================
+      # Timezone for date/time display (IANA format, default: America/Chicago)
       - NUXT_PUBLIC_TZ=America/Chicago
+      # Log level: trace, debug, info, warn, error (default: info)
       - NUXT_PUBLIC_LOG_LEVEL=warn
+
+      # ===========================================
+      # GOOGLE OAUTH (Optional - for Calendar/Photos)
+      # ===========================================
+      # Create credentials at https://console.cloud.google.com/
+      # Enable: Google Calendar API, Google Photos Library API
+      # Note: Nuxt runtimeConfig requires NUXT_ prefix
+      #- NUXT_GOOGLE_CLIENT_ID=
+      #- NUXT_GOOGLE_CLIENT_SECRET=
+      #- NUXT_GOOGLE_REDIRECT_URI=http://your-host:3000/api/integrations/google-calendar/oauth/callback
+      # Generate with: openssl rand -hex 32
+      #- NUXT_OAUTH_ENCRYPTION_KEY=
+
+      # Note: Home Assistant and weather API settings are configured
+      # through the Settings UI, not environment variables.
     depends_on:
       skylite-ux-db:
         condition: service_healthy
@@ -24,7 +48,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: [CMD-SHELL, pg_isready -U skylite]
+      test: ["CMD-SHELL", "pg_isready -U skylite"]
       interval: 10s
       timeout: 5s
       retries: 5

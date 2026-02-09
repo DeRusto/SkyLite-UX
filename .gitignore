@@ -24,3 +24,31 @@ logs
 !.env.example
 
 /app/generated/prisma
+
+# Debug/testing screenshots (root-level PNGs only)
+/*.png
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# PID files
+*.pid
+
+# Debug output files
+lint_output*.txt
+type_check_output*.txt
+claude-progress.txt
+ha_states.json
+settings_page.html
+
+# Debug scripts
+/check-*.js
+/check-*.cjs
+/test-screenshots.cjs
+
+# Playwright artifacts
+.playwright-mcp/
+test-results/
+playwright-report/
