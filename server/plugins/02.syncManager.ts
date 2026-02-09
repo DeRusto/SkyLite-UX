@@ -62,11 +62,21 @@ async function initializeIntegrationSync() {
       where: { enabled: true },
     });
 
+    let successCount = 0;
+    let failureCount = 0;
+
     for (const integration of integrations) {
-      await setupIntegrationSync(integration as Integration);
+      try {
+        await setupIntegrationSync(integration as Integration);
+        successCount++;
+      }
+      catch (error) {
+        failureCount++;
+        consola.warn(`Sync Manager: Skipping integration ${integration.name} (${integration.id}) due to initialization error`);
+      }
     }
 
-    consola.debug(`Sync Manager: Initialized sync for ${integrations.length} integrations`);
+    consola.debug(`Sync Manager: Initialized sync for ${successCount} integrations (${failureCount} failed/skipped)`);
   }
   catch (error) {
     consola.error("Sync Manager: Failed to initialize integration sync:", error);
@@ -92,12 +102,23 @@ export async function setupIntegrationSync(integration: Integration, performImme
       return;
     }
 
-    await service.initialize();
+    try {
+      await service.initialize();
+    }
+    catch (initError) {
+      consola.warn(`Sync Manager: Failed to initialize service for ${integration.name} (${integration.id}):`, initError);
+      return;
+    }
     integrationServices.set(integration.id, service as unknown as ServerTypedIntegrationService);
 
     if (performImmediateSync) {
       consola.debug(`Sync Manager: Performing immediate sync for integration ${integration.name} (${integration.id})`);
-      await performIntegrationSync(integration, config, service as unknown as ServerTypedIntegrationService);
+      try {
+        await performIntegrationSync(integration, config, service as unknown as ServerTypedIntegrationService);
+      }
+      catch (syncError) {
+        consola.warn(`Sync Manager: Immediate sync failed for ${integration.name} (${integration.id}):`, syncError);
+      }
     }
 
     const interval = setInterval(async () => {
