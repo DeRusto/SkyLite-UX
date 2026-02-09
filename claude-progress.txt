@@ -1,5 +1,49 @@
 # SkyLite-UX Development Progress
 
+## Session 30 - External Service Features Skipped (2026-02-08)
+
+### Session Summary
+- Assigned features #39 and #40 requiring Google OAuth
+- Both features require external services (Google Cloud Console, OAuth credentials)
+- Skipped both features to end of queue per external dependency guidelines
+- No other features available to work on in this session
+- Progress: 200/204 features passing (98.0%)
+
+### Features Skipped (External Dependencies)
+- **Feature #39: Google Calendar sync workflow** - SKIPPED
+  - Requires Google Cloud Console project setup
+  - Requires OAuth 2.0 credentials (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+  - Requires Google Redirect URI configuration
+  - Moved to priority 425 (end of queue)
+
+- **Feature #40: Photo screensaver album selection workflow** - SKIPPED
+  - Requires Google Photos OAuth setup
+  - Requires Google Cloud Console project with Photos API enabled
+  - Requires active Google Account with Photos access
+  - Moved to priority 426 (end of queue)
+
+### Rationale
+These features require external services that are not available in the current development environment. According to the agent instructions:
+
+> "Only skip for truly external blockers: missing third-party credentials (Stripe keys, OAuth secrets), unavailable external services, or unfulfillable environment requirements."
+
+Both features require Google OAuth setup which falls under this exception criteria. Previous sessions (Session 16) also skipped similar Google OAuth features for the same reasons.
+
+### Current Status
+- Total Features: 204
+- Passing: 200
+- In Progress: 0
+- Completion: 98.0%
+
+### Next Steps
+Future agents with access to Google OAuth credentials can:
+1. Set up Google Cloud Console project
+2. Configure OAuth 2.0 credentials
+3. Enable Calendar and Photos APIs
+4. Complete features #39 and #40
+
+---
+
 ## Session 29 - Features #202, #203, #204 Verification (2026-02-08)
 
 ### Session Summary
