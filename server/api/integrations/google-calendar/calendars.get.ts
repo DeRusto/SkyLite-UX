@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getQuery } from "h3";
 
-import { GoogleCalendarServerService } from "../../../integrations/google-calendar";
+import { GoogleCalendarServerService } from "~~/server/integrations/google-calendar/client";
 
 /**
  * Fetch available Google Calendars for selection
