@@ -1,12 +1,10 @@
-import { createError, defineEventHandler, readBody } from "h3";
-
-import { consola } from "consola";
-
-import prisma from "~/lib/prisma";
-
 import type { GoogleCalendarSettings } from "~~/server/integrations/google-calendar/types";
 
 import { GoogleCalendarServerService } from "~~/server/integrations/google-calendar/client";
+import { consola } from "consola";
+import { createError, defineEventHandler, readBody } from "h3";
+
+import prisma from "~/lib/prisma";
 
 /**
  * Trigger manual sync with Google Calendar

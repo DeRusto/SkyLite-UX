@@ -3,8 +3,8 @@ import type { ICalSettings, IntegrationConfig } from "~/types/integrations";
 // This file contains all integration configurations that are used by both client and server
 import type { DialogField } from "~/types/ui";
 
-import type { HomeAssistantWeatherSettings } from "./home-assistant/homeAssistantWeather";
 import type { GooglePhotosSettings } from "./google-photos/googlePhotos";
+import type { HomeAssistantWeatherSettings } from "./home-assistant/homeAssistantWeather";
 import type { ImmichSettings } from "./immich/immichPhotos";
 
 import { createGoogleCalendarService } from "./google-calendar/googleCalendar";
