@@ -100,7 +100,7 @@ async function fetchChores() {
 // Fetch users for selection
 async function fetchUsers() {
   try {
-    const data = await $fetch<Array<{ id: string; name: string; avatar: string | null }>>("/api/users");
+    const data = await $fetch<Array<{ id: string; name: string; avatar: string | null; role: string }>>("/api/users");
     users.value = data;
     if (data.length > 0 && !selectedUserId.value && data[0]) {
       selectedUserId.value = data[0].id;
