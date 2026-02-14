@@ -54,6 +54,22 @@ const isEventDialogOpen = ref(false);
 const selectedEvent = ref<CalendarEvent | null>(null);
 const selectedUserIds = ref<string[]>(props.initialUserFilter || []);
 
+const { isDesktop } = useBreakpoint();
+const calendarContentRef = ref<HTMLElement | null>(null);
+
+useSwipe(calendarContentRef, {
+  onSwipeLeft: () => {
+    if (!isEventDialogOpen.value && !isDesktop.value) {
+      handleNext();
+    }
+  },
+  onSwipeRight: () => {
+    if (!isEventDialogOpen.value && !isDesktop.value) {
+      handlePrevious();
+    }
+  },
+});
+
 function handleUserFilterChange(userIds: string[]) {
   selectedUserIds.value = userIds;
   emit("userFilterChange", userIds);
@@ -265,7 +281,7 @@ function getDaysForAgenda(date: Date) {
         @user-filter-change="handleUserFilterChange"
       />
     </div>
-    <div class="flex flex-1 flex-col min-h-0">
+    <div ref="calendarContentRef" class="flex flex-1 flex-col min-h-0">
       <GlobalMonthView
         v-if="view === 'month'"
         :weeks="getWeeksForMonth(currentDate)"
