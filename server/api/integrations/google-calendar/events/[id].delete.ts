@@ -1,10 +1,9 @@
-import { createError, defineEventHandler, getRouterParam, readBody } from "h3";
-
-import prisma from "~/lib/prisma";
-
 import type { GoogleCalendarSettings } from "~~/server/integrations/google-calendar/types";
 
 import { GoogleCalendarServerService } from "~~/server/integrations/google-calendar/client";
+import { createError, defineEventHandler, getRouterParam, readBody } from "h3";
+
+import prisma from "~/lib/prisma";
 
 /**
  * Delete an event from Google Calendar

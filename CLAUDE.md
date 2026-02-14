@@ -70,6 +70,7 @@ Uses Nuxt 4's `app/` directory with `future.compatibilityVersion: 4`.
 PostgreSQL with Prisma ORM. Schema in `prisma/schema.prisma`. Prisma client singleton at `app/lib/prisma.ts` — import as `import prisma from "~/lib/prisma"`.
 
 Key model groups:
+
 - **Users**: `User` (with `UserRole` enum: PARENT/CHILD), `UserPoints`
 - **Calendar**: `CalendarEvent`, `CalendarEventUser` (many-to-many), `CalendarEventMapping` (Google sync tracking)
 - **Tasks**: `TodoColumn` → `Todo` (columnar kanban)

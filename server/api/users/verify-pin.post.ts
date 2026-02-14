@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const { userId, pin } = await verifyPinSchema.parseAsync(body);
 
+  // Verify the user exists
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
@@ -22,21 +23,14 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // In a real app, you should compare hashed PINs.
-  // For this implementation effectively assuming plain text or simple comparison as implied by schema change
-  // If the previous implementation of HouseholdSettings used simple string, we will stick to that for now for consistency,
-  // but ideally we should hash it. Given the context of "Encrypted PIN" in schema comment, we'll assume simple equality for now unless we see encryption helpers elsewhere.
-  // The user prompt implies just storing it.
+  // PIN is stored on household settings, not on the user model
+  const settings = await prisma.householdSettings.findFirst();
 
-  // Note: The schema comment says "Encrypted PIN", but we don't have encryption helpers visible yet.
-  // We'll proceed with direct comparison and if we find encryption utils later we can refactor.
-
-  const isValid = user.pin === pin;
-
-  if (!isValid) {
-    // Return explicit false instead of error for UI handling
+  if (!settings || !settings.parentPin) {
     return { valid: false };
   }
 
-  return { valid: true };
+  const isValid = settings.parentPin === pin;
+
+  return { valid: isValid };
 });
