@@ -4,6 +4,8 @@ import type { CalendarEvent } from "~/types/calendar";
 import type { ShoppingListWithItemsAndCount, TodoWithUser } from "~/types/database";
 import type { EventSourceStatus, IntegrationSyncData, SyncConnectionStatus, SyncEvent } from "~/types/sync";
 
+import { getIntegrationCacheKey } from "~/composables/useSyncManager";
+
 export default defineNuxtPlugin(() => {
   const syncData = useState<IntegrationSyncData>("sync-data", () => ({}));
   const connectionStatus = useState<SyncConnectionStatus>("sync-connection-status", () => "disconnected");
@@ -127,7 +129,6 @@ export default defineNuxtPlugin(() => {
         case "native_data_change":
           if (event.dataType) {
             consola.debug(`Sync Manager: Native data changed: ${event.dataType} ${event.action} ${event.entityId}`);
-            // Refresh the corresponding data to update UI in other tabs
             refreshNativeData(event.dataType);
           }
           break;
@@ -147,67 +148,24 @@ export default defineNuxtPlugin(() => {
 
   function updateIntegrationCache(integrationType: string, integrationId: string, data: CalendarEvent[] | ShoppingListWithItemsAndCount[] | TodoWithUser[]) {
     const nuxtApp = useNuxtApp();
-
-    switch (integrationType) {
-      case "calendar":
-        nuxtApp.payload.data = {
-          ...nuxtApp.payload.data,
-          [`calendar-events-${integrationId}`]: data,
-        };
-        break;
-
-      case "shopping":
-        nuxtApp.payload.data = {
-          ...nuxtApp.payload.data,
-          [`shopping-lists-${integrationId}`]: data,
-        };
-        break;
-
-      case "todo":
-        nuxtApp.payload.data = {
-          ...nuxtApp.payload.data,
-          [`todos-${integrationId}`]: data,
-        };
-        break;
-    }
+    const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
+    nuxtApp.payload.data = {
+      ...nuxtApp.payload.data,
+      [cacheKey]: data,
+    };
   }
 
+  const KNOWN_DATA_TYPES = new Set(["calendar-events", "todos", "todo-columns", "shopping-lists", "users", "integrations"]);
+
   async function refreshNativeData(dataType: string) {
+    if (!KNOWN_DATA_TYPES.has(dataType)) {
+      consola.warn(`Sync Manager: Unknown data type for refresh: ${dataType}`);
+      return;
+    }
+
     try {
-      switch (dataType) {
-        case "calendar-events":
-          await refreshNuxtData("calendar-events");
-          consola.debug("Sync Manager: Refreshed calendar events data");
-          break;
-
-        case "todos":
-          await refreshNuxtData("todos");
-          consola.debug("Sync Manager: Refreshed todos data");
-          break;
-
-        case "todo-columns":
-          await refreshNuxtData("todo-columns");
-          consola.debug("Sync Manager: Refreshed todo columns data");
-          break;
-
-        case "shopping-lists":
-          await refreshNuxtData("shopping-lists");
-          consola.debug("Sync Manager: Refreshed shopping lists data");
-          break;
-
-        case "users":
-          await refreshNuxtData("users");
-          consola.debug("Sync Manager: Refreshed users data");
-          break;
-
-        case "integrations":
-          await refreshNuxtData("integrations");
-          consola.debug("Sync Manager: Refreshed integrations data");
-          break;
-
-        default:
-          consola.warn(`Sync Manager: Unknown data type for refresh: ${dataType}`);
-      }
+      await refreshNuxtData(dataType);
+      consola.debug(`Sync Manager: Refreshed ${dataType} data`);
     }
     catch (error) {
       consola.error(`Sync Manager: Failed to refresh ${dataType} data:`, error);
@@ -249,56 +207,17 @@ export default defineNuxtPlugin(() => {
 
       getCachedIntegrationData: (integrationType: string, integrationId: string) => {
         const nuxtApp = useNuxtApp();
-        let cacheKey: string;
-        if (integrationType === "calendar") {
-          cacheKey = `${integrationType}-events-${integrationId}`;
-        }
-        else if (integrationType === "shopping") {
-          cacheKey = `${integrationType}-lists-${integrationId}`;
-        }
-        else if (integrationType === "todo") {
-          cacheKey = `${integrationType}s-${integrationId}`;
-        }
-        else {
-          cacheKey = `${integrationType}-${integrationId}`;
-        }
-        return nuxtApp.payload.data[cacheKey];
+        return nuxtApp.payload.data[getIntegrationCacheKey(integrationType, integrationId)];
       },
 
       checkIntegrationCache: (integrationType: string, integrationId: string) => {
         const nuxtApp = useNuxtApp();
-        let cacheKey: string;
-        if (integrationType === "calendar") {
-          cacheKey = `${integrationType}-events-${integrationId}`;
-        }
-        else if (integrationType === "shopping") {
-          cacheKey = `${integrationType}-lists-${integrationId}`;
-        }
-        else if (integrationType === "todo") {
-          cacheKey = `${integrationType}s-${integrationId}`;
-        }
-        else {
-          cacheKey = `${integrationType}-${integrationId}`;
-        }
-        return nuxtApp.payload.data[cacheKey] !== undefined;
+        return nuxtApp.payload.data[getIntegrationCacheKey(integrationType, integrationId)] !== undefined;
       },
 
       purgeIntegrationCache: (integrationType: string, integrationId: string) => {
         const nuxtApp = useNuxtApp();
-        let cacheKey: string;
-        if (integrationType === "calendar") {
-          cacheKey = `${integrationType}-events-${integrationId}`;
-        }
-        else if (integrationType === "shopping") {
-          cacheKey = `${integrationType}-lists-${integrationId}`;
-        }
-        else if (integrationType === "todo") {
-          cacheKey = `${integrationType}s-${integrationId}`;
-        }
-        else {
-          cacheKey = `${integrationType}-${integrationId}`;
-        }
-
+        const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
         if (nuxtApp.payload.data[cacheKey] !== undefined) {
           delete nuxtApp.payload.data[cacheKey];
           consola.debug(`Sync Manager: Purged cache for ${integrationType} integration ${integrationId}`);

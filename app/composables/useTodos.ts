@@ -15,7 +15,7 @@ export function useTodos() {
     error.value = null;
     try {
       await refreshNuxtData("todos");
-      consola.debug ("Use Todos: Todos refreshed successfully");
+      consola.debug("Use Todos: Todos refreshed successfully");
       return currentTodos.value;
     }
     catch (err) {

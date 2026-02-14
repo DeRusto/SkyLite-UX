@@ -165,13 +165,7 @@ export function useCalendar() {
     const days: Date[] = [];
     const localDate = getLocalTimeFromUTC(date);
 
-    for (let i = -15; i < 0; i++) {
-      const day = parseStableDate(new Date(localDate.getTime()));
-      day.setDate(localDate.getDate() + i);
-      days.push(day);
-    }
-
-    for (let i = 0; i < 15; i++) {
+    for (let i = -15; i < 15; i++) {
       const day = parseStableDate(new Date(localDate.getTime()));
       day.setDate(localDate.getDate() + i);
       days.push(day);
@@ -190,9 +184,7 @@ export function useCalendar() {
 
         const localTime = utcTime.convertToZone(timezone);
 
-        const result = new Date(localTime.year, localTime.month - 1, localTime.day, localTime.hour, localTime.minute, localTime.second);
-
-        return result;
+        return new Date(localTime.year, localTime.month - 1, localTime.day, localTime.hour, localTime.minute, localTime.second);
       }
 
       return new Date(utcDate.getTime());
@@ -348,7 +340,6 @@ export function useCalendar() {
         const integrationEvents = getCachedIntegrationData("calendar", integration.id) as CalendarEvent[];
 
         if (integrationEvents && Array.isArray(integrationEvents)) {
-          // Add integrationId to each event so the dialog knows these are from an integration
           const eventsWithIntegrationId = integrationEvents.map(event => ({
             ...event,
             integrationId: integration.id,
@@ -362,14 +353,10 @@ export function useCalendar() {
       }
     });
 
-    const result = combineEvents(events);
-
-    return result;
+    return combineEvents(events);
   });
 
-  const calendarSyncStatus = computed(() => {
-    return getSyncDataByType("calendar", []);
-  });
+  const calendarSyncStatus = computed(() => getSyncDataByType("calendar", []));
 
   const refreshCalendarData = async () => {
     try {
@@ -413,8 +400,7 @@ export function useCalendar() {
         return userColors;
       }
       else if (userColors.length === 1) {
-        const result = userColors[0] || defaultColor;
-        return result;
+        return userColors[0] || defaultColor;
       }
     }
 
@@ -422,8 +408,7 @@ export function useCalendar() {
       return event.color;
     }
 
-    const result = (typeof event.color === "string" ? event.color : null) || eventColor || defaultColor;
-    return result;
+    return (typeof event.color === "string" ? event.color : null) || eventColor || defaultColor;
   }
 
   function combineEvents(events: CalendarEvent[]): CalendarEvent[] {
@@ -453,60 +438,37 @@ export function useCalendar() {
       }
     });
 
-    const result = Array.from(eventMap.values()).sort((a, b) => {
-      const aStart = parseStableDate(a.start).getTime();
-      const bStart = parseStableDate(b.start).getTime();
-      return aStart - bStart;
+    return Array.from(eventMap.values()).sort((a, b) => {
+      return parseStableDate(a.start).getTime() - parseStableDate(b.start).getTime();
     });
+  }
 
-    return result;
+  function parseHexRGB(hex: string): [number, number, number] {
+    const color = hex.replace("#", "");
+    return [
+      Number.parseInt(color.substring(0, 2), 16),
+      Number.parseInt(color.substring(2, 4), 16),
+      Number.parseInt(color.substring(4, 6), 16),
+    ];
   }
 
   function lightenColor(hex: string, amount: number = 0.3): string {
-    const color = hex.replace("#", "");
-
-    const r = Number.parseInt(color.substring(0, 2), 16);
-    const g = Number.parseInt(color.substring(2, 4), 16);
-    const b = Number.parseInt(color.substring(4, 6), 16);
-
-    const lightenedR = Math.round(r + (255 - r) * amount);
-    const lightenedG = Math.round(g + (255 - g) * amount);
-    const lightenedB = Math.round(b + (255 - b) * amount);
-
+    const [r, g, b] = parseHexRGB(hex);
     const toHex = (n: number) => n.toString(16).padStart(2, "0");
-    return `#${toHex(lightenedR)}${toHex(lightenedG)}${toHex(lightenedB)}`;
-  }
-
-  function getTextColor(hex: string): string {
-    const color = hex.replace("#", "");
-
-    const r = Number.parseInt(color.substring(0, 2), 16);
-    const g = Number.parseInt(color.substring(2, 4), 16);
-    const b = Number.parseInt(color.substring(4, 6), 16);
-
-    const sRGB = [r, g, b].map((c) => {
-      c = c / 255;
-      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    });
-
-    const luminance = 0.2126 * sRGB[0]! + 0.7152 * sRGB[1]! + 0.0722 * sRGB[2]!;
-
-    return luminance > 0.5 ? "black" : "white";
+    return `#${toHex(Math.round(r + (255 - r) * amount))}${toHex(Math.round(g + (255 - g) * amount))}${toHex(Math.round(b + (255 - b) * amount))}`;
   }
 
   function getLuminance(hex: string): number {
-    const color = hex.replace("#", "");
-
-    const r = Number.parseInt(color.substring(0, 2), 16);
-    const g = Number.parseInt(color.substring(2, 4), 16);
-    const b = Number.parseInt(color.substring(4, 6), 16);
-
+    const [r, g, b] = parseHexRGB(hex);
     const sRGB = [r, g, b].map((c) => {
-      c = c / 255;
-      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      const normalized = c / 255;
+      return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
     });
-
     return 0.2126 * sRGB[0]! + 0.7152 * sRGB[1]! + 0.0722 * sRGB[2]!;
+  }
+
+  function getTextColor(hex: string): string {
+    return getLuminance(hex) > 0.5 ? "black" : "white";
   }
 
   function getAverageTextColor(colors: string[]): string {
@@ -615,11 +577,9 @@ export function useCalendar() {
         const textColor = getAverageTextColor(color);
         const shadowColor = textColor === "black" ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)";
 
-        const result = {
+        return {
           style: `background: linear-gradient(-45deg, ${colorStops}); color: ${textColor}; text-shadow: 0 1px 2px ${shadowColor};`,
         };
-
-        return result;
       }
       else if (color.length === 1) {
         const singleColor = color[0];
@@ -731,30 +691,19 @@ export function useCalendar() {
   }
 
   function getAllEventsForDay(events: CalendarEvent[], day: Date): CalendarEvent[] {
-    const result = events.filter((event) => {
+    return events.filter((event) => {
       const eventStart = parseStableDate(event.start);
       const eventEnd = parseStableDate(event.end);
-
-      const isSameStart = isSameLocalDay(day, eventStart, event.allDay);
-      const isInRange = isLocalDayInRange(day, eventStart, eventEnd, event.allDay);
-
-      return isSameStart || isInRange;
+      return isSameLocalDay(day, eventStart, event.allDay) || isLocalDayInRange(day, eventStart, eventEnd, event.allDay);
     });
-
-    return result;
   }
 
   function getEventsForDateRange(start: Date, end: Date): CalendarEvent[] {
-    const events = allEvents.value;
-
-    const filteredEvents = events.filter((event) => {
+    return allEvents.value.filter((event) => {
       const eventStart = parseStableDate(event.start);
       const eventEnd = parseStableDate(event.end);
-
       return eventStart <= end && eventEnd >= start;
     });
-
-    return filteredEvents;
   }
 
   function isPlaceholderEvent(event: CalendarEvent): boolean {
