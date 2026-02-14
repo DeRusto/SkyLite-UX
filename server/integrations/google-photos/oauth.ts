@@ -91,7 +91,7 @@ export function createOAuth2Client(): OAuth2Client {
   const baseRedirectUri = (config.googleRedirectUri as string) || "http://localhost:8877/api/integrations/google-calendar/oauth/callback";
   const redirectUri = baseRedirectUri.replace("google-calendar", "google-photos");
 
-  console.log("DEBUG: Using Google Photos Redirect URI:", redirectUri);
+  consola.debug("Google Photos Redirect URI:", redirectUri);
 
   if (!clientId || !clientSecret) {
     throw new Error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are required");
@@ -175,7 +175,7 @@ export async function exchangeCodeForTokens(
       throw new Error("Incomplete token response from Google");
     }
 
-    console.log("DEBUG: Received tokens with scopes:", tokens.scope);
+    consola.debug("Received tokens with scopes:", tokens.scope);
 
     return {
       accessToken: tokens.access_token,
