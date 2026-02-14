@@ -82,20 +82,6 @@ export function useUsers() {
     }
   };
 
-  const loadCurrentUser = async () => {
-    try {
-      await useAsyncData("current-user", () => Promise.resolve(null), {
-        server: false,
-        lazy: false,
-      });
-    }
-    catch (err) {
-      error.value = "Failed to load current user";
-      consola.error("Use Users: Error loading current user:", err);
-      throw err;
-    }
-  };
-
   const clearCurrentUser = async () => {
     try {
       await useAsyncData("current-user", () => Promise.resolve(null), {
@@ -109,6 +95,8 @@ export function useUsers() {
       throw err;
     }
   };
+
+  const loadCurrentUser = clearCurrentUser;
 
   const deleteUser = async (userId: string) => {
     try {

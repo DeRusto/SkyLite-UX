@@ -3,6 +3,19 @@ import { consola } from "consola";
 import type { Integration } from "~/types/database";
 import type { IntegrationSyncData, SyncConnectionStatus, SyncStatus } from "~/types/sync";
 
+export function getIntegrationCacheKey(integrationType: string, integrationId: string): string {
+  switch (integrationType) {
+    case "calendar":
+      return `calendar-events-${integrationId}`;
+    case "shopping":
+      return `shopping-lists-${integrationId}`;
+    case "todo":
+      return `todos-${integrationId}`;
+    default:
+      return `${integrationType}-${integrationId}`;
+  }
+}
+
 export function useSyncManager() {
   const nuxtApp = useNuxtApp();
 
@@ -31,20 +44,7 @@ export function useSyncManager() {
   };
 
   const getCachedIntegrationData = (integrationType: string, integrationId: string) => {
-    let cacheKey: string;
-    if (integrationType === "calendar") {
-      cacheKey = `${integrationType}-events-${integrationId}`;
-    }
-    else if (integrationType === "shopping") {
-      cacheKey = `${integrationType}-lists-${integrationId}`;
-    }
-    else if (integrationType === "todo") {
-      cacheKey = `${integrationType}s-${integrationId}`;
-    }
-    else {
-      cacheKey = `${integrationType}-${integrationId}`;
-    }
-    return nuxtApp.payload.data[cacheKey];
+    return nuxtApp.payload.data[getIntegrationCacheKey(integrationType, integrationId)];
   };
 
   const reconnect = () => {
@@ -146,37 +146,11 @@ export function useSyncManager() {
   };
 
   const checkIntegrationCache = (integrationType: string, integrationId: string) => {
-    let cacheKey: string;
-    if (integrationType === "calendar") {
-      cacheKey = `${integrationType}-events-${integrationId}`;
-    }
-    else if (integrationType === "shopping") {
-      cacheKey = `${integrationType}-lists-${integrationId}`;
-    }
-    else if (integrationType === "todo") {
-      cacheKey = `${integrationType}s-${integrationId}`;
-    }
-    else {
-      cacheKey = `${integrationType}-${integrationId}`;
-    }
-    return nuxtApp.payload.data[cacheKey] !== undefined;
+    return nuxtApp.payload.data[getIntegrationCacheKey(integrationType, integrationId)] !== undefined;
   };
 
   const purgeIntegrationCache = (integrationType: string, integrationId: string) => {
-    let cacheKey: string;
-    if (integrationType === "calendar") {
-      cacheKey = `${integrationType}-events-${integrationId}`;
-    }
-    else if (integrationType === "shopping") {
-      cacheKey = `${integrationType}-lists-${integrationId}`;
-    }
-    else if (integrationType === "todo") {
-      cacheKey = `${integrationType}s-${integrationId}`;
-    }
-    else {
-      cacheKey = `${integrationType}-${integrationId}`;
-    }
-
+    const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
     if (nuxtApp.payload.data[cacheKey] !== undefined) {
       delete nuxtApp.payload.data[cacheKey];
       consola.debug(`Use Sync Manager: Purged cache for ${integrationType} integration ${integrationId}`);

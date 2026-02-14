@@ -1,3 +1,4 @@
+import { consola } from "consola";
 import { defineEventHandler, sendRedirect } from "h3";
 
 import { createOAuth2Client, generateAuthUrl } from "../../../../integrations/google-photos/oauth";
@@ -9,10 +10,8 @@ import { createOAuth2Client, generateAuthUrl } from "../../../../integrations/go
 export default defineEventHandler(async (event) => {
   const oauth2Client = createOAuth2Client();
 
-  // Generate authorization URL with Photos scopes
   const authUrl = generateAuthUrl(oauth2Client);
-  console.log("DEBUG: Google Photos Auth URL:", authUrl);
+  consola.debug("Google Photos Auth URL:", authUrl);
 
-  // Redirect to Google consent screen
   return sendRedirect(event, authUrl);
 });

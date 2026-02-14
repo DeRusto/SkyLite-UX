@@ -73,13 +73,13 @@ export async function createGooglePhotosClient(
     // consola.info("DEBUG: Checking token info at", infoUrl);
     const infoRes = await fetch(infoUrl);
     const info = await infoRes.json();
-    console.log("DEBUG: Token verification (scopes):", info.scope);
+    consola.debug("Token verification (scopes):", info.scope);
     if (info.error) {
-      console.error("DEBUG: Token info error:", info.error_description);
+      consola.error("Token info error:", info.error_description);
     }
   }
   catch (e) {
-    console.error("DEBUG: Failed to verify token scopes:", e);
+    consola.error("Failed to verify token scopes:", e);
   }
 
   // Google Photos API base URL

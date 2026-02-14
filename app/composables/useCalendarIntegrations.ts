@@ -14,6 +14,22 @@ function isCalendarService(service: IntegrationService | null | undefined): serv
   return service !== null && service !== undefined && typeof (service as CalendarIntegrationService).getEvents === "function";
 }
 
+function buildEventUsers(
+  userIds: string[] | undefined,
+  allUsers: readonly { id: string; name: string; avatar: string | null; color: string | null }[],
+): { id: string; name: string; avatar: string | null; color: string | null }[] {
+  if (!userIds) return [];
+  return userIds
+    .map(userId => allUsers.find(user => user.id === userId))
+    .filter(Boolean)
+    .map(user => ({
+      id: user!.id,
+      name: user!.name,
+      avatar: user!.avatar,
+      color: user!.color,
+    }));
+}
+
 export function useCalendarIntegrations() {
   const { combineEvents, getEventUserColors, getIntegrationEvents } = useCalendar();
   const { integrations, loading: integrationsLoading, error: integrationsError, getService } = useIntegrations();
@@ -46,17 +62,8 @@ export function useCalendarIntegrations() {
           return;
 
         const eventColor = integration.settings?.eventColor as string || "#06b6d4";
-        const userIds = integration.settings?.user as string[] | undefined;
         const useUserColors = integration.settings?.useUserColors as boolean | undefined;
-
-        const eventUsers = userIds?.map(userId =>
-          users.value?.find(user => user.id === userId),
-        ).filter(Boolean).map(user => ({
-          id: user!.id,
-          name: user!.name,
-          avatar: user!.avatar,
-          color: user!.color,
-        })) || [];
+        const eventUsers = buildEventUsers(integration.settings?.user as string[] | undefined, users.value);
 
         allEvents.push(...events.map((event: CalendarEvent) => ({
           ...event,
@@ -90,17 +97,8 @@ export function useCalendarIntegrations() {
         return [];
 
       const eventColor = integration.settings?.eventColor as string || "#06b6d4";
-      const userIds = integration.settings?.user as string[] | undefined;
       const useUserColors = integration.settings?.useUserColors as boolean | undefined;
-
-      const eventUsers = userIds?.map(userId =>
-        users.value?.find(user => user.id === userId),
-      ).filter(Boolean).map(user => ({
-        id: user!.id,
-        name: user!.name,
-        avatar: user!.avatar,
-        color: user!.color,
-      })) || [];
+      const eventUsers = buildEventUsers(integration.settings?.user as string[] | undefined, users.value);
 
       return events.map((event: CalendarEvent) => ({
         ...event,

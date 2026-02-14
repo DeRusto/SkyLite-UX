@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+/* eslint-disable node/no-process-env */
+
 /**
  * Playwright Configuration for SkyLite-UX
  * See https://playwright.dev/docs/test-configuration

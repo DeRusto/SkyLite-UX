@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 import { consola } from "consola";
 import { createError, defineEventHandler, getQuery, getRouterParam, setResponseHeader } from "h3";
 
