@@ -189,7 +189,7 @@ function getRoundedCurrentTime(): { hour24: number; minutes: number } {
   let hour24 = now.getHours();
   if (minutes === 60) {
     minutes = 0;
-    hour24 += 1;
+    hour24 = (hour24 + 1) % 24;
   }
   return { hour24, minutes };
 }
