@@ -10,14 +10,10 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Check if user exists and fetch points
+  // Check if user exists
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      points: true,
-    },
+    select: { id: true, name: true },
   });
 
   if (!user) {
@@ -28,7 +24,9 @@ export default defineEventHandler(async (event) => {
   }
 
   // Get or create user points
-  let userPoints = user.points;
+  let userPoints = await prisma.userPoints.findUnique({
+    where: { userId },
+  });
 
   if (!userPoints) {
     userPoints = await prisma.userPoints.create({

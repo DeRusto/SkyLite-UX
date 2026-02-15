@@ -102,6 +102,15 @@ function handleKeydown(event: KeyboardEvent) {
     handleSave();
   }
 }
+
+function focusConfirmInput() {
+  // Use a type-safe way to access the underlying DOM element of the UInput component
+  // or just ignore the focus call if the ref is not ready, as it's a nice-to-have UX enhancement.
+  if (confirmPinInput.value) {
+    const el = (confirmPinInput.value as unknown as { $el?: HTMLElement })?.$el?.querySelector("input");
+    el?.focus();
+  }
+}
 </script>
 
 <template>
@@ -164,7 +173,7 @@ function handleKeydown(event: KeyboardEvent) {
               placeholder="Enter new PIN (min 4 digits)"
               :disabled="isSaving"
               autocomplete="new-password"
-              @keydown.enter="confirmPinInput?.focus()"
+              @keydown.enter="focusConfirmInput"
             >
               <template #trailing>
                 <UButton
