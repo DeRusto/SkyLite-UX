@@ -93,7 +93,90 @@ function handleEventClick(event: CalendarEvent, e: MouseEvent) {
 
 <template>
   <div class="h-full w-full">
-    <div class="sticky top-[80px] z-30 grid grid-cols-7 border-b border-default bg-muted/80 backdrop-blur-md">
+    <!-- Mobile: Stacked mini-month + event list -->
+    <div v-if="!isDesktop" class="flex flex-col h-full">
+      <div class="px-3 pt-3 pb-2">
+        <div class="grid grid-cols-7 gap-1 mb-1">
+          <div
+            v-for="dayLabel in ['S', 'M', 'T', 'W', 'T', 'F', 'S']"
+            :key="dayLabel"
+            class="text-center text-[10px] font-medium text-muted py-1"
+          >
+            {{ dayLabel }}
+          </div>
+        </div>
+        <div class="grid grid-cols-7 gap-1">
+          <template
+            v-for="(week, weekIndex) in weeks"
+            :key="weekIndex"
+          >
+            <button
+              v-for="day in week"
+              :key="day.toString()"
+              type="button"
+              class="aspect-square flex flex-col items-center justify-center rounded-lg text-xs transition-colors relative"
+              :class="{
+                'bg-primary text-white font-semibold': isSelectedDay(day) && isToday(day),
+                'bg-primary/20 text-primary font-semibold': isSelectedDay(day) && !isToday(day),
+                'text-info font-medium': isToday(day) && !isSelectedDay(day),
+                'text-highlighted': !isToday(day) && !isSelectedDay(day) && isDayInDisplayedMonth(day),
+                'text-dimmed': !isDayInDisplayedMonth(day) && !isSelectedDay(day),
+              }"
+              @click="selectDay(day)"
+            >
+              <NuxtTime
+                :datetime="day"
+                day="numeric"
+              />
+              <div
+                v-if="hasEventsOnDay(day)"
+                class="absolute bottom-0.5 w-1 h-1 rounded-full bg-primary"
+              />
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <div class="px-4 py-2 border-t border-default">
+        <h3 class="text-sm font-semibold text-highlighted">
+          <NuxtTime
+            :datetime="selectedDay"
+            weekday="long"
+            month="long"
+            day="numeric"
+          />
+        </h3>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-4 pb-4">
+        <div
+          v-if="selectedDayEvents.length === 0"
+          class="flex flex-col items-center justify-center py-12 text-muted"
+        >
+          <UIcon
+            name="i-lucide-calendar-off"
+            class="w-8 h-8 mb-2"
+          />
+          <span class="text-sm">No events</span>
+        </div>
+        <div
+          v-else
+          class="space-y-2"
+        >
+          <CalendarEventItem
+            v-for="event in selectedDayEvents"
+            v-show="!isPlaceholderEvent(event)"
+            :key="event.id"
+            :event="event"
+            view="agenda"
+            @click="(e) => handleEventClick(event, e)"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop: Full 7-column grid -->
+    <div class="sticky top-[80px] z-30 grid grid-cols-7 border-b border-default bg-muted/80 backdrop-blur-md" v-if="isDesktop">
       <div
         v-for="day in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']"
         :key="day"
@@ -102,7 +185,7 @@ function handleEventClick(event: CalendarEvent, e: MouseEvent) {
         {{ day }}
       </div>
     </div>
-    <div class="grid h-full w-full grid-cols-7">
+    <div v-if="isDesktop" class="grid h-full w-full grid-cols-7">
       <div
         v-for="(week, weekIndex) in weeks"
         :key="weekIndex"
