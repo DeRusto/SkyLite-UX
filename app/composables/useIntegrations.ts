@@ -39,9 +39,7 @@ export function useIntegrations() {
     }
   };
 
-  const refreshIntegrations = async () => {
-    await fetchIntegrations();
-  };
+  const refreshIntegrations = fetchIntegrations;
 
   const createIntegration = async (integration: Omit<Integration, "id">) => {
     try {

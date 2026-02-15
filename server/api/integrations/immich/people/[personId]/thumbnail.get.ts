@@ -1,8 +1,9 @@
 import { consola } from "consola";
 import { createError, defineEventHandler, getQuery, getRouterParam, setResponseHeader } from "h3";
+import { Buffer } from "node:buffer";
 
 import prisma from "~/lib/prisma";
-// eslint-disable-next-line perfectionist/sort-imports
+
 import { decryptToken } from "../../../../../integrations/google-calendar/oauth";
 
 /**

@@ -27,6 +27,18 @@
       "Bash(npx eslint:*)",
       "Bash(git -C /Users/brandonwinterton/.claude-worktrees/SkyLite-UX/eager-hofstadter diff app/layouts/default.vue)",
       "Bash(git -C /Users/brandonwinterton/.claude-worktrees/SkyLite-UX/eager-hofstadter commit -m \"$\\(cat <<''EOF''\nfeat: responsive layout — sidebar on desktop, bottom tab bar on mobile\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(npm test:*)",
+      "Bash(export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\")",
+      "Bash(gh pr create:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh pr view:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run watch:*)",
+      "Bash(echo:*)",
+      "Bash(git mv:*)"
     ]
   }
 }

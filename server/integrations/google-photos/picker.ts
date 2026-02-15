@@ -1,4 +1,5 @@
 import { consola } from "consola";
+import { Buffer } from "node:buffer";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -24,8 +25,8 @@ export async function createPickerSession(accessToken: string) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to create picker session: ${response.status} ${errorText}`);
+      const body = await response.text();
+      throw new Error(`Failed to create picker session: ${response.status} ${body}`);
     }
 
     return await response.json();
@@ -97,35 +98,20 @@ export async function downloadPickerItems(items: any[], destinationDir: string =
  * @returns List of media items if available, or empty list
  */
 export async function getPickerItems(accessToken: string, sessionId: string) {
-  // const accessToken = decryptToken(encryptedAccessToken);
+  const encodedSessionId = encodeURIComponent(sessionId);
+  const url = `https://photospicker.googleapis.com/v1/sessions/${encodedSessionId}/mediaItems`;
 
-  try {
-    // The endpoint is v1/sessions/{sessionId}/mediaItems
-    // encoding URI component is safer if ID contains special chars
-    const encodedSessionId = encodeURIComponent(sessionId);
-    const url = `https://photospicker.googleapis.com/v1/sessions/${encodedSessionId}/mediaItems`;
+  const response = await fetch(`${url}?pageSize=100`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 
-    // consola.info(`DEBUG: Polling session ID: ${sessionId} (Encoded: ${encodedSessionId})`);
-
-    // We need to handle pagination if user picks A LOT, but for now let's grab the first page (up to 100 usually).
-    const response = await fetch(`${url}?pageSize=100`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      // If session is expired or invalid, it might return 404 or 400.
-      const errorText = await response.text();
-      // consola.warn(`Picker session check failed: ${response.status} ${errorText}`);
-      throw new Error(`Failed to check picker session: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.mediaItems || [];
+  if (!response.ok) {
+    await response.text();
+    throw new Error(`Failed to check picker session: ${response.status}`);
   }
-  catch (error) {
-    // consola.error("Error fetching picker items:", error);
-    throw error;
-  }
+
+  const data = await response.json();
+  return data.mediaItems || [];
 }

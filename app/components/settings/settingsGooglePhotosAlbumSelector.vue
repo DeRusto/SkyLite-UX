@@ -173,7 +173,7 @@ async function importPhotos(items: any[]) {
       emit("albumsSelected", [{ id: "imported", title: "Imported Photos" }]);
     }, 1500);
   }
-  catch (err) {
+  catch (_err) {
     error.value = "Failed to download photos.";
     loading.value = false;
   }

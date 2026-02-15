@@ -6,6 +6,7 @@ import type { IntegrationStatus } from "~/types/integrations";
 import type { ConnectionTestResult } from "~/types/ui";
 
 import SettingsIntegrationDialog from "~/components/settings/settingsIntegrationDialog.vue";
+import SettingsPinChangeDialog from "~/components/settings/settingsPinChangeDialog.vue";
 import SettingsPinDialog from "~/components/settings/settingsPinDialog.vue";
 import SettingsUserDialog from "~/components/settings/settingsUserDialog.vue";
 import { useAlertToast } from "~/composables/useAlertToast";
@@ -87,6 +88,9 @@ const connectionTestResult = ref<ConnectionTestResult>(null);
 const isPinDialogOpen = ref(false);
 const isIntegrationsSectionUnlocked = ref(false);
 
+// PIN change dialog state
+const isPinChangeDialogOpen = ref(false);
+
 // Check if parent PIN is set on mount
 const householdSettings = ref<any>(null);
 
@@ -138,6 +142,11 @@ function handleUnlockIntegrations() {
 
 function handlePinVerified() {
   isIntegrationsSectionUnlocked.value = true;
+}
+
+function handlePinChanged() {
+  isPinChangeDialogOpen.value = false;
+  showSuccess("PIN Changed", "Parent PIN has been updated successfully");
 }
 
 // Fetch integration statuses when section is unlocked
@@ -782,6 +791,42 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
 
         <div class="bg-default rounded-lg shadow-sm border border-default p-6 mb-6">
           <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-lg font-semibold text-highlighted">
+                <UIcon name="i-lucide-lock" class="h-4 w-4 inline mr-2" />
+                Household Settings
+              </h2>
+              <p class="text-sm text-muted">
+                Manage household security settings
+              </p>
+            </div>
+            <UButton
+              icon="i-lucide-settings"
+              @click="isPinChangeDialogOpen = true"
+            >
+              Change PIN
+            </UButton>
+          </div>
+          <div class="flex items-center justify-between py-3 border-b border-default mb-4">
+            <div>
+              <p class="font-medium text-highlighted">
+                Current PIN
+              </p>
+              <p class="text-sm text-muted">
+                Used to access settings and integrations
+              </p>
+            </div>
+            <p class="text-sm text-muted">
+              ••••
+            </p>
+          </div>
+          <p class="text-xs text-muted">
+            The default PIN is "1234". You should change this to secure your household settings.
+          </p>
+        </div>
+
+        <div class="bg-default rounded-lg shadow-sm border border-default p-6 mb-6">
+          <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-2">
               <h2 class="text-lg font-semibold text-highlighted">
                 Integrations
@@ -1182,6 +1227,12 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
       title="Access Integrations"
       @close="isPinDialogOpen = false"
       @verified="handlePinVerified"
+    />
+
+    <SettingsPinChangeDialog
+      :is-open="isPinChangeDialogOpen"
+      @close="isPinChangeDialogOpen = false"
+      @saved="handlePinChanged"
     />
   </div>
 </template>

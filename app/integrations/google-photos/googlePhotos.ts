@@ -12,7 +12,7 @@ export function createGooglePhotosService(
   id: string,
   accessToken?: string | null,
   refreshToken?: string | null,
-  tokenExpiry?: Date | null,
+  _tokenExpiry?: Date | null,
 ): IntegrationService {
   const isAuthenticated = Boolean(accessToken && refreshToken);
 
