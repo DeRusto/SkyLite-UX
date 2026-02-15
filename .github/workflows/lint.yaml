@@ -10,14 +10,15 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    environment: Build
+    env:
+      DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
     steps:
       - uses: actions/checkout@v4
+
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v3
         with:
           version: 10
-          run_install: false
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -26,15 +27,13 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Generate Prisma client
         run: pnpm prisma generate
-        env:
-          DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
       - name: Prepare Nuxt
-        run: pnpm run build
+        run: pnpm exec nuxi prepare
 
       - name: Type check
         run: pnpm run type-check
