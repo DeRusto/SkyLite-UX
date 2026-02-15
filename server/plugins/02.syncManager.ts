@@ -70,9 +70,9 @@ async function initializeIntegrationSync() {
         await setupIntegrationSync(integration as Integration);
         successCount++;
       }
-      catch (_error) {
+      catch (error) {
         failureCount++;
-        consola.warn(`Sync Manager: Skipping integration ${integration.name} (${integration.id}) due to initialization error`);
+        consola.warn(`Sync Manager: Skipping integration ${integration.name} (${integration.id}) due to initialization error:`, error);
       }
     }
 

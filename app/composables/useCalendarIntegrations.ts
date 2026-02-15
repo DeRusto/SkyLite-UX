@@ -18,7 +18,8 @@ function buildEventUsers(
   userIds: string[] | undefined,
   allUsers: readonly { id: string; name: string; avatar: string | null; color: string | null }[],
 ): { id: string; name: string; avatar: string | null; color: string | null }[] {
-  if (!userIds) return [];
+  if (!userIds)
+    return [];
   return userIds
     .map(userId => allUsers.find(user => user.id === userId))
     .filter(Boolean)

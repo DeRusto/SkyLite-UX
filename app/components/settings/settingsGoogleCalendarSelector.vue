@@ -122,6 +122,11 @@ function toggleCalendar(calendarId: string) {
           :model-value="selectedCalendarIds.includes(calendar.id)"
           class="mt-0.5"
         />
+        <div
+          v-if="calendar.backgroundColor"
+          class="size-3 rounded-full shrink-0 mt-0.5"
+          :style="{ backgroundColor: calendar.backgroundColor }"
+        />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <span class="font-medium">{{ calendar.summary }}</span>
@@ -137,8 +142,11 @@ function toggleCalendar(calendarId: string) {
           <p v-if="calendar.description" class="text-sm text-muted truncate">
             {{ calendar.description }}
           </p>
-          <p class="text-xs text-muted mt-1">
-            Access: {{ calendar.accessRole }}
+          <p
+            v-if="calendar.primary"
+            class="text-xs text-muted mt-1"
+          >
+            Primary calendar
           </p>
         </div>
       </div>

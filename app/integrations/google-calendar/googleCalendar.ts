@@ -22,8 +22,14 @@ export class GoogleCalendarService implements CalendarIntegrationService {
 
   async validate(): Promise<boolean> {
     try {
-      await $fetch("/api/integrations/google-calendar/events", {
-        query: { integrationId: this.integrationId },
+      // Call a lightweight GET endpoint to verify connectivity
+      await $fetch("/api/integrations/google-calendar/calendars", {
+        query: {
+          integrationId: this.integrationId,
+          accessToken: "", // Server will use stored token
+          refreshToken: "",
+          tokenExpiry: "",
+        },
       });
 
       this.status = {
