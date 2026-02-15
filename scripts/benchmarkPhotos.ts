@@ -111,4 +111,4 @@ async function main() {
   consola.info(`Improvement: ${improvement.toFixed(2)}%`);
 }
 
-main().catch(console.error);
+main().catch(err => consola.error(err));
