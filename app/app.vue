@@ -4,11 +4,19 @@ import GlobalDock from "~/components/global/globalDock.vue";
 
 const dock = false;
 const { isLoading, loadingMessage, setLoading } = useGlobalLoading();
+const { startIdleDetection, stopIdleDetection } = useScreensaver();
 
 setLoading(true);
 
 onNuxtReady(() => {
   setLoading(false);
+  // Start screensaver idle detection when app is ready
+  startIdleDetection();
+});
+
+onUnmounted(() => {
+  // Clean up idle detection when app unmounts
+  stopIdleDetection();
 });
 </script>
 
