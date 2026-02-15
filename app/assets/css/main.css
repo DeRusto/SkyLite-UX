@@ -59,7 +59,11 @@ body {
   --color-slate-950: #0d1526;
 }
 
-/* Safe area utility for iOS home indicator */
+/* Safe area utilities for iOS */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
 }
