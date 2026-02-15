@@ -6,7 +6,30 @@
       "Bash(npm run build:*)",
       "Bash(npx prisma generate)",
       "Bash(dir:*)",
-      "Bash(where /r node_modules .prisma:*)"
+      "Bash(where /r node_modules .prisma:*)",
+      "Bash(ls:*)",
+      "Bash(npm install:*)",
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$HOME/.nvm/versions/node/*/bin:$PATH\")",
+      "Bash(env:*)",
+      "Bash(source:*)",
+      "Bash(brew:*)",
+      "Bash(node -e:*)",
+      "Bash(node --version:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm test:*)",
+      "Bash(export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\")",
+      "Bash(gh pr create:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh pr view:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run watch:*)",
+      "Bash(echo:*)",
+      "Bash(git mv:*)"
     ]
   }
 }
