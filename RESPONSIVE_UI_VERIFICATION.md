@@ -309,7 +309,7 @@ const sizeClasses = computed(() => {
 ```html
 <UCard class="w-full max-w-[600px] mx-4 max-h-[80vh] overflow-hidden">
 ```
-- ✅ Mobile friendly with `mx-4` margin
+- ✅ Mobile-friendly with `mx-4` margin
 - ✅ Viewport-relative `max-h-[80vh]`
 - ✅ Content scrolls if needed
 
