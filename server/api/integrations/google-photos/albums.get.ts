@@ -69,28 +69,6 @@ export default defineEventHandler(async (event) => {
       effectiveTokenExpiry,
     );
 
-    // DEBUG: Validate token scopes with Google
-    try {
-      if (effectiveAccessToken) {
-        // We might need to decrypt it first if it came from integration, but here we have the "effective" one which might be encrypted?
-        // Wait, the logic above says: initialization:
-        // Mode 1: effectiveAccessToken = integration.accessToken (Encrypted)
-        // Mode 2: effectiveAccessToken = accessToken (from query, Encrypted by callback)
-
-        // createGooglePhotosClient decrypts it internally.
-        // Calling getTokenInfo requires the DECRYPTED token.
-        // Since we don't have easy access to decryptToken here without importing it...
-        // Actually we can import decryptToken from code.
-
-        // OR we can just trust the logging in callback.
-        // But validating here is safer. Let's rely on callback logging first to be less invasive.
-        // If I import decryptToken, I need to update imports.
-      }
-    }
-    catch (e) {
-      console.error("DEBUG: Token info check failed", e);
-    }
-
     // Fetch albums
     const albums = await client.listAlbums();
 
