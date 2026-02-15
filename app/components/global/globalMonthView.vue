@@ -26,6 +26,10 @@ const { isToday, handleEventClick: _handleEventClick, scrollToDate, getAllEvents
 
 const { getStableDate } = useStableDate();
 
+const { isDesktop } = useBreakpoint();
+
+const selectedDay = ref<Date>(getStableDate());
+
 const computedEventHeight = computed(() => getEventHeight("month", props.eventHeight));
 
 const eventGap = 4;
@@ -45,6 +49,31 @@ const eventsByDay = computed(() => {
 function getEventsForDay(day: Date): CalendarEvent[] {
   const key = format(day, "yyyy-MM-dd");
   return eventsByDay.value.get(key) || [];
+}
+
+function selectDay(day: Date) {
+  selectedDay.value = day;
+}
+
+const selectedDayEvents = computed(() => getEventsForDay(selectedDay.value));
+
+function hasEventsOnDay(day: Date): boolean {
+  return getEventsForDay(day).length > 0;
+}
+
+function isSelectedDay(day: Date): boolean {
+  return format(day, "yyyy-MM-dd") === format(selectedDay.value, "yyyy-MM-dd");
+}
+
+const displayedMonth = computed(() => {
+  if (props.weeks.length === 0)
+    return -1;
+  const midWeek = props.weeks[Math.floor(props.weeks.length / 2)];
+  return midWeek?.[3]?.getMonth() ?? -1;
+});
+
+function isDayInDisplayedMonth(day: Date): boolean {
+  return day.getMonth() === displayedMonth.value;
 }
 
 onMounted(() => {
