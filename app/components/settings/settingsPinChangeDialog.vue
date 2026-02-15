@@ -164,7 +164,7 @@ function handleKeydown(event: KeyboardEvent) {
               placeholder="Enter new PIN (min 4 digits)"
               :disabled="isSaving"
               autocomplete="new-password"
-              @keydown.enter="confirmPinInput.focus()"
+              @keydown.enter="confirmPinInput?.focus()"
             >
               <template #trailing>
                 <UButton

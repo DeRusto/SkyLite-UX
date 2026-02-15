@@ -40,6 +40,9 @@ export default defineEventHandler(async (event) => {
     calendar.updatePropertyWithValue("method", "PUBLISH");
     calendar.updatePropertyWithValue("x-wr-calname", "SkyLite-UX Calendar");
 
+    // Create timestamp once (DTSTAMP - required by iCal spec)
+    const dtstamp = ical.Time.fromJSDate(new Date(), false);
+
     // Add each event to the calendar
     for (const dbEvent of events) {
       const vevent = new ical.Component("vevent");
@@ -87,7 +90,6 @@ export default defineEventHandler(async (event) => {
       }
 
       // Add timestamp (DTSTAMP - required by iCal spec)
-      const dtstamp = ical.Time.fromJSDate(new Date(), false);
       vevent.updatePropertyWithValue("dtstamp", dtstamp);
 
       // Add attendees (users assigned to the event)
