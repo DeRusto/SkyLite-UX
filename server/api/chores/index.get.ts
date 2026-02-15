@@ -54,6 +54,10 @@ export default defineEventHandler(async (event) => {
       ],
     });
 
+    const now = new Date();
+    // Reset times to start of day for comparison
+    const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     // Helper to check if a recurring chore should reset based on completion date
     const shouldResetRecurringChore = (
       recurrence: string,
@@ -62,11 +66,7 @@ export default defineEventHandler(async (event) => {
       if (!completedAt || recurrence === "NONE")
         return false;
 
-      const now = new Date();
       const completionDate = new Date(completedAt);
-
-      // Reset times to start of day for comparison
-      const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const completionStart = new Date(
         completionDate.getFullYear(),
         completionDate.getMonth(),
@@ -93,7 +93,7 @@ export default defineEventHandler(async (event) => {
     };
 
     // Transform chores to include status based on completions
-    const choreWithStatus = chores.map((chore) => {
+    const choreWithStatus = chores.map((chore: any) => {
       const latestCompletion = chore.completions[0];
       let status: "available" | "in-progress" | "pending-approval" | "completed" = "available";
 
