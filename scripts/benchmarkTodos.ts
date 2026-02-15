@@ -29,8 +29,12 @@ async function main() {
   consola.info(`Created test column: ${column.id}`);
 
   // Create 5000 old completed todos
-  const oldDate = new Date();
-  oldDate.setDate(oldDate.getDate() - 30); // 30 days ago
+import { subDays } from "date-fns";
+import { Priority, PrismaClient } from "@prisma/client";
+import { consola } from "consola";
+import { performance } from "node:perf_hooks";
+
+  const oldDate = subDays(new Date(), 30);
 
   const batchSize = 1000;
   for (let i = 0; i < 5000; i += batchSize) {
