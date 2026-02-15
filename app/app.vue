@@ -4,6 +4,7 @@ import GlobalDock from "~/components/global/globalDock.vue";
 
 const dock = false;
 const { isLoading, loadingMessage, setLoading } = useGlobalLoading();
+const { isDesktop } = useBreakpoint();
 const { startIdleDetection, stopIdleDetection } = useScreensaver();
 
 setLoading(true);
@@ -22,10 +23,8 @@ onUnmounted(() => {
 
 <template>
   <UApp>
-    <!-- Letterbox container - centers the 16:9 app container -->
-    <div class="app-letterbox">
-      <!-- Main app container with 16:9 aspect ratio -->
-      <div class="app-container-16-9">
+    <div :class="isDesktop ? 'app-letterbox' : 'app-fullscreen'">
+      <div :class="isDesktop ? 'app-container-16-9' : 'app-container-full'">
         <GlobalAppLoading :is-loading="isLoading" :loading-message="loadingMessage || ''" />
 
         <NuxtLayout>
@@ -55,7 +54,7 @@ onUnmounted(() => {
   display: none;
 }
 
-/* Letterbox container - black background for bars */
+/* Letterbox container - black background for bars (desktop only) */
 .app-letterbox {
   position: fixed;
   inset: 0;
@@ -66,7 +65,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* 16:9 aspect ratio container */
+/* 16:9 aspect ratio container (desktop only) */
 .app-container-16-9 {
   position: relative;
   width: 100%;
@@ -77,12 +76,32 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* Dark mode support for letterbox */
+/* Fullscreen container - fills entire viewport (mobile/tablet) */
+.app-fullscreen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* Full viewport container (mobile/tablet) */
+.app-container-full {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: var(--ui-bg-default, #ffffff);
+  overflow: hidden;
+}
+
+/* Dark mode support */
 .dark .app-letterbox {
   background-color: #000;
 }
 
 .dark .app-container-16-9 {
+  background-color: var(--ui-bg-default, #141f38);
+}
+
+.dark .app-container-full {
   background-color: var(--ui-bg-default, #141f38);
 }
 </style>

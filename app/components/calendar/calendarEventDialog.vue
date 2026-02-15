@@ -27,6 +27,7 @@ const emit = defineEmits<{
   (e: "delete", eventId: string): void;
 }>();
 
+const { isDesktop } = useBreakpoint();
 const { users, fetchUsers } = useUsers();
 
 const { getEventStartTimeForInput, getEventEndTimeForInput, getLocalTimeFromUTC } = useCalendar();
@@ -1004,14 +1005,52 @@ function handleDelete() {
 
   <div
     v-if="isOpen"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-    @click="handleClose"
+    :class="isDesktop
+      ? 'fixed inset-0 z-[100] flex items-center justify-center bg-black/50'
+      : 'fixed inset-0 z-[100] bg-default'"
+    @click="isDesktop ? handleClose() : undefined"
   >
     <div
-      class="w-full max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto bg-default rounded-lg border border-default shadow-lg"
+      :class="isDesktop
+        ? 'w-full max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto bg-default rounded-lg border border-default shadow-lg'
+        : 'h-full flex flex-col'"
       @click.stop
     >
-      <div class="flex items-center justify-between p-4 border-b border-default">
+      <!-- Mobile top bar -->
+      <div
+        v-if="!isDesktop"
+        class="flex items-center justify-between p-3 border-b border-default shrink-0"
+      >
+        <UButton
+          color="neutral"
+          variant="ghost"
+          @click="handleClose"
+        >
+          Cancel
+        </UButton>
+        <h2 class="text-base font-semibold leading-6">
+          {{ event?.id ? 'Edit Event' : 'New Event' }}
+        </h2>
+        <UButton
+          v-if="!isReadOnly"
+          color="primary"
+          :loading="isSubmitting"
+          :disabled="isSubmitting"
+          @click="handleSave"
+        >
+          Save
+        </UButton>
+        <span
+          v-else
+          class="w-[60px]"
+        />
+      </div>
+
+      <!-- Desktop header -->
+      <div
+        v-if="isDesktop"
+        class="flex items-center justify-between p-4 border-b border-default"
+      >
         <h2 class="text-base font-semibold leading-6">
           {{ event?.id ? 'Edit Event' : 'Create Event' }}
         </h2>
@@ -1024,7 +1063,7 @@ function handleDelete() {
           @click="handleClose"
         />
       </div>
-      <div class="p-4 space-y-6">
+      <div :class="isDesktop ? 'p-4 space-y-6' : 'flex-1 overflow-y-auto p-4 space-y-6'">
         <div
           v-if="error"
           role="alert"
@@ -1424,7 +1463,12 @@ function handleDelete() {
           </div>
         </div>
       </div>
-      <div class="flex justify-between p-4 border-t border-default">
+
+      <!-- Desktop footer -->
+      <div
+        v-if="isDesktop"
+        class="flex justify-between p-4 border-t border-default"
+      >
         <div class="flex gap-2">
           <UButton
             v-if="event?.id && canDelete"
@@ -1465,6 +1509,24 @@ function handleDelete() {
             Save
           </UButton>
         </div>
+      </div>
+
+      <!-- Mobile delete section -->
+      <div
+        v-if="!isDesktop && event?.id && canDelete"
+        class="p-4 pb-[env(safe-area-inset-bottom,16px)] shrink-0"
+      >
+        <UButton
+          color="error"
+          variant="soft"
+          icon="i-lucide-trash"
+          class="w-full"
+          :loading="isDeleting"
+          :disabled="isDeleting"
+          @click="handleDelete"
+        >
+          Delete Event
+        </UButton>
       </div>
     </div>
   </div>

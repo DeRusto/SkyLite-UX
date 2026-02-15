@@ -21,19 +21,22 @@ const emit = defineEmits<{
   (e: "click"): void;
 }>();
 
+const { isDesktop } = useBreakpoint();
+
 const positionClasses = computed(() => {
   const baseClasses = "fixed z-50 rounded-full shadow-lg transition-all duration-200 hover:shadow-xl flex items-center justify-center";
+  const bottomOffset = isDesktop.value ? "bottom-6" : "bottom-24";
 
   switch (props.position) {
     case "bottom-left":
-      return `${baseClasses} bottom-6 left-6`;
+      return `${baseClasses} ${bottomOffset} left-6`;
     case "top-right":
       return `${baseClasses} top-6 right-6`;
     case "top-left":
       return `${baseClasses} top-6 left-6`;
     case "bottom-right":
     default:
-      return `${baseClasses} bottom-6 right-6`;
+      return `${baseClasses} ${bottomOffset} right-6`;
   }
 });
 

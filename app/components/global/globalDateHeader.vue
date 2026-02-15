@@ -48,6 +48,7 @@ async function handleExport() {
   }
 }
 
+const { isDesktop } = useBreakpoint();
 const { getStableDate } = useStableDate();
 const { users, fetchUsers } = useUsers();
 
@@ -169,32 +170,21 @@ function handleToday() {
 </script>
 
 <template>
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2" :class="className">
-    <div class="flex sm:flex-col max-sm:items-center justify-between gap-1.5">
-      <div class="flex items-center gap-3">
-        <h1 class="font-bold text-5xl text-highlighted">
-          <NuxtTime
-            :datetime="now"
-            hour="numeric"
-            minute="2-digit"
-            :hour12="true"
-          />
-        </h1>
-        <!-- Weather Display -->
-        <WeatherDisplay />
-      </div>
-      <div class="text-base text-muted">
-        <NuxtTime
-          :datetime="now"
-          weekday="long"
-          month="long"
-          day="numeric"
-        />
-      </div>
-    </div>
+  <div :class="className">
+    <!-- Mobile Header -->
+    <div
+      v-if="!isDesktop && showNavigation"
+      class="flex items-center justify-between gap-2 px-2 py-1.5"
+    >
+      <UButton
+        color="primary"
+        size="sm"
+        @click="handleToday"
+      >
+        Today
+      </UButton>
 
-    <div v-if="showNavigation" class="flex items-center justify-center flex-1">
-      <h2 class="font-semibold text-2xl text-highlighted">
+      <h2 class="font-semibold text-base text-highlighted text-center flex-1 min-w-0 truncate">
         <NuxtTime
           v-if="viewTitle === 'month'"
           :datetime="currentDate"
@@ -249,11 +239,227 @@ function handleToday() {
           year="numeric"
         />
       </h2>
+
+      <div class="flex items-center gap-1">
+        <UDropdownMenu
+          v-if="showViewSelector"
+          :items="items"
+        >
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="sm"
+            trailing-icon="i-lucide-chevron-down"
+          >
+            <span class="capitalize">{{ view }}</span>
+          </UButton>
+        </UDropdownMenu>
+
+        <UPopover
+          v-if="showUserFilter && users && users.length > 0"
+          :popper="{ placement: 'bottom-end' }"
+        >
+          <UButton
+            icon="i-lucide-users"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            aria-label="Filter by user"
+            :class="selectedUsers.length > 0 ? 'text-primary' : ''"
+          />
+          <template #content>
+            <div class="p-3 flex flex-col gap-2 min-w-48">
+              <button
+                v-for="user in users"
+                :key="user.id"
+                type="button"
+                class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium transition-all"
+                :class="isUserSelected(user.id)
+                  ? 'opacity-100 bg-elevated'
+                  : 'opacity-50 hover:opacity-80'"
+                :aria-label="`Filter by ${user.name}`"
+                :aria-pressed="isUserSelected(user.id)"
+                @click="toggleUserFilter(user.id)"
+              >
+                <UAvatar
+                  :src="user.avatar || undefined"
+                  :alt="user.name"
+                  size="xs"
+                  :style="{ backgroundColor: user.color || '#22d3ee' }"
+                />
+                <span>{{ user.name }}</span>
+              </button>
+              <button
+                v-if="selectedUsers.length > 0"
+                type="button"
+                class="text-xs text-muted hover:text-highlighted underline mt-1"
+                aria-label="Clear user filter"
+                @click="clearUserFilter"
+              >
+                Clear filter
+              </button>
+            </div>
+          </template>
+        </UPopover>
+      </div>
     </div>
 
-    <div v-if="showNavigation" class="flex items-center justify-end gap-2 sm:gap-4">
+    <!-- Desktop Header -->
+    <div
+      v-if="isDesktop"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+    >
+      <div class="flex sm:flex-col max-sm:items-center justify-between gap-1.5">
+        <div class="flex items-center gap-3">
+          <h1 class="font-bold text-5xl text-highlighted">
+            <NuxtTime
+              :datetime="now"
+              hour="numeric"
+              minute="2-digit"
+              :hour12="true"
+            />
+          </h1>
+          <!-- Weather Display -->
+          <WeatherDisplay />
+        </div>
+        <div class="text-base text-muted">
+          <NuxtTime
+            :datetime="now"
+            weekday="long"
+            month="long"
+            day="numeric"
+          />
+        </div>
+      </div>
+
+      <div
+        v-if="showNavigation"
+        class="flex items-center justify-center flex-1"
+      >
+        <h2 class="font-semibold text-2xl text-highlighted">
+          <NuxtTime
+            v-if="viewTitle === 'month'"
+            :datetime="currentDate"
+            month="long"
+            year="numeric"
+          />
+          <NuxtTime
+            v-else-if="viewTitle === 'week-same-month'"
+            :datetime="startOfWeek(currentDate, { weekStartsOn: 0 })"
+            month="long"
+            year="numeric"
+          />
+          <span v-else-if="viewTitle === 'week-different-months'">
+            <NuxtTime
+              :datetime="startOfWeek(currentDate, { weekStartsOn: 0 })"
+              month="short"
+            /> -
+            <NuxtTime
+              :datetime="endOfWeek(currentDate, { weekStartsOn: 0 })"
+              month="short"
+              year="numeric"
+            />
+          </span>
+          <NuxtTime
+            v-else-if="viewTitle === 'day'"
+            :datetime="currentDate"
+            month="long"
+            day="numeric"
+            year="numeric"
+          />
+          <NuxtTime
+            v-else-if="viewTitle === 'agenda-same-month'"
+            :datetime="currentDate"
+            month="long"
+            year="numeric"
+          />
+          <span v-else-if="viewTitle === 'agenda-different-months'">
+            <NuxtTime
+              :datetime="currentDate"
+              month="short"
+            /> -
+            <NuxtTime
+              :datetime="addDays(currentDate, 30 - 1)"
+              month="short"
+              year="numeric"
+            />
+          </span>
+          <NuxtTime
+            v-else
+            :datetime="currentDate"
+            month="long"
+            year="numeric"
+          />
+        </h2>
+      </div>
+
+      <div
+        v-if="showNavigation"
+        class="flex items-center justify-between gap-2"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center sm:gap-2 max-sm:order-1">
+            <UButton
+              icon="i-lucide-chevron-left"
+              color="neutral"
+              variant="ghost"
+              size="xl"
+              aria-label="Previous"
+              @click="handlePrevious"
+            />
+            <UButton
+              icon="i-lucide-chevron-right"
+              color="neutral"
+              variant="ghost"
+              size="xl"
+              aria-label="Next"
+              @click="handleNext"
+            />
+          </div>
+          <UButton
+            color="primary"
+            size="xl"
+            @click="handleToday"
+          >
+            Today
+          </UButton>
+        </div>
+        <div
+          v-if="showViewSelector"
+          class="flex items-center justify-between gap-2"
+        >
+          <UDropdownMenu :items="items">
+            <UButton
+              color="neutral"
+              variant="outline"
+              size="xl"
+              trailing-icon="i-lucide-chevron-down"
+            >
+              <span class="capitalize">{{ view }}</span>
+            </UButton>
+          </UDropdownMenu>
+        </div>
+        <div
+          v-if="showExport"
+          class="flex items-center"
+        >
+          <UButton
+            icon="i-lucide-download"
+            color="neutral"
+            variant="ghost"
+            size="xl"
+            aria-label="Export calendar to ICS"
+            :loading="isExporting"
+            @click="handleExport"
+          />
+        </div>
+      </div>
+
       <!-- User Filter Badges -->
-      <div v-if="showUserFilter && users && users.length > 0" class="flex items-center gap-2">
+      <div
+        v-if="showUserFilter && users && users.length > 0"
+        class="flex items-center gap-2 mt-2 sm:mt-0"
+      >
         <div class="flex items-center gap-1 flex-wrap">
           <button
             v-for="user in users"
@@ -289,60 +495,6 @@ function handleToday() {
           >
             Clear
           </button>
-        </div>
-      </div>
-
-      <!-- Calendar Controls -->
-      <div class="flex items-center justify-between gap-2">
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center sm:gap-2 max-sm:order-1">
-            <UButton
-              icon="i-lucide-chevron-left"
-              color="neutral"
-              variant="ghost"
-              size="xl"
-              aria-label="Previous"
-              @click="handlePrevious"
-            />
-            <UButton
-              icon="i-lucide-chevron-right"
-              color="neutral"
-              variant="ghost"
-              size="xl"
-              aria-label="Next"
-              @click="handleNext"
-            />
-          </div>
-          <UButton
-            color="primary"
-            size="xl"
-            @click="handleToday"
-          >
-            Today
-          </UButton>
-        </div>
-        <div v-if="showViewSelector" class="flex items-center justify-between gap-2">
-          <UDropdownMenu :items="items">
-            <UButton
-              color="neutral"
-              variant="outline"
-              size="xl"
-              trailing-icon="i-lucide-chevron-down"
-            >
-              <span class="capitalize">{{ view }}</span>
-            </UButton>
-          </UDropdownMenu>
-        </div>
-        <div v-if="showExport" class="flex items-center">
-          <UButton
-            icon="i-lucide-download"
-            color="neutral"
-            variant="ghost"
-            size="xl"
-            aria-label="Export calendar to ICS"
-            :loading="isExporting"
-            @click="handleExport"
-          />
         </div>
       </div>
     </div>

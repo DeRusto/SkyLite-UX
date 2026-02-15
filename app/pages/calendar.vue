@@ -200,12 +200,10 @@ function getEventIntegrationCapabilities(event: CalendarEvent): { capabilities: 
 }
 </script>
 
-<!-- TODO: allow user to choose initial view -->
 <template>
   <div>
     <CalendarMainView
       :events="allEvents as CalendarEvent[]"
-      initial-view="week"
       class="h-[calc(100vh-2rem)]"
       :get-integration-capabilities="getEventIntegrationCapabilities"
       :initial-user-filter="initialUserFilter"

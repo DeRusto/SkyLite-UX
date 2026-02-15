@@ -27,10 +27,48 @@ const emit = defineEmits<{
 const { getStableDate } = useStableDate();
 const { getEventsForDateRange, scrollToDate } = useCalendar();
 const currentDate = useState<Date>("calendar-current-date", () => getStableDate());
-const view = ref<CalendarView>(props.initialView || "week");
+const STORAGE_KEY = "skylite-calendar-view";
+const validViews: CalendarView[] = ["month", "week", "day", "agenda"];
+
+function getDefaultView(): CalendarView {
+  if (import.meta.client) {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved && validViews.includes(saved as CalendarView)) {
+      return saved as CalendarView;
+    }
+  }
+  if (import.meta.client && window.innerWidth < 640) {
+    return "agenda";
+  }
+  return "month";
+}
+
+const view = ref<CalendarView>(getDefaultView());
+
+watch(view, (newView) => {
+  if (import.meta.client) {
+    localStorage.setItem(STORAGE_KEY, newView);
+  }
+});
 const isEventDialogOpen = ref(false);
 const selectedEvent = ref<CalendarEvent | null>(null);
 const selectedUserIds = ref<string[]>(props.initialUserFilter || []);
+
+const { isDesktop } = useBreakpoint();
+const calendarContentRef = ref<HTMLElement | null>(null);
+
+useSwipe(calendarContentRef, {
+  onSwipeLeft: () => {
+    if (!isEventDialogOpen.value && !isDesktop.value) {
+      handleNext();
+    }
+  },
+  onSwipeRight: () => {
+    if (!isEventDialogOpen.value && !isDesktop.value) {
+      handlePrevious();
+    }
+  },
+});
 
 function handleUserFilterChange(userIds: string[]) {
   selectedUserIds.value = userIds;
@@ -243,7 +281,7 @@ function getDaysForAgenda(date: Date) {
         @user-filter-change="handleUserFilterChange"
       />
     </div>
-    <div class="flex flex-1 flex-col min-h-0">
+    <div ref="calendarContentRef" class="flex flex-1 flex-col min-h-0">
       <GlobalMonthView
         v-if="view === 'month'"
         :weeks="getWeeksForMonth(currentDate)"
