@@ -10,7 +10,8 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    environment: Build
+    env:
+      DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
     steps:
       - uses: actions/checkout@v4
 
