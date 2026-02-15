@@ -10,11 +10,19 @@ export function useTodos() {
 
   const currentTodos = computed(() => todos.value || []);
 
-  const fetchTodos = async () => {
+  const fetchTodos = async (options?: { history?: boolean }) => {
     loading.value = true;
     error.value = null;
     try {
-      await refreshNuxtData("todos");
+      if (options?.history) {
+        const data = await $fetch<TodoWithOrder[]>("/api/todos", {
+          query: { history: true },
+        });
+        todos.value = data;
+      }
+      else {
+        await refreshNuxtData("todos");
+      }
       consola.debug("Use Todos: Todos refreshed successfully");
       return currentTodos.value;
     }

@@ -15,7 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10
 
@@ -29,12 +30,10 @@ jobs:
         run: pnpm install
 
       - name: Generate Prisma client
-        run: pnpm exec prisma generate
-        env:
-          DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+        run: pnpm prisma generate
 
       - name: Prepare Nuxt
-        run: pnpm run build
+        run: pnpm exec nuxi prepare
 
       - name: Type check
         run: pnpm run type-check
