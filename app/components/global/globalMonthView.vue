@@ -176,7 +176,7 @@ function handleEventClick(event: CalendarEvent, e: MouseEvent) {
     </div>
 
     <!-- Desktop: Full 7-column grid -->
-    <div class="sticky top-[80px] z-30 grid grid-cols-7 border-b border-default bg-muted/80 backdrop-blur-md" v-if="isDesktop">
+    <div v-if="isDesktop" class="sticky top-[80px] z-30 grid grid-cols-7 border-b border-default bg-muted/80 backdrop-blur-md">
       <div
         v-for="day in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']"
         :key="day"

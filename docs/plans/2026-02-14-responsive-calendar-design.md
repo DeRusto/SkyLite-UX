@@ -8,11 +8,11 @@ Make SkyLite-UX fully responsive with a pleasant, functional calendar experience
 
 ## Breakpoints & Layout Tiers
 
-| Tier | Breakpoint | Letterbox | Navigation | Default View |
-|------|-----------|-----------|------------|-------------|
-| Phone | `< 640px` (below `sm`) | Off | Bottom tab bar | Agenda |
-| Tablet | `640px-1024px` (`sm` to `lg`) | Off | Bottom tab bar | Month |
-| Desktop/Wall | `> 1024px` (`lg+`) | On (16:9) | Left sidebar (current) | Month |
+| Tier         | Breakpoint                    | Letterbox | Navigation             | Default View |
+| ------------ | ----------------------------- | --------- | ---------------------- | ------------ |
+| Phone        | `< 640px` (below `sm`)        | Off       | Bottom tab bar         | Agenda       |
+| Tablet       | `640px-1024px` (`sm` to `lg`) | Off       | Bottom tab bar         | Month        |
+| Desktop/Wall | `> 1024px` (`lg+`)            | On (16:9) | Left sidebar (current) | Month        |
 
 The letterbox wrapper in `app.vue` becomes conditional — only applied at `lg+`. Below that, the app fills the full screen.
 
@@ -117,25 +117,25 @@ All four views work on all screen sizes but adapt layout per tier.
 
 ## Files Changed
 
-| File | Change |
-|------|--------|
-| `app.vue` | Conditional letterbox — only `lg+` |
-| `app/layouts/default.vue` | Responsive layout: bottom tab bar `< lg`, sidebar `lg+` |
-| `app/components/global/globalSideBar.vue` | Hide on `< lg` |
-| `app/components/global/globalDateHeader.vue` | Compact single-row on `< lg`, remove arrows |
-| `app/components/global/globalMonthView.vue` | Stacked mini-month + day event list on `< lg` |
-| `app/components/global/globalWeekView.vue` | Day carousel on `< sm`, 3-4 cols on tablet |
-| `app/components/global/globalDayView.vue` | Full-width event list on `< sm` |
-| `app/components/global/globalAgendaView.vue` | Full-width with sticky day headers |
-| `app/components/calendar/calendarMainView.vue` | Swipe gestures, view persistence |
-| `app/components/calendar/calendarEventDialog.vue` | Full-screen bottom sheet on `< lg` |
+| File                                              | Change                                                  |
+| ------------------------------------------------- | ------------------------------------------------------- |
+| `app.vue`                                         | Conditional letterbox — only `lg+`                      |
+| `app/layouts/default.vue`                         | Responsive layout: bottom tab bar `< lg`, sidebar `lg+` |
+| `app/components/global/globalSideBar.vue`         | Hide on `< lg`                                          |
+| `app/components/global/globalDateHeader.vue`      | Compact single-row on `< lg`, remove arrows             |
+| `app/components/global/globalMonthView.vue`       | Stacked mini-month + day event list on `< lg`           |
+| `app/components/global/globalWeekView.vue`        | Day carousel on `< sm`, 3-4 cols on tablet              |
+| `app/components/global/globalDayView.vue`         | Full-width event list on `< sm`                         |
+| `app/components/global/globalAgendaView.vue`      | Full-width with sticky day headers                      |
+| `app/components/calendar/calendarMainView.vue`    | Swipe gestures, view persistence                        |
+| `app/components/calendar/calendarEventDialog.vue` | Full-screen bottom sheet on `< lg`                      |
 
 ## New Components
 
-| Component | Purpose |
-|-----------|---------|
+| Component                                      | Purpose                     |
+| ---------------------------------------------- | --------------------------- |
 | `app/components/global/globalBottomTabBar.vue` | Bottom nav for phone/tablet |
-| `app/components/global/globalMoreSheet.vue` | Overflow nav slide-up sheet |
+| `app/components/global/globalMoreSheet.vue`    | Overflow nav slide-up sheet |
 
 ## Constraints
 

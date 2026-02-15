@@ -15,6 +15,7 @@
 ## Task 1: Conditional Letterbox in app.vue
 
 **Files:**
+
 - Modify: `app/app.vue`
 
 **Context:** Currently the letterbox is always-on via CSS classes `.app-letterbox` and `.app-container-16-9`. We need it only at `lg+` (1024px+). Below that, the app fills the full screen.
@@ -135,6 +136,7 @@ git commit -m "feat: conditional letterbox — full-screen on mobile/tablet, 16:
 ## Task 2: Bottom Tab Bar Component
 
 **Files:**
+
 - Create: `app/components/global/globalBottomTabBar.vue`
 - Create: `app/components/global/globalMoreSheet.vue`
 
@@ -319,6 +321,7 @@ git commit -m "feat: add bottom tab bar and more sheet for mobile navigation"
 ## Task 3: Responsive Layout in default.vue
 
 **Files:**
+
 - Modify: `app/layouts/default.vue`
 - Modify: `app/components/global/globalSideBar.vue`
 
@@ -328,8 +331,8 @@ git commit -m "feat: add bottom tab bar and more sheet for mobile navigation"
 
 ```vue
 <script setup lang="ts">
-import GlobalSideBar from "~/components/global/globalSideBar.vue";
 import GlobalBottomTabBar from "~/components/global/globalBottomTabBar.vue";
+import GlobalSideBar from "~/components/global/globalSideBar.vue";
 
 const { isDesktop } = useBreakpoint();
 </script>
@@ -366,6 +369,7 @@ git commit -m "feat: responsive layout — sidebar on desktop, bottom tab bar on
 ## Task 4: View Persistence via localStorage
 
 **Files:**
+
 - Modify: `app/components/calendar/calendarMainView.vue`
 - Modify: `app/pages/calendar.vue`
 
@@ -438,6 +442,7 @@ git commit -m "feat: persist calendar view in localStorage with screen-size defa
 ## Task 5: Responsive Date Header
 
 **Files:**
+
 - Modify: `app/components/global/globalDateHeader.vue`
 
 **Context:** The current header has: time display, weather, date, nav arrows, today button, view selector, export button, user filter badges. On `< lg`, we need a compact single row: today button (left), date label (center), view selector + filter icon (right). Hide arrows, time, weather, and export on mobile.
@@ -574,6 +579,7 @@ git commit -m "feat: compact mobile date header with filter popover"
 ## Task 6: Swipe Gestures on Calendar Content
 
 **Files:**
+
 - Modify: `app/components/calendar/calendarMainView.vue`
 
 **Context:** On `< lg` screens, the arrow buttons are hidden. We add horizontal swipe detection on the calendar content area to trigger previous/next navigation. Minimum 50px horizontal threshold. No swipe when the event dialog is open.
@@ -603,7 +609,8 @@ export function useSwipe(el: Ref<HTMLElement | null>, callbacks: SwipeCallbacks,
 
   function onTouchEnd(e: TouchEvent) {
     const touch = e.changedTouches[0];
-    if (!touch) return;
+    if (!touch)
+      return;
 
     const deltaX = touch.clientX - startX;
     const deltaY = touch.clientY - startY;
@@ -612,7 +619,8 @@ export function useSwipe(el: Ref<HTMLElement | null>, callbacks: SwipeCallbacks,
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= threshold) {
       if (deltaX < 0) {
         callbacks.onSwipeLeft?.();
-      } else {
+      }
+      else {
         callbacks.onSwipeRight?.();
       }
     }
@@ -680,6 +688,7 @@ git commit -m "feat: swipe gestures for calendar navigation on mobile"
 ## Task 7: Responsive Month View
 
 **Files:**
+
 - Modify: `app/components/global/globalMonthView.vue`
 
 **Context:** Desktop keeps the current 7-column grid unchanged. On `< lg`, show a stacked layout: compact mini month grid at top (colored dots for events), event list for selected day below. Tapping a day selects it and shows its events.
@@ -694,7 +703,7 @@ const selectedDay = ref<Date>(getStableDate());
 const emit = defineEmits<{
   (e: "eventCreate", date: Date): void;
   (e: "eventClick", event: CalendarEvent, mouseEvent: MouseEvent): void;
-  (e: "dateSelect", date: Date): void;  // NEW
+  (e: "dateSelect", date: Date): void; // NEW
 }>();
 
 function selectDay(day: Date) {
@@ -727,6 +736,7 @@ Wrap the existing template content in `<template v-if="isDesktop">`. Add a new m
       >
         {{ day }}
       </div>
+
     </div>
     <div class="grid grid-cols-7 gap-1">
       <button
@@ -772,6 +782,7 @@ Wrap the existing template content in `<template v-if="isDesktop">`. Add a new m
       <UIcon name="i-lucide-calendar-off" class="w-8 h-8 mb-2" />
       <span class="text-sm">No events</span>
     </div>
+
     <div v-else class="space-y-2">
       <CalendarEventItem
         v-for="event in selectedDayEvents"
@@ -788,28 +799,32 @@ Wrap the existing template content in `<template v-if="isDesktop">`. Add a new m
 
 Note: Remove the duplicate `v-for` loop issue above — the template should iterate `weeks` then `week`:
 
-```vue
+````vue
 <template v-for="(week, weekIndex) in weeks" :key="weekIndex">
-  <button v-for="day in week" :key="day.toString()" ...>
-```
+  <button
+    v-for="day in week"
+    :key="day.toString()"
+    ...
+  />```
 
-**Step 3: Run type-check and lint**
+  **Step 3: Run type-check and lint**
 
-Run: `npm run type-check && npm run lint`
-Expected: PASS
+  Run: `npm run type-check && npm run lint`
+  Expected: PASS
 
-**Step 4: Commit**
+  **Step 4: Commit**
 
-```bash
-git add app/components/global/globalMonthView.vue
-git commit -m "feat: stacked mini-month + event list for mobile month view"
-```
+  ```bash
+  git add app/components/global/globalMonthView.vue
+  git commit -m "feat: stacked mini-month + event list for mobile month view"
+</template>```
 
 ---
 
 ## Task 8: Responsive Week View
 
 **Files:**
+
 - Modify: `app/components/global/globalWeekView.vue`
 
 **Context:** Desktop: current 4-column grid unchanged. Tablet (`sm` to `lg`): show current week as scrollable columns. Phone (`< sm`): single day shown with date chip row at top for switching days.
@@ -860,6 +875,7 @@ Wrap existing template in `<template v-if="isDesktop">`. Add:
       <UIcon name="i-lucide-calendar-off" class="w-8 h-8 mb-2" />
       <span class="text-sm">{{ isToday(selectedWeekDay) ? 'No events today' : 'No events' }}</span>
     </div>
+
     <div v-else class="space-y-2">
       <CalendarEventItem
         v-for="event in getAllEventsForDay(events, selectedWeekDay)"
@@ -890,6 +906,7 @@ Wrap existing template in `<template v-if="isDesktop">`. Add:
         <div class="text-xs font-medium text-muted">
           <NuxtTime :datetime="day" weekday="short" />
         </div>
+
         <div
           class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold"
           :class="{
@@ -899,6 +916,7 @@ Wrap existing template in `<template v-if="isDesktop">`. Add:
         >
           <NuxtTime :datetime="day" day="numeric" />
         </div>
+
       </div>
       <div class="overflow-y-auto px-1 py-1 space-y-1 flex-1">
         <CalendarEventItem
@@ -932,6 +950,7 @@ git commit -m "feat: responsive week view — day carousel on phone, 3-4 cols on
 ## Task 9: Responsive Day View
 
 **Files:**
+
 - Modify: `app/components/global/globalDayView.vue`
 
 **Context:** Desktop: current 40/60 split with mini calendar unchanged. Phone (`< sm`): hide the mini calendar sidebar, show full-width event list only. Tablet: keep the split.
@@ -978,6 +997,7 @@ git commit -m "feat: full-width day view on phone, keep mini calendar on tablet/
 ## Task 10: Responsive Agenda View
 
 **Files:**
+
 - Modify: `app/components/global/globalAgendaView.vue`
 
 **Context:** The agenda view is already mostly mobile-friendly. Main changes: tighten spacing on mobile, make sticky day headers more prominent.
@@ -1028,6 +1048,7 @@ git commit -m "feat: tighter spacing and sticky headers in mobile agenda view"
 ## Task 11: Full-Screen Event Dialog on Mobile
 
 **Files:**
+
 - Modify: `app/components/calendar/calendarEventDialog.vue`
 
 **Context:** Desktop: current centered modal unchanged. On `< lg`: full-screen sheet sliding from bottom. Top bar: Cancel (left), title (center), Save (right). Delete button at bottom.
@@ -1129,6 +1150,7 @@ git commit -m "feat: full-screen bottom sheet event dialog on mobile"
 ## Task 12: Safe Area & Tailwind Config
 
 **Files:**
+
 - Modify: `app/assets/css/main.css`
 
 **Context:** iOS devices need `env(safe-area-inset-bottom)` for the home indicator. We need utility classes for safe area padding.
@@ -1154,8 +1176,8 @@ Check `nuxt.config.ts` or `app/app.vue` for the viewport meta tag. If not presen
 app: {
   head: {
     meta: [
-      { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' }
-    ]
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" }
+    ];
   }
 }
 ```
@@ -1179,6 +1201,7 @@ git commit -m "feat: add safe area CSS utilities for iOS home indicator"
 ## Task 13: FAB Positioning on Mobile
 
 **Files:**
+
 - Modify: `app/components/global/globalFloatingActionButton.vue`
 
 **Context:** The FAB currently uses `bottom-6 right-6`. On mobile, it needs to be above the bottom tab bar (`bottom-24` to clear 56px tab bar + safe area).
@@ -1253,19 +1276,20 @@ git commit -m "fix: address build/lint issues from responsive calendar implement
 
 ## Task Summary
 
-| Task | Description | Files |
-|------|------------|-------|
-| 1 | Conditional letterbox | `app.vue`, `useBreakpoint.ts` (new) |
-| 2 | Bottom tab bar + More sheet | `globalBottomTabBar.vue` (new), `globalMoreSheet.vue` (new) |
-| 3 | Responsive layout | `default.vue` |
-| 4 | View persistence | `calendarMainView.vue`, `calendar.vue` |
-| 5 | Responsive date header | `globalDateHeader.vue` |
-| 6 | Swipe gestures | `useSwipe.ts` (new), `calendarMainView.vue` |
-| 7 | Responsive month view | `globalMonthView.vue` |
-| 8 | Responsive week view | `globalWeekView.vue` |
-| 9 | Responsive day view | `globalDayView.vue` |
-| 10 | Responsive agenda view | `globalAgendaView.vue` |
-| 11 | Mobile event dialog | `calendarEventDialog.vue` |
-| 12 | Safe area CSS | `main.css`, `nuxt.config.ts` |
-| 13 | FAB positioning | `globalFloatingActionButton.vue` |
-| 14 | Build verification | All files |
+| Task | Description                 | Files                                                       |
+| ---- | --------------------------- | ----------------------------------------------------------- |
+| 1    | Conditional letterbox       | `app.vue`, `useBreakpoint.ts` (new)                         |
+| 2    | Bottom tab bar + More sheet | `globalBottomTabBar.vue` (new), `globalMoreSheet.vue` (new) |
+| 3    | Responsive layout           | `default.vue`                                               |
+| 4    | View persistence            | `calendarMainView.vue`, `calendar.vue`                      |
+| 5    | Responsive date header      | `globalDateHeader.vue`                                      |
+| 6    | Swipe gestures              | `useSwipe.ts` (new), `calendarMainView.vue`                 |
+| 7    | Responsive month view       | `globalMonthView.vue`                                       |
+| 8    | Responsive week view        | `globalWeekView.vue`                                        |
+| 9    | Responsive day view         | `globalDayView.vue`                                         |
+| 10   | Responsive agenda view      | `globalAgendaView.vue`                                      |
+| 11   | Mobile event dialog         | `calendarEventDialog.vue`                                   |
+| 12   | Safe area CSS               | `main.css`, `nuxt.config.ts`                                |
+| 13   | FAB positioning             | `globalFloatingActionButton.vue`                            |
+| 14   | Build verification          | All files                                                   |
+````
