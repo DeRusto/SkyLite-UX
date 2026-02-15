@@ -31,11 +31,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10
-
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
