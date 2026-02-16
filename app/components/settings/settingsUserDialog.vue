@@ -58,6 +58,12 @@ watch(() => props.isOpen, (isOpen) => {
   }
 });
 
+watch(role, (newRole) => {
+  if (newRole === "CHILD") {
+    pin.value = "";
+  }
+});
+
 function resetForm() {
   name.value = "";
   email.value = "";
@@ -89,7 +95,7 @@ function handleSave() {
     color: color.value,
     avatar: avatar.value || getDefaultAvatarUrl(),
     role: role.value,
-    pin: pin.value || undefined,
+    pin: role.value === "CHILD" ? undefined : (pin.value || undefined),
     todoOrder: 0,
   } as CreateUserInput);
 }

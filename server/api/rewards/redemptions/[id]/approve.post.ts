@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Verify approving user is a adult
+  // Verify approving user is an adult
   const approvingUser = await prisma.user.findUnique({
     where: { id: body.approvedByUserId },
   });

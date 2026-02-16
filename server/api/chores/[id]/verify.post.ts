@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
     const approve = body.approve !== false;
 
     const result = await prisma.$transaction(async (tx) => {
-      // Verify the verifying user is a adult
+      // Verify the verifying user is an adult
       const verifier = await tx.user.findUnique({
         where: { id: body.verifiedByUserId },
       });

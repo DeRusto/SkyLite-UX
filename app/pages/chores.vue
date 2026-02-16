@@ -36,7 +36,8 @@ const isAdult = computed(() => selectedUser.value?.role === "ADULT");
 watch(selectedUserId, (newId, oldId) => {
   if (newId !== oldId) {
     isChoreManagementUnlocked.value = false;
-    if (isAdult.value) {
+    // Only prompt for PIN if we already had a selected user (ignore initial set)
+    if (isAdult.value && oldId) {
       isPinDialogOpen.value = true;
     }
   }

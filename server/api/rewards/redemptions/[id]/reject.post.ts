@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Verify rejecting user is a adult
+  // Verify rejecting user is an adult
   const rejectingUser = await prisma.user.findUnique({
     where: { id: body.rejectedByUserId },
   });

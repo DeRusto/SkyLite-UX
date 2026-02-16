@@ -1,3 +1,4 @@
+import { consola } from "consola";
 import { z } from "zod";
 
 import prisma from "~/lib/prisma";
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event) => {
       });
     }
     catch (error) {
-      console.error("Failed to migrate PIN:", error);
+      consola.error("Failed to migrate PIN:", error);
     }
   }
 

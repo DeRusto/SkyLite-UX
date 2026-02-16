@@ -1,6 +1,6 @@
 ---
 title: Shopping
-adult: Integrations
+parent: Integrations
 layout: default
 nav_order: 5
 permalink: /integrations/shopping/

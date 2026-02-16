@@ -6,7 +6,7 @@ type OpenMeteoCurrentResponse = {
     time: string;
     temperature_2m: number;
     relative_humidity_2m: number;
-    apadult_temperature: number;
+    apparent_temperature: number;
     weather_code: number;
     wind_speed_10m: number;
     wind_direction_10m: number;
@@ -91,7 +91,7 @@ export default defineCachedEventHandler(async (event) => {
         query: {
           latitude: lat,
           longitude: lon,
-          current: "temperature_2m,relative_humidity_2m,apadult_temperature,weather_code,wind_speed_10m,wind_direction_10m,is_day",
+          current: "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,is_day",
           temperature_unit: temperatureUnit,
           wind_speed_unit: "mph",
           timezone: "auto",
@@ -105,7 +105,7 @@ export default defineCachedEventHandler(async (event) => {
 
     return {
       temperature: Math.round(current.temperature_2m),
-      feelsLike: Math.round(current.apadult_temperature),
+      feelsLike: Math.round(current.apparent_temperature),
       humidity: current.relative_humidity_2m,
       windSpeed: Math.round(current.wind_speed_10m),
       windDirection: current.wind_direction_10m,

@@ -110,7 +110,7 @@ onMounted(async () => {
 
     // We can auto-unlock if there are NO adult users (first install scenario?)
     // But index.post.ts forces first user to be ADULT.
-    // So if there are users, there should be a adult.
+    // So if there are users, there should be an adult.
   }
   catch (err) {
     consola.warn("Settings: Failed to check household settings:", err);
@@ -899,7 +899,7 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
                   :class="[
                     activeIntegrationTab === type
                       ? 'border-primary text-primary'
-                      : 'border-transadult text-muted hover:text-toned hover:border-muted',
+                      : 'border-transparent text-muted hover:text-toned hover:border-muted',
                   ]"
                   @click="activeIntegrationTab = type"
                 >
@@ -1049,7 +1049,7 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
                   <input
                     type="color"
                     :value="householdSettings?.holidayColor || '#ef4444'"
-                    class="h-6 w-8 p-0 border border-default rounded cursor-pointer bg-transadult"
+                    class="h-6 w-8 p-0 border border-default rounded cursor-pointer bg-transparent"
                     aria-label="Holiday Calendar Color"
                     @change="(e) => updateHouseholdColor('HOLIDAY', (e.target as HTMLInputElement).value)"
                   >
@@ -1090,7 +1090,7 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
                   <input
                     type="color"
                     :value="householdSettings?.familyColor || '#3b82f6'"
-                    class="h-6 w-8 p-0 border border-default rounded cursor-pointer bg-transadult"
+                    class="h-6 w-8 p-0 border border-default rounded cursor-pointer bg-transparent"
                     aria-label="Family Calendar Color"
                     @change="(e) => updateHouseholdColor('FAMILY', (e.target as HTMLInputElement).value)"
                   >

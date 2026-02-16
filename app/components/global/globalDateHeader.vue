@@ -408,7 +408,7 @@ function handleToday() {
               ? 'opacity-100 shadow-sm'
               : 'opacity-40 hover:opacity-70'"
             :style="{
-              backgroundColor: isUserSelected(user.id) ? `${user.color || '#22d3ee'}20` : 'transadult',
+              backgroundColor: isUserSelected(user.id) ? `${user.color || '#22d3ee'}20` : 'transparent',
               borderColor: user.color || '#22d3ee',
               color: user.color || '#22d3ee',
             }"
