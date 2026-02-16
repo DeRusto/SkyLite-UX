@@ -542,148 +542,89 @@ onMounted(async () => {
     />
 
     <!-- Create Reward Dialog -->
-    <UModal v-model:open="showCreateDialog">
-      <template #content>
-        <UCard class="w-full max-w-[425px] mx-4">
-          <template #header>
-            <div class="flex items-center justify-between">
-              <h3 class="text-lg font-semibold">
-                Create Reward
-              </h3>
-              <UButton
-                icon="i-lucide-x"
-                variant="ghost"
-                color="neutral"
-                size="sm"
-                aria-label="Close"
-                @click="showCreateDialog = false"
-              />
-            </div>
-          </template>
+    <GlobalDialog
+      :is-open="showCreateDialog"
+      title="Create Reward"
+      :error="createError"
+      save-label="Create Reward"
+      @close="showCreateDialog = false"
+      @save="createReward"
+    >
+      <div class="space-y-4">
+        <UFormField label="Name" required>
+          <UInput v-model="newReward.name" placeholder="Reward name" />
+        </UFormField>
 
-          <div class="space-y-4 overflow-y-auto max-h-[60vh]">
-            <div
-              v-if="createError"
-              role="alert"
-              class="text-error text-sm"
-            >
-              {{ createError }}
-            </div>
+        <UFormField label="Description">
+          <UTextarea v-model="newReward.description" placeholder="Optional description" />
+        </UFormField>
 
-            <UFormField label="Name" required>
-              <UInput v-model="newReward.name" placeholder="Reward name" />
-            </UFormField>
+        <UFormField label="Point Cost" required>
+          <UInput
+            v-model.number="newReward.pointCost"
+            type="number"
+            :min="1"
+          />
+        </UFormField>
 
-            <UFormField label="Description">
-              <UTextarea v-model="newReward.description" placeholder="Optional description" />
-            </UFormField>
+        <UFormField label="Quantity Available">
+          <UInput
+            v-model.number="newReward.quantityAvailable"
+            type="number"
+            :min="0"
+            placeholder="Leave empty for unlimited"
+          />
+        </UFormField>
 
-            <UFormField label="Point Cost" required>
-              <UInput
-                v-model.number="newReward.pointCost"
-                type="number"
-                :min="1"
-              />
-            </UFormField>
-
-            <UFormField label="Quantity Available">
-              <UInput
-                v-model.number="newReward.quantityAvailable"
-                type="number"
-                :min="0"
-                placeholder="Leave empty for unlimited"
-              />
-            </UFormField>
-
-            <UFormField label="Expiration Date">
-              <UInput v-model="newReward.expiresAt" type="date" />
-            </UFormField>
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton variant="ghost" @click="showCreateDialog = false">
-                Cancel
-              </UButton>
-              <UButton color="primary" @click="createReward">
-                Create Reward
-              </UButton>
-            </div>
-          </template>
-        </UCard>
-      </template>
-    </UModal>
+        <UFormField label="Expiration Date">
+          <UInput v-model="newReward.expiresAt" type="date" />
+        </UFormField>
+      </div>
+    </GlobalDialog>
 
     <!-- Redeem Confirmation Modal -->
-    <UModal v-model:open="showRedeemConfirm">
-      <template #content>
-        <UCard class="w-full max-w-[400px] mx-4">
-          <template #header>
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-gift" class="w-5 h-5 text-primary" />
-              <h3 class="text-lg font-semibold">
-                Confirm Redemption
-              </h3>
-            </div>
-          </template>
-
-          <div v-if="pendingRedeemReward" class="py-2">
-            <p class="text-muted">
-              Are you sure you want to redeem
-              <span class="font-semibold text-highlighted">{{ pendingRedeemReward.name }}</span>
-              for <span class="font-semibold text-warning">{{ pendingRedeemReward.pointCost }} points</span>?
-            </p>
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton variant="ghost" @click="showRedeemConfirm = false">
-                Cancel
-              </UButton>
-              <UButton color="primary" @click="confirmRedeemReward">
-                Redeem
-              </UButton>
-            </div>
-          </template>
-        </UCard>
+    <GlobalDialog
+      :is-open="showRedeemConfirm"
+      title="Confirm Redemption"
+      save-label="Redeem"
+      @close="showRedeemConfirm = false"
+      @save="confirmRedeemReward"
+    >
+      <template #header-icon>
+        <UIcon name="i-lucide-gift" class="w-5 h-5 text-primary" />
       </template>
-    </UModal>
+
+      <div v-if="pendingRedeemReward" class="py-2">
+        <p class="text-muted">
+          Are you sure you want to redeem
+          <span class="font-semibold text-highlighted">{{ pendingRedeemReward.name }}</span>
+          for <span class="font-semibold text-warning">{{ pendingRedeemReward.pointCost }} points</span>?
+        </p>
+      </div>
+    </GlobalDialog>
 
     <!-- Reject Confirmation Modal -->
-    <UModal v-model:open="showRejectConfirm">
-      <template #content>
-        <UCard class="w-full max-w-[400px] mx-4">
-          <template #header>
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-x-circle" class="w-5 h-5 text-error" />
-              <h3 class="text-lg font-semibold">
-                Reject Redemption
-              </h3>
-            </div>
-          </template>
-
-          <div v-if="pendingRejectRedemption" class="py-2">
-            <p class="text-muted">
-              Are you sure you want to reject
-              <span class="font-semibold text-highlighted">{{ pendingRejectRedemption.user.name }}'s</span>
-              request to redeem
-              <span class="font-semibold text-highlighted">{{ pendingRejectRedemption.reward.name }}</span>?
-            </p>
-          </div>
-
-          <template #footer>
-            <div class="flex justify-end gap-2">
-              <UButton variant="ghost" @click="showRejectConfirm = false">
-                Cancel
-              </UButton>
-              <UButton color="error" @click="confirmRejectRedemption">
-                Reject
-              </UButton>
-            </div>
-          </template>
-        </UCard>
+    <GlobalDialog
+      :is-open="showRejectConfirm"
+      title="Reject Redemption"
+      save-label="Reject"
+      save-color="error"
+      @close="showRejectConfirm = false"
+      @save="confirmRejectRedemption"
+    >
+      <template #header-icon>
+        <UIcon name="i-lucide-x-circle" class="w-5 h-5 text-error" />
       </template>
-    </UModal>
+
+      <div v-if="pendingRejectRedemption" class="py-2">
+        <p class="text-muted">
+          Are you sure you want to reject
+          <span class="font-semibold text-highlighted">{{ pendingRejectRedemption.user.name }}'s</span>
+          request to redeem
+          <span class="font-semibold text-highlighted">{{ pendingRejectRedemption.reward.name }}</span>?
+        </p>
+      </div>
+    </GlobalDialog>
 
     <!-- PIN verification dialog -->
     <SettingsPinDialog

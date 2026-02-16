@@ -105,79 +105,20 @@ function handleDelete() {
 </script>
 
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-    @click="emit('close')"
+  <GlobalDialog
+    :is-open="isOpen"
+    :title="item ? 'Edit Item' : 'Add Item'"
+    :error="error"
+    :show-delete="!!(item?.id && canDelete)"
+    :save-label="item ? 'Update Item' : 'Add Item'"
+    @close="emit('close')"
+    @save="handleSave"
+    @delete="handleDelete"
   >
-    <div
-      class="w-full max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto bg-default rounded-lg border border-default shadow-lg"
-      @click.stop
-    >
-      <div class="flex items-center justify-between p-4 border-b border-default">
-        <h3 class="text-base font-semibold leading-6">
-          {{ item ? 'Edit Item' : 'Add Item' }}
-        </h3>
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-x"
-          class="-my-1"
-          aria-label="Close dialog"
-          @click="emit('close')"
-        />
-      </div>
-
-      <div class="p-4 space-y-6">
-        <div
-          v-if="error"
-          role="alert"
-          class="bg-error/10 text-error rounded-md px-3 py-2 text-sm"
-        >
-          {{ error }}
-        </div>
-
-        <template v-for="field in fields" :key="field.key">
-          <div v-if="field.key === 'quantity'" class="flex gap-4">
-            <div class="w-1/2 space-y-2">
-              <label class="block text-sm font-medium text-highlighted flex items-center gap-1">
-                {{ field.label }}
-                <UIcon
-                  v-if="field.disabled"
-                  name="i-lucide-lock"
-                  class="h-3 w-3 text-muted"
-                />
-              </label>
-              <UInput
-                v-model.number="formData[field.key]"
-                type="number"
-                :min="field.min"
-                :disabled="field.disabled"
-                class="w-full"
-                :ui="{ base: 'w-full' }"
-              />
-            </div>
-
-            <div v-if="fields.find((f: DialogField) => f.key === 'unit')" class="w-1/2 space-y-2">
-              <label class="block text-sm font-medium text-highlighted flex items-center gap-1">
-                Unit
-                <UIcon
-                  v-if="fields.find((f: DialogField) => f.key === 'unit')?.disabled"
-                  name="i-lucide-lock"
-                  class="h-3 w-3 text-muted"
-                />
-              </label>
-              <UInput
-                v-model="formData.unit"
-                :placeholder="fields.find((f: DialogField) => f.key === 'unit')?.placeholder || 'Unit'"
-                :disabled="fields.find((f: DialogField) => f.key === 'unit')?.disabled"
-                class="w-full"
-                :ui="{ base: 'w-full' }"
-              />
-            </div>
-          </div>
-
-          <div v-else-if="field.key !== 'unit'" class="space-y-2">
+    <div class="space-y-6">
+      <template v-for="field in fields" :key="field.key">
+        <div v-if="field.key === 'quantity'" class="flex gap-4">
+          <div class="w-1/2 space-y-2">
             <label class="block text-sm font-medium text-highlighted flex items-center gap-1">
               {{ field.label }}
               <UIcon
@@ -186,18 +127,7 @@ function handleDelete() {
                 class="h-3 w-3 text-muted"
               />
             </label>
-
             <UInput
-              v-if="field.type === 'text'"
-              v-model="formData[field.key]"
-              :placeholder="field.placeholder"
-              :disabled="field.disabled"
-              class="w-full"
-              :ui="{ base: 'w-full' }"
-            />
-
-            <UInput
-              v-else-if="field.type === 'number'"
               v-model.number="formData[field.key]"
               type="number"
               :min="field.min"
@@ -205,46 +135,67 @@ function handleDelete() {
               class="w-full"
               :ui="{ base: 'w-full' }"
             />
+          </div>
 
-            <UTextarea
-              v-else-if="field.type === 'textarea'"
-              v-model="formData[field.key]"
-              :placeholder="field.placeholder"
-              :disabled="field.disabled"
-              :rows="2"
+          <div v-if="fields.find((f: DialogField) => f.key === 'unit')" class="w-1/2 space-y-2">
+            <label class="block text-sm font-medium text-highlighted flex items-center gap-1">
+              Unit
+              <UIcon
+                v-if="fields.find((f: DialogField) => f.key === 'unit')?.disabled"
+                name="i-lucide-lock"
+                class="h-3 w-3 text-muted"
+              />
+            </label>
+            <UInput
+              v-model="formData.unit"
+              :placeholder="fields.find((f: DialogField) => f.key === 'unit')?.placeholder || 'Unit'"
+              :disabled="fields.find((f: DialogField) => f.key === 'unit')?.disabled"
               class="w-full"
               :ui="{ base: 'w-full' }"
             />
           </div>
-        </template>
-      </div>
-
-      <div class="flex justify-between p-4 border-t border-default">
-        <UButton
-          v-if="item?.id && canDelete"
-          color="error"
-          variant="ghost"
-          icon="i-lucide-trash"
-          @click="handleDelete"
-        >
-          Delete
-        </UButton>
-        <div class="flex gap-2" :class="{ 'ml-auto': !item?.id || !canDelete }">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            @click="emit('close')"
-          >
-            Cancel
-          </UButton>
-          <UButton
-            color="primary"
-            @click="handleSave"
-          >
-            {{ item ? 'Update Item' : 'Add Item' }}
-          </UButton>
         </div>
-      </div>
+
+        <div v-else-if="field.key !== 'unit'" class="space-y-2">
+          <label class="block text-sm font-medium text-highlighted flex items-center gap-1">
+            {{ field.label }}
+            <UIcon
+              v-if="field.disabled"
+              name="i-lucide-lock"
+              class="h-3 w-3 text-muted"
+            />
+          </label>
+
+          <UInput
+            v-if="field.type === 'text'"
+            v-model="formData[field.key]"
+            :placeholder="field.placeholder"
+            :disabled="field.disabled"
+            class="w-full"
+            :ui="{ base: 'w-full' }"
+          />
+
+          <UInput
+            v-else-if="field.type === 'number'"
+            v-model.number="formData[field.key]"
+            type="number"
+            :min="field.min"
+            :disabled="field.disabled"
+            class="w-full"
+            :ui="{ base: 'w-full' }"
+          />
+
+          <UTextarea
+            v-else-if="field.type === 'textarea'"
+            v-model="formData[field.key]"
+            :placeholder="field.placeholder"
+            :disabled="field.disabled"
+            :rows="2"
+            class="w-full"
+            :ui="{ base: 'w-full' }"
+          />
+        </div>
+      </template>
     </div>
-  </div>
+  </GlobalDialog>
 </template>

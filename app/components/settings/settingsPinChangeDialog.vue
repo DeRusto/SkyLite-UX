@@ -115,118 +115,93 @@ function focusConfirmInput() {
 </script>
 
 <template>
-  <UModal
-    :open="isOpen"
-    @update:open="$emit('close')"
+  <GlobalDialog
+    :is-open="isOpen"
+    :title="hasParentPin ? 'Change Parent PIN' : 'Set Parent PIN'"
+    :error="error"
+    :is-submitting="isSaving"
+    :save-label="hasParentPin ? 'Change PIN' : 'Set PIN'"
+    @close="$emit('close')"
+    @save="handleSave"
   >
-    <template #content>
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-highlighted">
-            <UIcon name="i-lucide-lock" class="h-4 w-4 inline mr-2" />
-            {{ hasParentPin ? "Change Parent PIN" : "Set Parent PIN" }}
-          </h3>
-          <UButton
-            variant="ghost"
-            size="sm"
-            icon="i-lucide-x"
-            aria-label="Close"
-            @click="$emit('close')"
-          />
-        </div>
+    <template #header-icon>
+      <UIcon name="i-lucide-lock" class="h-4 w-4" />
+    </template>
 
-        <p class="text-muted mb-4">
-          {{ hasParentPin ? "Enter your current PIN and choose a new PIN for household security." : "Choose a new PIN to secure your household settings." }}
-        </p>
+    <div class="space-y-4">
+      <p class="text-muted mb-4">
+        {{ hasParentPin ? "Enter your current PIN and choose a new PIN for household security." : "Choose a new PIN to secure your household settings." }}
+      </p>
 
-        <div class="space-y-4">
-          <div v-if="error" class="bg-error/10 text-error rounded-md px-3 py-2 text-sm mb-4">
-            {{ error }}
-          </div>
-
-          <UFormField v-if="hasParentPin" label="Current PIN" :error="error && !currentPin ? 'Required' : ''">
-            <UInput
-              ref="currentPinInput"
-              v-model="currentPin"
-              :type="showPassword ? 'text' : 'password'"
-              placeholder="Enter current PIN"
-              :disabled="isSaving"
-              autocomplete="off"
-              @keydown="handleKeydown"
-            >
-              <template #trailing>
-                <UButton
-                  variant="ghost"
-                  size="sm"
-                  icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                  aria-label="Toggle password visibility"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </UInput>
-          </UFormField>
-
-          <UFormField label="New PIN" :error="error && !newPin ? 'Required' : ''">
-            <UInput
-              ref="newPinInput"
-              v-model="newPin"
-              :type="showPassword ? 'text' : 'password'"
-              placeholder="Enter new PIN (min 4 digits)"
-              :disabled="isSaving"
-              autocomplete="new-password"
-              @keydown.enter="focusConfirmInput"
-            >
-              <template #trailing>
-                <UButton
-                  variant="ghost"
-                  size="sm"
-                  icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                  aria-label="Toggle password visibility"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </UInput>
-          </UFormField>
-
-          <UFormField label="Confirm New PIN" :error="error && newPin !== confirmPin ? 'PINs must match' : ''">
-            <UInput
-              ref="confirmPinInput"
-              v-model="confirmPin"
-              :type="showPassword ? 'text' : 'password'"
-              placeholder="Confirm new PIN"
-              :disabled="isSaving"
-              autocomplete="new-password"
-              @keydown="handleKeydown"
-            >
-              <template #trailing>
-                <UButton
-                  variant="ghost"
-                  size="sm"
-                  icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                  aria-label="Toggle password visibility"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </UInput>
-          </UFormField>
-
-          <div class="flex gap-2 justify-end">
+      <UFormField
+        v-if="hasParentPin"
+        label="Current PIN"
+        :error="error && !currentPin ? 'Required' : ''"
+      >
+        <UInput
+          ref="currentPinInput"
+          v-model="currentPin"
+          :type="showPassword ? 'text' : 'password'"
+          placeholder="Enter current PIN"
+          :disabled="isSaving"
+          autocomplete="off"
+          @keydown="handleKeydown"
+        >
+          <template #trailing>
             <UButton
               variant="ghost"
-              :disabled="isSaving"
-              @click="$emit('close')"
-            >
-              Cancel
-            </UButton>
+              size="sm"
+              icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+              aria-label="Toggle password visibility"
+              @click="showPassword = !showPassword"
+            />
+          </template>
+        </UInput>
+      </UFormField>
+
+      <UFormField label="New PIN" :error="error && !newPin ? 'Required' : ''">
+        <UInput
+          ref="newPinInput"
+          v-model="newPin"
+          :type="showPassword ? 'text' : 'password'"
+          placeholder="Enter new PIN (min 4 digits)"
+          :disabled="isSaving"
+          autocomplete="new-password"
+          @keydown.enter="focusConfirmInput"
+        >
+          <template #trailing>
             <UButton
-              :loading="isSaving"
-              @click="handleSave"
-            >
-              {{ hasParentPin ? "Change PIN" : "Set PIN" }}
-            </UButton>
-          </div>
-        </div>
-      </div>
-    </template>
-  </UModal>
+              variant="ghost"
+              size="sm"
+              icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+              aria-label="Toggle password visibility"
+              @click="showPassword = !showPassword"
+            />
+          </template>
+        </UInput>
+      </UFormField>
+
+      <UFormField label="Confirm New PIN" :error="error && newPin !== confirmPin ? 'PINs must match' : ''">
+        <UInput
+          ref="confirmPinInput"
+          v-model="confirmPin"
+          :type="showPassword ? 'text' : 'password'"
+          placeholder="Confirm new PIN"
+          :disabled="isSaving"
+          autocomplete="new-password"
+          @keydown="handleKeydown"
+        >
+          <template #trailing>
+            <UButton
+              variant="ghost"
+              size="sm"
+              icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+              aria-label="Toggle password visibility"
+              @click="showPassword = !showPassword"
+            />
+          </template>
+        </UInput>
+      </UFormField>
+    </div>
+  </GlobalDialog>
 </template>

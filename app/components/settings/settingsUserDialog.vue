@@ -93,124 +93,72 @@ function handleDelete() {
 </script>
 
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-    @click="emit('close')"
+  <GlobalDialog
+    :is-open="isOpen"
+    :title="user?.id ? 'Edit User' : 'Create User'"
+    :error="error"
+    :show-delete="!!user?.id"
+    @close="emit('close')"
+    @save="handleSave"
+    @delete="handleDelete"
   >
-    <div
-      class="w-full max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto bg-default rounded-lg border border-default shadow-lg"
-      @click.stop
-    >
-      <div class="flex items-center justify-between p-4 border-b border-default">
-        <h3 class="text-base font-semibold leading-6">
-          {{ user?.id ? 'Edit User' : 'Create User' }}
-        </h3>
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-x"
-          class="-my-1"
-          aria-label="Close dialog"
-          @click="emit('close')"
+    <div class="space-y-6">
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Name *</label>
+        <UInput
+          v-model="name"
+          placeholder="Enter user name"
+          class="w-full"
+          :ui="{ base: 'w-full' }"
         />
       </div>
 
-      <div class="p-4 space-y-6">
-        <div
-          v-if="error"
-          role="alert"
-          class="bg-error/10 text-error rounded-md px-3 py-2 text-sm"
-        >
-          {{ error }}
-        </div>
-
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-highlighted">Name *</label>
-          <UInput
-            v-model="name"
-            placeholder="Enter user name"
-            class="w-full"
-            :ui="{ base: 'w-full' }"
-          />
-        </div>
-
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-highlighted">Email (optional)</label>
-          <UInput
-            v-model="email"
-            placeholder="Enter email address"
-            type="email"
-            class="w-full"
-            :ui="{ base: 'w-full' }"
-          />
-        </div>
-
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-highlighted">Profile Color</label>
-          <UPopover>
-            <UButton
-              label="Choose color"
-              color="neutral"
-              variant="outline"
-            >
-              <template #leading>
-                <span :style="chip" class="size-3 rounded-full" />
-              </template>
-            </UButton>
-            <template #content>
-              <UColorPicker v-model="color" class="p-2" />
-            </template>
-          </UPopover>
-        </div>
-
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-highlighted">Avatar</label>
-          <div class="flex items-center gap-4">
-            <img
-              :src="avatar || getDefaultAvatarUrl()"
-              :alt="name ? `${name}'s avatar preview` : 'Avatar preview'"
-              class="w-12 h-12 rounded-full border border-default"
-            >
-            <UInput
-              v-model="avatar"
-              placeholder="Optional: Paste image URL"
-              type="url"
-              class="w-full"
-              :ui="{ base: 'w-full' }"
-            />
-          </div>
-        </div>
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Email (optional)</label>
+        <UInput
+          v-model="email"
+          placeholder="Enter email address"
+          type="email"
+          class="w-full"
+          :ui="{ base: 'w-full' }"
+        />
       </div>
 
-      <div class="flex justify-between p-4 border-t border-default">
-        <UButton
-          v-if="user?.id"
-          color="error"
-          variant="ghost"
-          icon="i-lucide-trash"
-          aria-label="Delete user"
-          @click="handleDelete"
-        >
-          Delete
-        </UButton>
-        <div class="flex gap-2">
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Profile Color</label>
+        <UPopover>
           <UButton
+            label="Choose color"
             color="neutral"
-            variant="ghost"
-            @click="emit('close')"
+            variant="outline"
           >
-            Cancel
+            <template #leading>
+              <span :style="chip" class="size-3 rounded-full" />
+            </template>
           </UButton>
-          <UButton
-            color="primary"
-            :disabled="!name.trim()"
-            @click="handleSave"
+          <template #content>
+            <UColorPicker v-model="color" class="p-2" />
+          </template>
+        </UPopover>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Avatar</label>
+        <div class="flex items-center gap-4">
+          <img
+            :src="avatar || getDefaultAvatarUrl()"
+            :alt="name ? `${name}'s avatar preview` : 'Avatar preview'"
+            class="w-12 h-12 rounded-full border border-default"
           >
-            Save
-          </UButton>
+          <UInput
+            v-model="avatar"
+            placeholder="Optional: Paste image URL"
+            type="url"
+            class="w-full"
+            :ui="{ base: 'w-full' }"
+          />
         </div>
       </div>
     </div>
-  </div>
+  </GlobalDialog>
 </template>
