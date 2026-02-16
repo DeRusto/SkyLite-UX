@@ -1,7 +1,7 @@
 let initialized = false;
 
 export function useBreakpoint() {
-  const isDesktop = useState("isDesktop", () => true);
+  const isDesktop = useState('isDesktop', () => true);
 
   if (import.meta.client && !initialized) {
     initialized = true;
