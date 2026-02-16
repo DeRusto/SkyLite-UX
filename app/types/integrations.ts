@@ -35,6 +35,11 @@ export type TodoIntegrationService = IntegrationService & {
   getTodos: () => Promise<TodoWithUser[]>;
 };
 
+export type MealIntegrationService = IntegrationService & {
+  getRecipes: () => Promise<unknown[]>;
+  getMealPlan: (start: Date, end: Date) => Promise<unknown[]>;
+};
+
 export type UserWithColor = {
   id: string;
   name: string;
@@ -118,7 +123,17 @@ export type ServerCalendarIntegrationService = {
   deleteEvent?: (eventId: string) => Promise<void>;
 };
 
+export type ServerMealIntegrationService = {
+  getRecipes: () => Promise<unknown[]>;
+  getMealPlan: (start: Date, end: Date) => Promise<unknown[]>;
+  addRecipe?: (recipe: unknown) => Promise<unknown>;
+  addMealPlan?: (mealPlan: unknown) => Promise<unknown>;
+  updateMealPlan?: (mealPlanId: string, updates: unknown) => Promise<unknown>;
+  deleteMealPlan?: (mealPlanId: string) => Promise<void>;
+};
+
 export type ServerTypedIntegrationService
   = | ServerShoppingIntegrationService
     | ServerTodoIntegrationService
-    | ServerCalendarIntegrationService;
+    | ServerCalendarIntegrationService
+    | ServerMealIntegrationService;
