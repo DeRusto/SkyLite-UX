@@ -34,9 +34,8 @@ export default defineEventHandler(async (event) => {
   const settings = await prisma.householdSettings.findFirst();
 
   if (!settings || !settings.adultPin) {
-    // If no user PIN and no household PIN, we allow it if the user is a ADULT
-    // but the task says to prompt for PIN. If no PIN is set anywhere, maybe it should be valid?
-    // Actually, memory says for verifyPin.post.ts (household) it returns {valid: true} if no PIN set.
+    // When neither user settings nor household settings provide a PIN (settings or settings.adultPin is falsy),
+    // the endpoint intentionally treats the PIN as valid only for users where user.role is "ADULT".
     return { valid: user.role === "ADULT" };
   }
 

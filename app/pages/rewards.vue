@@ -70,6 +70,7 @@ const approving = ref<string | null>(null);
 
 const showCreateDialog = ref(false);
 const editingReward = ref<Reward | null>(null);
+const pendingRewardAction = ref<(() => void) | null>(null);
 const showRedeemConfirm = ref(false);
 const showRejectConfirm = ref(false);
 const pendingRedeemReward = ref<Reward | null>(null);
@@ -93,6 +94,10 @@ watch(selectedUserId, (newId, oldId) => {
 // PIN protection handlers
 function handleCreateReward() {
   if (isAdult.value && !isRewardManagementUnlocked.value) {
+    pendingRewardAction.value = () => {
+      editingReward.value = null;
+      showCreateDialog.value = true;
+    };
     isPinDialogOpen.value = true;
   }
   else if (isAdult.value) {
@@ -103,6 +108,10 @@ function handleCreateReward() {
 
 function handleEditReward(reward: Reward) {
   if (isAdult.value && !isRewardManagementUnlocked.value) {
+    pendingRewardAction.value = () => {
+      editingReward.value = reward;
+      showCreateDialog.value = true;
+    };
     isPinDialogOpen.value = true;
   }
   else if (isAdult.value) {
@@ -113,6 +122,10 @@ function handleEditReward(reward: Reward) {
 
 function handlePinVerified() {
   isRewardManagementUnlocked.value = true;
+  if (pendingRewardAction.value) {
+    pendingRewardAction.value();
+    pendingRewardAction.value = null;
+  }
 }
 
 // Fetch rewards

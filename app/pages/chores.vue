@@ -7,6 +7,7 @@ import SettingsPinDialog from "~/components/settings/settingsPinDialog.vue";
 
 const showCreateDialog = ref(false);
 const editingChore = ref<Chore | null>(null);
+const pendingChoreAction = ref<(() => void) | null>(null);
 
 // PIN protection for chore management
 const isPinDialogOpen = ref(false);
@@ -45,6 +46,10 @@ watch(selectedUserId, (newId, oldId) => {
 
 function handleCreateChore() {
   if (isAdult.value && !isChoreManagementUnlocked.value) {
+    pendingChoreAction.value = () => {
+      editingChore.value = null;
+      showCreateDialog.value = true;
+    };
     isPinDialogOpen.value = true;
   }
   else if (isAdult.value) {
@@ -55,6 +60,10 @@ function handleCreateChore() {
 
 function handleEditChore(chore: Chore) {
   if (isAdult.value && !isChoreManagementUnlocked.value) {
+    pendingChoreAction.value = () => {
+      editingChore.value = chore;
+      showCreateDialog.value = true;
+    };
     isPinDialogOpen.value = true;
   }
   else if (isAdult.value) {
@@ -65,6 +74,10 @@ function handleEditChore(chore: Chore) {
 
 function handlePinVerified() {
   isChoreManagementUnlocked.value = true;
+  if (pendingChoreAction.value) {
+    pendingChoreAction.value();
+    pendingChoreAction.value = null;
+  }
 }
 
 type ChoreUser = {
