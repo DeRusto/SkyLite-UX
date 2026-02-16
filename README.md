@@ -23,14 +23,14 @@ Skylite UX was conceived as an open source, self-hosted alternative to commercia
 ## Features
 
 - **Family Calendar** - Two-way Google Calendar sync with multi-user support
-- **Chores System** - Track chores with point values and adult verification
+- **Chores System** - Track chores with point values and parent verification
 - **Rewards System** - Kids redeem earned points for rewards
 - **Weather Integration** - Open-Meteo, OpenWeatherMap, or Home Assistant
 - **Photo Screensaver** - Google Photos integration for idle display
 - **Task Lists** - Columnar to-do lists with drag-and-drop
 - **Shopping Lists** - Shared shopping lists with check-off
 - **Meal Planning** - Integrations with Mealie and Tandoor
-- **User Management** - Adult/child roles with permissions
+- **User Management** - Parent/child roles with permissions
 - **Skylight-Inspired UI** - Bright pastel colors, touch-friendly design
 
 ## Quick Start

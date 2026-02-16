@@ -22,15 +22,15 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Verify rejecting user is an adult
+  // Verify rejecting user is a parent
   const rejectingUser = await prisma.user.findUnique({
     where: { id: body.rejectedByUserId },
   });
 
-  if (!rejectingUser || rejectingUser.role !== "ADULT") {
+  if (!rejectingUser || rejectingUser.role !== "PARENT") {
     throw createError({
       statusCode: 403,
-      statusMessage: "Only adults can reject redemptions",
+      statusMessage: "Only parents can reject redemptions",
     });
   }
 

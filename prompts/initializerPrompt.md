@@ -164,7 +164,7 @@ Test that data is real (not mocked) and persists correctly.
 - Dashboard statistics reflect real record counts (create 3 items, count shows 3)
 - Reports show real aggregated data
 - Export functionality exports actual data you created
-- Related records update when adult changes
+- Related records update when parent changes
 - Timestamps are real and accurate (created_at, updated_at)
 - Data created by User A is not visible to User B (unless shared)
 - Empty state shows correctly when no data exists
@@ -217,7 +217,7 @@ Test that frontend and backend communicate correctly.
 - All dropdown options come from real database data (not hardcoded)
 - Related entity selectors (e.g., "choose category") populated from DB
 - Changes in one area reflect in related areas after refresh
-- Deleting adult handles children correctly (cascade or block)
+- Deleting parent handles children correctly (cascade or block)
 - Filters work with actual data attributes from database
 - Sort functionality sorts real data correctly
 - Pagination returns correct page of real data
@@ -274,7 +274,7 @@ Test that deleting data cleans up properly everywhere.
 
 **Required tests (examples):**
 
-- Delete adult entity - children removed from all views
+- Delete parent entity - children removed from all views
 - Delete item - removed from search results immediately
 - Delete item - statistics/counts updated immediately
 - Delete item - related dropdowns updated

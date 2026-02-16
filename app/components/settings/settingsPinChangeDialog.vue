@@ -4,7 +4,7 @@ import { consola } from "consola";
 const props = defineProps<{
   isOpen: boolean;
   currentPin?: string;
-  hasAdultPin?: boolean;
+  hasParentPin?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -33,7 +33,7 @@ watch(() => props.isOpen, (open) => {
     showPassword.value = false;
     nextTick(() => {
       try {
-        const el = (props.hasAdultPin ? currentPinInput.value : newPinInput.value) as unknown as { $el?: HTMLElement };
+        const el = (props.hasParentPin ? currentPinInput.value : newPinInput.value) as unknown as { $el?: HTMLElement };
         el?.$el?.querySelector("input")?.focus();
       }
       catch {
@@ -44,7 +44,7 @@ watch(() => props.isOpen, (open) => {
 });
 
 async function handleSave() {
-  if (props.hasAdultPin && !currentPin.value) {
+  if (props.hasParentPin && !currentPin.value) {
     error.value = "Please enter your current PIN";
     return;
   }
@@ -68,7 +68,7 @@ async function handleSave() {
   error.value = "";
 
   try {
-    if (props.hasAdultPin) {
+    if (props.hasParentPin) {
       const result = await $fetch<{ valid: boolean; message?: string }>("/api/household/verifyPin", {
         method: "POST",
         body: { pin: currentPin.value },
@@ -84,7 +84,7 @@ async function handleSave() {
     // Update to new PIN
     await $fetch("/api/household/settings", {
       method: "PUT",
-      body: { adultPin: newPin.value },
+      body: { parentPin: newPin.value },
     });
 
     consola.info("PIN changed successfully");
@@ -117,10 +117,10 @@ function focusConfirmInput() {
 <template>
   <GlobalDialog
     :is-open="isOpen"
-    :title="hasAdultPin ? 'Change Adult PIN' : 'Set Adult PIN'"
+    :title="hasParentPin ? 'Change Parent PIN' : 'Set Parent PIN'"
     :error="error"
     :is-submitting="isSaving"
-    :save-label="hasAdultPin ? 'Change PIN' : 'Set PIN'"
+    :save-label="hasParentPin ? 'Change PIN' : 'Set PIN'"
     @close="$emit('close')"
     @save="handleSave"
   >
@@ -130,11 +130,11 @@ function focusConfirmInput() {
 
     <div class="space-y-4">
       <p class="text-muted mb-4">
-        {{ hasAdultPin ? "Enter your current PIN and choose a new PIN for household security." : "Choose a new PIN to secure your household settings." }}
+        {{ hasParentPin ? "Enter your current PIN and choose a new PIN for household security." : "Choose a new PIN to secure your household settings." }}
       </p>
 
       <UFormField
-        v-if="hasAdultPin"
+        v-if="hasParentPin"
         label="Current PIN"
         :error="error && !currentPin ? 'Required' : ''"
       >

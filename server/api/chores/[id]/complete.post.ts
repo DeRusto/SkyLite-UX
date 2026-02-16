@@ -71,10 +71,10 @@ export default defineEventHandler(async (event) => {
 
       // Get household settings to check completion mode
       const householdSettings = await tx.householdSettings.findFirst();
-      const requiresVerification = householdSettings?.choreCompletionMode === "ADULT_VERIFY";
+      const requiresVerification = householdSettings?.choreCompletionMode === "PARENT_VERIFY";
 
       if (requiresVerification) {
-        // Mark as pending approval - adult needs to verify
+        // Mark as pending approval - parent needs to verify
         const updatedCompletion = await tx.choreCompletion.update({
           where: { id: completion.id },
           data: {
@@ -95,7 +95,7 @@ export default defineEventHandler(async (event) => {
           chore,
           completion: updatedCompletion,
           status: "pending-approval" as const,
-          message: "Chore marked as complete. Waiting for adult approval.",
+          message: "Chore marked as complete. Waiting for parent approval.",
         };
       }
       else {

@@ -1,4 +1,3 @@
-import { consola } from "consola";
 import { z } from "zod";
 
 import prisma from "~/lib/prisma";
@@ -24,41 +23,14 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // If the user has a specific PIN, verify it
-  if (user.pin) {
-    const isValid = await verifyPin(pin, user.pin);
-    return { valid: isValid };
-  }
-
-  // Fallback: check household settings adult PIN
+  // PIN is stored on household settings, not on the user model
   const settings = await prisma.householdSettings.findFirst();
 
-  if (!settings || !settings.adultPin) {
-    // If no user PIN and no household PIN, we allow it if the user is a ADULT
-    // but the task says to prompt for PIN. If no PIN is set anywhere, maybe it should be valid?
-    // Actually, memory says for verifyPin.post.ts (household) it returns {valid: true} if no PIN set.
-    return { valid: user.role === "ADULT" };
+  if (!settings || !settings.parentPin) {
+    return { valid: false };
   }
 
-  // Verify against household PIN as fallback
-  let isValid = await verifyPin(pin, settings.adultPin);
-
-  // Migration: If verification failed, check if it's a legacy plaintext PIN
-  if (!isValid && settings.adultPin === pin) {
-    isValid = true;
-
-    // Upgrade to hashed PIN
-    try {
-      const hashed = await hashPin(pin);
-      await prisma.householdSettings.update({
-        where: { id: settings.id },
-        data: { adultPin: hashed },
-      });
-    }
-    catch (error) {
-      consola.error("Failed to migrate PIN:", error);
-    }
-  }
+  const isValid = settings.parentPin === pin;
 
   return { valid: isValid };
 });

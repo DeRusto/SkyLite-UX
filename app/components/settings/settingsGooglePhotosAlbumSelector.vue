@@ -6,17 +6,17 @@ const props = defineProps<{
   // The previous file had: `accessToken`, `refreshToken`, `tokenExpiry`.
   // I should check `settingsIntegrationDialog.vue` to see how it invokes this component.
   // Assuming it passes individual props, I probably need `integrationId` passed down.
-  // Since I don't see `integrationId` in the old props, I might need to update the adult too.
+  // Since I don't see `integrationId` in the old props, I might need to update the parent too.
   // OR I can use the accessToken to create session? No, backend needs to look up integration to decrypt token.
-  // I'll assume for a moment the adult passes `integration` or I need to add it.
+  // I'll assume for a moment the parent passes `integration` or I need to add it.
 
-  // Let's stick to the props expected by the adult for now, but I need `integrationId` which is `props.integration.id` usually.
+  // Let's stick to the props expected by the parent for now, but I need `integrationId` which is `props.integration.id` usually.
   // The previous component didn't use integration ID.
-  // I will check adult usage in next step if this fails, but usually `v-bind` is used.
+  // I will check parent usage in next step if this fails, but usually `v-bind` is used.
 
-  // If I can't change adult easily, I might hack it: pass accessToken to create session??
+  // If I can't change parent easily, I might hack it: pass accessToken to create session??
   // No, security risk sending token in body if not needed.
-  // I'll add `integrationId` to props and hope adult provides it or I'll update adult.
+  // I'll add `integrationId` to props and hope parent provides it or I'll update parent.
   integrationId?: string; // We'll make it optional to avoid type errors and check if it's passed.
   accessToken: string;
   refreshToken: string;
@@ -24,7 +24,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "albumsSelected", albums: any[]): void; // Keep compat with adult event for now
+  (e: "albumsSelected", albums: any[]): void; // Keep compat with parent event for now
   (e: "close"): void;
 }>();
 
@@ -55,7 +55,7 @@ async function startImportFlow() {
     // Using `useRoute` might get it if we are on a page, but this is a modal.
     // Let's assume we can get it from somewhere or fail.
     if (!props.integrationId) {
-      // Fallback: If adult doesn't pass ID, we can't create session safely on backend using ID lookups.
+      // Fallback: If parent doesn't pass ID, we can't create session safely on backend using ID lookups.
       // But wait, the previous code used `accessToken` passed as prop.
       // Can we create session using just accessToken?
       // My backend endpoint `session.post.ts` REQUIRES `integrationId`.
@@ -165,11 +165,11 @@ async function importPhotos(items: any[]) {
     setTimeout(() => {
       // We emit "albumsSelected" with a dummy value to signify we are done?
       // Or better, we just close.
-      // The adult expects `albumsSelected`.
+      // The parent expects `albumsSelected`.
       // Let's emit a special "imported" event or just close.
       // Be compatible: emit empty array and let user knw?
       // Actually, if we imported photos, they are now LOCAL files.
-      // We should probably tell the adult to refresh backgrounds.
+      // We should probably tell the parent to refresh backgrounds.
       emit("albumsSelected", [{ id: "imported", title: "Imported Photos" }]);
     }, 1500);
   }

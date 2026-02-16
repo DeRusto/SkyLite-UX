@@ -17,7 +17,6 @@ export default defineEventHandler(async (event) => {
           avatar: body.avatar || null,
           color: body.color || null,
           role: body.role ?? undefined,
-          pin: body.pin ? await hashPin(body.pin) : undefined,
           todoOrder: body.todoOrder ?? undefined,
         },
       }),

@@ -2,7 +2,6 @@
 const props = defineProps<{
   isOpen: boolean;
   title?: string;
-  userId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -43,12 +42,9 @@ async function handleVerify() {
   error.value = "";
 
   try {
-    const endpoint = props.userId ? "/api/users/verifyPin" : "/api/household/verifyPin";
-    const body = props.userId ? { userId: props.userId, pin: pin.value } : { pin: pin.value };
-
-    const result = await $fetch<{ valid: boolean }>(endpoint, {
+    const result = await $fetch<{ valid: boolean }>("/api/household/verifyPin", {
       method: "POST",
-      body,
+      body: { pin: pin.value },
     });
 
     if (result.valid) {
@@ -69,7 +65,7 @@ async function handleVerify() {
   }
   catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Verification failed";
-    if (errorMessage.includes("No adult PIN")) {
+    if (errorMessage.includes("No parent PIN")) {
       // No PIN set - allow access
       emit("verified");
       emit("close");
@@ -93,7 +89,7 @@ function handleKeydown(event: KeyboardEvent) {
 <template>
   <GlobalDialog
     :is-open="isOpen"
-    :title="title || 'Adult Verification Required'"
+    :title="title || 'Parent Verification Required'"
     :is-submitting="isVerifying"
     save-label="Verify"
     @close="$emit('close')"
@@ -101,7 +97,7 @@ function handleKeydown(event: KeyboardEvent) {
   >
     <div class="space-y-4">
       <p class="text-muted mb-4">
-        Enter the adult PIN to access this section.
+        Enter the parent PIN to access this section.
       </p>
 
       <UFormField label="PIN" :error="error">

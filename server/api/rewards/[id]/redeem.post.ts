@@ -113,7 +113,7 @@ export default defineEventHandler(async (event) => {
     ...result,
     requiresApproval,
     message: requiresApproval
-      ? "Redemption submitted for adult approval"
+      ? "Redemption submitted for parent approval"
       : "Reward redeemed successfully!",
   };
 });

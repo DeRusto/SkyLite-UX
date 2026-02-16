@@ -6,65 +6,40 @@ import GlobalFloatingActionButton from "~/components/global/globalFloatingAction
 import SettingsPinDialog from "~/components/settings/settingsPinDialog.vue";
 
 const showCreateDialog = ref(false);
-const editingChore = ref<Chore | null>(null);
 
 // PIN protection for chore management
 const isPinDialogOpen = ref(false);
 const isChoreManagementUnlocked = ref(false);
-const hasAdultPin = ref(false);
+const hasParentPin = ref(false);
 
-// Check if adult PIN is set
-async function checkAdultPin() {
+// Check if parent PIN is set
+async function checkParentPin() {
   try {
-    const settings = await $fetch<{ hasAdultPin: boolean }>("/api/household/settings");
-    hasAdultPin.value = settings.hasAdultPin;
+    const settings = await $fetch<{ hasParentPin: boolean }>("/api/household/settings");
+    hasParentPin.value = settings.hasParentPin;
+    // If no PIN is set, auto-unlock chore management
+    if (!settings.hasParentPin) {
+      isChoreManagementUnlocked.value = true;
+    }
   }
   catch (err) {
     consola.warn("Chores: Failed to check household settings:", err);
+    isChoreManagementUnlocked.value = true;
   }
 }
-
-// For now, we'll use a simple user selection (in a real app, this would come from auth)
-const users = ref<Array<{ id: string; name: string; avatar: string | null; role: string }>>([]);
-const selectedUserId = ref<string | null>(null);
-
-// Check if current user is an adult
-const selectedUser = computed(() => users.value.find(u => u.id === selectedUserId.value));
-const isAdult = computed(() => selectedUser.value?.role === "ADULT");
-
-// Watch user selection to reset unlock state or prompt for PIN
-watch(selectedUserId, (newId, oldId) => {
-  if (newId !== oldId) {
-    isChoreManagementUnlocked.value = false;
-    // Only prompt for PIN if we already had a selected user (ignore initial set)
-    if (isAdult.value && oldId) {
-      isPinDialogOpen.value = true;
-    }
-  }
-});
 
 function handleCreateChore() {
-  if (isAdult.value && !isChoreManagementUnlocked.value) {
+  if (hasParentPin.value && !isChoreManagementUnlocked.value) {
     isPinDialogOpen.value = true;
   }
-  else if (isAdult.value) {
-    editingChore.value = null;
-    showCreateDialog.value = true;
-  }
-}
-
-function handleEditChore(chore: Chore) {
-  if (isAdult.value && !isChoreManagementUnlocked.value) {
-    isPinDialogOpen.value = true;
-  }
-  else if (isAdult.value) {
-    editingChore.value = chore;
+  else {
     showCreateDialog.value = true;
   }
 }
 
 function handlePinVerified() {
   isChoreManagementUnlocked.value = true;
+  showCreateDialog.value = true;
 }
 
 type ChoreUser = {
@@ -93,6 +68,16 @@ const claiming = ref<string | null>(null);
 const completing = ref<string | null>(null);
 
 const { showError, showSuccess } = useAlertToast();
+
+// For now, we'll use a simple user selection (in a real app, this would come from auth)
+const users = ref<Array<{ id: string; name: string; avatar: string | null; role: string }>>([]);
+const selectedUserId = ref<string | null>(null);
+
+// Check if current user is a parent
+const isParent = computed(() => {
+  const user = users.value.find(u => u.id === selectedUserId.value);
+  return user?.role === "PARENT";
+});
 
 // Filter state
 const activeFilter = ref<"all" | "my-chores" | "available">("all");
@@ -195,8 +180,6 @@ async function completeChore(choreId: string) {
 }
 
 const filteredChores = computed(() => {
-  if (!chores.value)
-    return [];
   if (activeFilter.value === "all") {
     return chores.value;
   }
@@ -281,7 +264,7 @@ function formatDueDate(dateString: string | null): string {
 onMounted(() => {
   fetchChores();
   fetchUsers();
-  checkAdultPin();
+  checkParentPin();
 });
 </script>
 
@@ -300,7 +283,7 @@ onMounted(() => {
           </h1>
           <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <!-- User selector -->
-            <div v-if="users && users.length > 0" class="flex items-center gap-2">
+            <div v-if="users.length > 0" class="flex items-center gap-2">
               <label for="user-select" class="text-sm text-muted">Acting as:</label>
               <select
                 id="user-select"
@@ -389,20 +372,9 @@ onMounted(() => {
                   </p>
                 </div>
               </div>
-              <div class="flex items-center gap-1">
-                <UBadge :color="getStatusBadgeColor(chore.status)" size="sm">
-                  {{ getStatusLabel(chore.status) }}
-                </UBadge>
-                <UButton
-                  v-if="isAdult && isChoreManagementUnlocked"
-                  icon="i-lucide-pencil"
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  aria-label="Edit chore"
-                  @click.stop="handleEditChore(chore)"
-                />
-              </div>
+              <UBadge :color="getStatusBadgeColor(chore.status)" size="sm">
+                {{ getStatusLabel(chore.status) }}
+              </UBadge>
             </div>
 
             <p v-if="chore.description" class="text-sm text-muted mb-3">
@@ -472,32 +444,28 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Floating action button for creating chores (adult only) -->
+    <!-- Floating action button for creating chores (parent only) -->
     <GlobalFloatingActionButton
-      v-if="isAdult"
-      :icon="hasAdultPin && !isChoreManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'"
-      :label="hasAdultPin && !isChoreManagementUnlocked ? 'Unlock to manage chores' : 'Add new chore'"
+      v-if="isParent"
+      :icon="hasParentPin && !isChoreManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'"
+      :label="hasParentPin && !isChoreManagementUnlocked ? 'Unlock to add chore' : 'Add new chore'"
       color="primary"
       size="lg"
       position="bottom-right"
       @click="handleCreateChore"
     />
 
-    <!-- Create/Edit Chore Dialog -->
+    <!-- Create Chore Dialog -->
     <ChoreDialog
       :is-open="showCreateDialog"
-      :chore="editingChore"
       @close="showCreateDialog = false"
       @created="fetchChores"
-      @updated="fetchChores"
-      @deleted="fetchChores"
     />
 
     <!-- PIN verification dialog -->
     <SettingsPinDialog
       :is-open="isPinDialogOpen"
-      :user-id="selectedUserId"
-      title="Adult Verification Required"
+      title="Parent Access Required"
       @close="isPinDialogOpen = false"
       @verified="handlePinVerified"
     />

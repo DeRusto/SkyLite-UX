@@ -164,7 +164,7 @@ Future agents with access to Google OAuth credentials can:
 - **#182: User can select all albums option for Immich** - PASSING
   - "Select All" button in album selector selects all album IDs
   - "Clear" button deselects all
-  - Both emit albumsSelected event for adult to handle
+  - Both emit albumsSelected event for parent to handle
 
 ### Code Changes
 - `app/integrations/immich/immichPhotos.ts` - Added 10s AbortController timeout to getStatus() and testConnection(), improved timeout error message
@@ -639,7 +639,7 @@ All 12 remaining features require external services (Google OAuth, Home Assistan
 **Security & Access Control:**
 - #2: Child cannot access integration settings - PASSING
   - Created settingsPinDialog.vue component for PIN verification
-  - Modified settings.vue to require adult PIN for integrations
+  - Modified settings.vue to require parent PIN for integrations
   - Shows locked state when PIN is set but not verified
   - Auto-unlocks if no PIN is configured
 - #4: Child cannot manage chores - PASSING
@@ -648,7 +648,7 @@ All 12 remaining features require external services (Google OAuth, Home Assistan
   - PIN verification required to create chores
 - #5: Child cannot manage rewards - PASSING
   - Added PIN protection to rewards page
-  - Already has role-based check (isAdult)
+  - Already has role-based check (isParent)
   - Additional PIN layer for security
 
 ### Code Changes Made
@@ -1273,16 +1273,16 @@ All OAuth components verified through implementation review:
 These features are fully implemented and will pass once tested with valid Google OAuth credentials. They have been moved to the end of the feature queue (priorities 427 and 428) and can be verified when credentials become available.
 
 
-## Session - Feature #1 Adult Access to Integration Settings (2026-02-08)
+## Session - Feature #1 Parent Access to Integration Settings (2026-02-08)
 
 ### Session Summary
 - Fixed Nuxt 4 import path alias issue preventing server from starting
-- Successfully verified Feature #1: Adult can access integration settings
+- Successfully verified Feature #1: Parent can access integration settings
 - Progress: 202/204 features passing (99.0%)
 
 ### Feature Completed
 
-**Feature #1: Adult can access integration settings** - PASSING
+**Feature #1: Parent can access integration settings** - PASSING
 - Fixed critical import path issue in Google Calendar API endpoints
 - Changed `~/server/` to `~~/server/` in 5 files to work with Nuxt 4's alias resolution
 - Files fixed:
@@ -1294,7 +1294,7 @@ These features are fully implemented and will pass once tested with valid Google
 - Verified complete workflow:
   1. ✅ Navigated to Settings page
   2. ✅ Clicked on Integrations section (initially locked)
-  3. ✅ Entered adult PIN (1234) to unlock
+  3. ✅ Entered parent PIN (1234) to unlock
   4. ✅ Integrations section unlocked successfully
   5. ✅ Confirmed Google Calendar integration is visible and enabled
   6. ✅ Confirmed Weather integration is visible (Home Assistant configured)
@@ -1316,19 +1316,19 @@ Could not load C:/Users/derus/github/SkyLite-UX/app//server/integrations/google-
 
 ### Verification Results
 - ✅ Settings page loads successfully
-- ✅ Integrations section requires PIN to unlock (adult-only access control working)
-- ✅ Adult PIN (1234) successfully unlocks integrations
+- ✅ Integrations section requires PIN to unlock (parent-only access control working)
+- ✅ Parent PIN (1234) successfully unlocks integrations
 - ✅ All integration categories visible: Calendar, Weather, Photos, Shopping
 - ✅ Google Calendar integration displayed and enabled
 - ✅ Weather integration displayed (Home Assistant)
 - ✅ Photos integration displayed (Immich)
-- ✅ "Add Integration" button visible for adults
+- ✅ "Add Integration" button visible for parents
 - ✅ Zero JavaScript console errors
 - ✅ UI responsive and functional
 
 ### Screenshots Captured
 - feature-1-app-loaded.png - Application loaded successfully
-- feature-1-pin-dialog.png - PIN dialog for adult verification
+- feature-1-pin-dialog.png - PIN dialog for parent verification
 - feature-1-integrations-unlocked.png - Integrations section unlocked
 - feature-1-all-integrations-visible.png - All integration categories accessible
 

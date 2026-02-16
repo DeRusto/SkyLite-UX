@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
     const approve = body.approve !== false;
 
     const result = await prisma.$transaction(async (tx) => {
-      // Verify the verifying user is an adult
+      // Verify the verifying user is a parent
       const verifier = await tx.user.findUnique({
         where: { id: body.verifiedByUserId },
       });
@@ -42,10 +42,10 @@ export default defineEventHandler(async (event) => {
         });
       }
 
-      if (verifier.role !== "ADULT") {
+      if (verifier.role !== "PARENT") {
         throw createError({
           statusCode: 403,
-          message: "Only adults can verify chore completions",
+          message: "Only parents can verify chore completions",
         });
       }
 
