@@ -132,6 +132,12 @@ watch(users, (newUsers) => {
 }, { immediate: true });
 
 function handleUnlockIntegrations() {
+  // If no PIN is set, allow access immediately
+  if (householdSettings.value && !householdSettings.value.hasParentPin) {
+    isIntegrationsSectionUnlocked.value = true;
+    return;
+  }
+
   if (users.value.length > 0 && !isIntegrationsSectionUnlocked.value) {
     isPinDialogOpen.value = true;
   }
@@ -146,6 +152,10 @@ function handlePinVerified() {
 
 function handlePinChanged() {
   isPinChangeDialogOpen.value = false;
+  // Update local state to reflect that PIN is now set
+  if (householdSettings.value) {
+    householdSettings.value.hasParentPin = true;
+  }
   showSuccess("PIN Changed", "Parent PIN has been updated successfully");
 }
 
@@ -1231,6 +1241,7 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
 
     <SettingsPinChangeDialog
       :is-open="isPinChangeDialogOpen"
+      :has-parent-pin="!!householdSettings?.hasParentPin"
       @close="isPinChangeDialogOpen = false"
       @saved="handlePinChanged"
     />

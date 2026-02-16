@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     environment: Build
     steps:
@@ -23,7 +22,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
-          cache: pnpm
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -34,7 +33,7 @@ jobs:
           DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
       - name: Prepare Nuxt
-        run: pnpm run build
+        run: pnpm nuxi prepare
 
       - name: Type check
         run: pnpm run type-check

@@ -4,6 +4,7 @@ import { consola } from "consola";
 const props = defineProps<{
   isOpen: boolean;
   currentPin?: string;
+  hasParentPin?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -32,8 +33,8 @@ watch(() => props.isOpen, (open) => {
     showPassword.value = false;
     nextTick(() => {
       try {
-        const el = (currentPinInput.value as unknown as { $el?: HTMLElement })?.$el?.querySelector("input");
-        el?.focus();
+        const el = (props.hasParentPin ? currentPinInput.value : newPinInput.value) as unknown as { $el?: HTMLElement };
+        el?.$el?.querySelector("input")?.focus();
       }
       catch {
         // Focus is non-critical, ignore errors
@@ -43,7 +44,7 @@ watch(() => props.isOpen, (open) => {
 });
 
 async function handleSave() {
-  if (!currentPin.value) {
+  if (props.hasParentPin && !currentPin.value) {
     error.value = "Please enter your current PIN";
     return;
   }
@@ -67,18 +68,20 @@ async function handleSave() {
   error.value = "";
 
   try {
-    const result = await $fetch<{ valid: boolean; message?: string }>("/api/household/verifyPin", {
-      method: "POST",
-      body: { pin: currentPin.value },
-    });
+    if (props.hasParentPin) {
+      const result = await $fetch<{ valid: boolean; message?: string }>("/api/household/verifyPin", {
+        method: "POST",
+        body: { pin: currentPin.value },
+      });
 
-    if (!result.valid) {
-      error.value = result.message || "Current PIN is incorrect";
-      isSaving.value = false;
-      return;
+      if (!result.valid) {
+        error.value = result.message || "Current PIN is incorrect";
+        isSaving.value = false;
+        return;
+      }
     }
 
-    // Current PIN is correct, now update to new PIN
+    // Update to new PIN
     await $fetch("/api/household/settings", {
       method: "PUT",
       body: { parentPin: newPin.value },
@@ -102,6 +105,13 @@ function handleKeydown(event: KeyboardEvent) {
     handleSave();
   }
 }
+
+function focusConfirmInput() {
+  if (confirmPinInput.value) {
+    const el = (confirmPinInput.value as unknown as { $el?: HTMLElement })?.$el?.querySelector("input");
+    el?.focus();
+  }
+}
 </script>
 
 <template>
@@ -114,7 +124,7 @@ function handleKeydown(event: KeyboardEvent) {
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-highlighted">
             <UIcon name="i-lucide-lock" class="h-4 w-4 inline mr-2" />
-            Change Parent PIN
+            {{ hasParentPin ? "Change Parent PIN" : "Set Parent PIN" }}
           </h3>
           <UButton
             variant="ghost"
@@ -126,7 +136,7 @@ function handleKeydown(event: KeyboardEvent) {
         </div>
 
         <p class="text-muted mb-4">
-          Enter your current PIN and choose a new PIN for household security.
+          {{ hasParentPin ? "Enter your current PIN and choose a new PIN for household security." : "Choose a new PIN to secure your household settings." }}
         </p>
 
         <div class="space-y-4">
@@ -134,7 +144,7 @@ function handleKeydown(event: KeyboardEvent) {
             {{ error }}
           </div>
 
-          <UFormField label="Current PIN" :error="error && !currentPin ? 'Required' : ''">
+          <UFormField v-if="hasParentPin" label="Current PIN" :error="error && !currentPin ? 'Required' : ''">
             <UInput
               ref="currentPinInput"
               v-model="currentPin"
@@ -153,7 +163,7 @@ function handleKeydown(event: KeyboardEvent) {
                   @click="showPassword = !showPassword"
                 />
               </template>
-            </uinput>
+            </UInput>
           </UFormField>
 
           <UFormField label="New PIN" :error="error && !newPin ? 'Required' : ''">
@@ -164,7 +174,7 @@ function handleKeydown(event: KeyboardEvent) {
               placeholder="Enter new PIN (min 4 digits)"
               :disabled="isSaving"
               autocomplete="new-password"
-              @keydown.enter="confirmPinInput?.focus()"
+              @keydown.enter="focusConfirmInput"
             >
               <template #trailing>
                 <UButton
@@ -175,7 +185,7 @@ function handleKeydown(event: KeyboardEvent) {
                   @click="showPassword = !showPassword"
                 />
               </template>
-            </uinput>
+            </UInput>
           </UFormField>
 
           <UFormField label="Confirm New PIN" :error="error && newPin !== confirmPin ? 'PINs must match' : ''">
@@ -197,7 +207,7 @@ function handleKeydown(event: KeyboardEvent) {
                   @click="showPassword = !showPassword"
                 />
               </template>
-            </uinput>
+            </UInput>
           </UFormField>
 
           <div class="flex gap-2 justify-end">
@@ -212,7 +222,7 @@ function handleKeydown(event: KeyboardEvent) {
               :loading="isSaving"
               @click="handleSave"
             >
-              Change PIN
+              {{ hasParentPin ? "Change PIN" : "Set PIN" }}
             </UButton>
           </div>
         </div>
