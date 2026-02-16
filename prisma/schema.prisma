@@ -367,7 +367,6 @@ model PhotoCache {
   expiresAt     DateTime // Cache expiration time
 
   @@unique([integrationId, assetId, size])
-  @@index([integrationId, assetId])
   @@map("photo_cache")
 }
 
