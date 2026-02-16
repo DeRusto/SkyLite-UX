@@ -100,7 +100,7 @@ export default defineEventHandler(async (event) => {
     // If albums are selected, get photos from those albums
     if (selectedAlbums.length > 0) {
       photoIds = new Set<string>();
-      await Promise.all(selectedAlbums.map(async (albumId) => {
+      for (const albumId of selectedAlbums) {
         try {
           const albumResponse = await fetch(`${baseUrl}/api/albums/${albumId}`, { headers });
           if (albumResponse.ok) {
@@ -108,7 +108,7 @@ export default defineEventHandler(async (event) => {
             if (albumData.assets) {
               for (const asset of albumData.assets) {
                 if (asset.type === "IMAGE") {
-                  photoIds!.add(asset.id);
+                  photoIds.add(asset.id);
                 }
               }
             }
@@ -121,7 +121,7 @@ export default defineEventHandler(async (event) => {
           consola.warn(`Failed to fetch album ${albumId}:`, err);
           albumFetchErrors++;
         }
-      }));
+      }
     }
 
     // If people are selected, get photos of those people
@@ -129,7 +129,7 @@ export default defineEventHandler(async (event) => {
     let personFetchErrors = 0;
     if (selectedPeople.length > 0) {
       personPhotoIds = new Set<string>();
-      await Promise.all(selectedPeople.map(async (personId) => {
+      for (const personId of selectedPeople) {
         try {
           // Use Immich search/metadata API to find photos of a specific person
           const searchResponse = await fetch(`${baseUrl}/api/search/metadata`, {
@@ -145,7 +145,7 @@ export default defineEventHandler(async (event) => {
             const searchData = await searchResponse.json() as ImmichSearchResult;
             if (searchData.assets?.items) {
               for (const asset of searchData.assets.items) {
-                personPhotoIds!.add(asset.id);
+                personPhotoIds.add(asset.id);
               }
             }
           }
@@ -157,7 +157,7 @@ export default defineEventHandler(async (event) => {
           consola.warn(`Failed to fetch photos for person ${personId}:`, err);
           personFetchErrors++;
         }
-      }));
+      }
     }
 
     // Combine filters: if both albums AND people selected, intersect the sets
