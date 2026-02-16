@@ -13,7 +13,16 @@ export default withNuxt(antfu({
     semi: true,
     quotes: "double",
   },
-  ignores: [".pnpm-store/**", "**/migrations/*", ".gitignore", ".devcontainer/**", ".github/**", "docker-compose-example.yaml", "docs/plans/**", ".playwright-cli/**"],
+  ignores: [
+    ".pnpm-store/**",
+    "**/migrations/*",
+    ".gitignore",
+    ".devcontainer/**",
+    ".github/**",
+    "docker-compose-example.yaml",
+    "docs/**",
+    ".playwright-cli/**",
+  ],
 }, {
   rules: {
     "vue/max-attributes-per-line": ["error", {
