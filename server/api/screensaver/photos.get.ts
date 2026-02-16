@@ -100,25 +100,31 @@ export default defineEventHandler(async (event) => {
     // If albums are selected, get photos from those albums
     if (selectedAlbums.length > 0) {
       photoIds = new Set<string>();
-      for (const albumId of selectedAlbums) {
-        try {
-          const albumResponse = await fetch(`${baseUrl}/api/albums/${albumId}`, { headers });
-          if (albumResponse.ok) {
-            const albumData = await albumResponse.json() as ImmichAlbumAssets;
-            if (albumData.assets) {
-              for (const asset of albumData.assets) {
-                if (asset.type === "IMAGE") {
-                  photoIds.add(asset.id);
-                }
-              }
+      const albumResults = await Promise.all(
+        selectedAlbums.map(async (albumId) => {
+          try {
+            const response = await fetch(`${baseUrl}/api/albums/${albumId}`, { headers });
+            if (response.ok) {
+              const data = (await response.json()) as ImmichAlbumAssets;
+              return { data, success: true };
             }
           }
-          else {
-            albumFetchErrors++;
+          catch (err) {
+            consola.warn(`Failed to fetch album ${albumId}:`, err);
+          }
+          return { success: false };
+        }),
+      );
+
+      for (const result of albumResults) {
+        if (result.success && result.data?.assets) {
+          for (const asset of result.data.assets) {
+            if (asset.type === "IMAGE") {
+              photoIds.add(asset.id);
+            }
           }
         }
-        catch (err) {
-          consola.warn(`Failed to fetch album ${albumId}:`, err);
+        else {
           albumFetchErrors++;
         }
       }
@@ -129,32 +135,38 @@ export default defineEventHandler(async (event) => {
     let personFetchErrors = 0;
     if (selectedPeople.length > 0) {
       personPhotoIds = new Set<string>();
-      for (const personId of selectedPeople) {
-        try {
-          // Use Immich search/metadata API to find photos of a specific person
-          const searchResponse = await fetch(`${baseUrl}/api/search/metadata`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              personIds: [personId],
-              type: "IMAGE",
-              size: 1000,
-            }),
-          });
-          if (searchResponse.ok) {
-            const searchData = await searchResponse.json() as ImmichSearchResult;
-            if (searchData.assets?.items) {
-              for (const asset of searchData.assets.items) {
-                personPhotoIds.add(asset.id);
-              }
+      const personResults = await Promise.all(
+        selectedPeople.map(async (personId) => {
+          try {
+            // Use Immich search/metadata API to find photos of a specific person
+            const response = await fetch(`${baseUrl}/api/search/metadata`, {
+              body: JSON.stringify({
+                personIds: [personId],
+                size: 1000,
+                type: "IMAGE",
+              }),
+              headers,
+              method: "POST",
+            });
+            if (response.ok) {
+              const data = (await response.json()) as ImmichSearchResult;
+              return { data, success: true };
             }
           }
-          else {
-            personFetchErrors++;
+          catch (err) {
+            consola.warn(`Failed to fetch photos for person ${personId}:`, err);
+          }
+          return { success: false };
+        }),
+      );
+
+      for (const result of personResults) {
+        if (result.success && result.data?.assets?.items) {
+          for (const asset of result.data.assets.items) {
+            personPhotoIds.add(asset.id);
           }
         }
-        catch (err) {
-          consola.warn(`Failed to fetch photos for person ${personId}:`, err);
+        else {
           personFetchErrors++;
         }
       }
