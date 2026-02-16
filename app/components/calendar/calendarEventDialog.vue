@@ -969,7 +969,7 @@ function handleDelete() {
 <template>
   <GlobalDialog
     :is-open="isOpen"
-    :title="event?.id ? 'Edit Event' : 'New Event'"
+    :title="event?.id ? 'Edit Event' : 'Create Event'"
     :is-submitting="isSubmitting"
     :is-read-only="isReadOnly"
     :show-delete="!!(event?.id && canDelete)"
