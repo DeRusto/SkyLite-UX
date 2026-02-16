@@ -17,9 +17,22 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await readBody(event);
-    const { name, type, service, apiKey, baseUrl, icon, enabled, settings } = body;
+    const {
+      name,
+      type,
+      service,
+      apiKey,
+      baseUrl,
+      icon,
+      enabled,
+      settings,
+      accessToken,
+      refreshToken,
+      tokenExpiry,
+      tokenType,
+    } = body;
 
-    if (apiKey || baseUrl) {
+    if (apiKey || baseUrl || accessToken || refreshToken) {
       const currentIntegration = await prisma.integration.findUnique({
         where: { id },
       });
@@ -41,6 +54,10 @@ export default defineEventHandler(async (event) => {
         ...(icon !== undefined && { icon }),
         ...(enabled !== undefined && { enabled }),
         ...(settings && { settings }),
+        ...(accessToken && { accessToken }),
+        ...(refreshToken && { refreshToken }),
+        ...(tokenExpiry && { tokenExpiry: new Date(tokenExpiry) }),
+        ...(tokenType && { tokenType }),
       };
 
       if (type || service) {
@@ -85,10 +102,10 @@ export default defineEventHandler(async (event) => {
         name: updatedData.name || "Temp",
         icon: updatedData.icon || null,
         settings: updatedData.settings || {},
-        accessToken: null,
-        refreshToken: null,
-        tokenExpiry: null,
-        tokenType: null,
+        accessToken: updatedData.accessToken || null,
+        refreshToken: updatedData.refreshToken || null,
+        tokenExpiry: updatedData.tokenExpiry ? new Date(updatedData.tokenExpiry) : null,
+        tokenType: updatedData.tokenType || null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -122,6 +139,10 @@ export default defineEventHandler(async (event) => {
         ...(icon !== undefined && { icon }),
         ...(enabled !== undefined && { enabled }),
         ...(settings && { settings }),
+        ...(accessToken && { accessToken }),
+        ...(refreshToken && { refreshToken }),
+        ...(tokenExpiry && { tokenExpiry: new Date(tokenExpiry) }),
+        ...(tokenType && { tokenType }),
       },
     });
 

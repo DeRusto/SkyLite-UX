@@ -9,7 +9,20 @@ const prisma = new PrismaClient();
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
-    const { name, type, service, apiKey, baseUrl, icon, enabled, settings } = body;
+    const {
+      name,
+      type,
+      service,
+      apiKey,
+      baseUrl,
+      icon,
+      enabled,
+      settings,
+      accessToken,
+      refreshToken,
+      tokenExpiry,
+      tokenType,
+    } = body;
 
     const integrationKey = `${type}:${service}`;
 
@@ -61,10 +74,10 @@ export default defineEventHandler(async (event) => {
       name: name || "Temp",
       icon: icon || null,
       settings: settings || {},
-      accessToken: null,
-      refreshToken: null,
-      tokenExpiry: null,
-      tokenType: null,
+      accessToken: accessToken || null,
+      refreshToken: refreshToken || null,
+      tokenExpiry: tokenExpiry ? new Date(tokenExpiry) : null,
+      tokenType: tokenType || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -96,6 +109,10 @@ export default defineEventHandler(async (event) => {
         icon,
         enabled,
         settings,
+        accessToken,
+        refreshToken,
+        tokenExpiry: tokenExpiry ? new Date(tokenExpiry) : null,
+        tokenType,
       },
     });
 

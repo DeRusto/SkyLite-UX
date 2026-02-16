@@ -93,7 +93,15 @@ export async function createIntegrationService(integration: Integration): Promis
       return null;
     }
 
-    return serviceFactory.factory(integration.id, integration.apiKey || "", integration.baseUrl || "", integration.settings as ICalSettings);
+    return serviceFactory.factory(
+      integration.id,
+      integration.apiKey || "",
+      integration.baseUrl || "",
+      integration.settings as ICalSettings,
+      integration.accessToken,
+      integration.refreshToken,
+      integration.tokenExpiry,
+    );
   }
   catch (error) {
     consola.error(`Failed to create integration service for ${integration.type}:${integration.service}:`, error);
