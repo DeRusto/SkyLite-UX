@@ -59,7 +59,7 @@ Uses Nuxt 4's `app/` directory with `future.compatibilityVersion: 4`.
 
 **Global components**: `globalAppLoading`, `globalSideBar`, `globalDock` are statically imported in `app.vue` (explicitly excluded from auto-import chunking in `nuxt.config.ts`).
 
-**Dialog pattern**: `*Dialog.vue` components for CRUD modals using Nuxt UI's `UModal`.
+**Dialog pattern**: `*Dialog.vue` components for CRUD modals using the standardized `GlobalDialog` component.
 
 **Sync Manager**: Server plugin polls enabled integrations at configured intervals and broadcasts updates via SSE. Client composable `useSyncManager()` listens for real-time updates.
 
