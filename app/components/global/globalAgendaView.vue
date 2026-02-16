@@ -15,6 +15,7 @@ const emit = defineEmits<{
   (e: "eventClick", event: CalendarEvent, mouseEvent: MouseEvent): void;
 }>();
 
+const { isDesktop } = useBreakpoint();
 const { isToday, handleEventClick: _handleEventClick, scrollToDate, getAgendaEventsForDay } = useCalendar();
 
 const { getStableDate } = useStableDate();
@@ -56,9 +57,17 @@ watch(() => props.days, () => {
           v-for="day in days"
           :key="day.toString()"
           :data-date="format(day, 'yyyy-MM-dd')"
-          class="border-default relative my-12 border-t border-r"
+          class="border-default relative border-t border-r"
+          :class="[
+            isDesktop ? 'my-12' : 'my-6',
+          ]"
         >
-          <span class="bg-default absolute -top-3 left-0 flex h-6 items-center pe-4 text-[10px] uppercase sm:pe-4 sm:text-xs">
+          <span
+            class="bg-default absolute -top-3 left-0 flex h-6 items-center pe-4 text-[10px] uppercase sm:pe-4 sm:text-xs"
+            :class="[
+              !isDesktop ? 'sticky top-0 z-10' : '',
+            ]"
+          >
             <span
               class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold mr-2"
               :class="{

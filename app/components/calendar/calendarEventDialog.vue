@@ -27,6 +27,7 @@ const emit = defineEmits<{
   (e: "delete", eventId: string): void;
 }>();
 
+const { isDesktop } = useBreakpoint();
 const { users, fetchUsers } = useUsers();
 
 const { getEventStartTimeForInput, getEventEndTimeForInput, getLocalTimeFromUTC } = useCalendar();
@@ -160,6 +161,57 @@ const endHour = ref(DefaultEndHour);
 const endMinute = ref(0);
 const endAmPm = ref("AM");
 
+function to12Hour(hour24: number): { hour: number; amPm: string } {
+  if (hour24 === 0) {
+    return { hour: 12, amPm: "AM" };
+  }
+  if (hour24 === 12) {
+    return { hour: 12, amPm: "PM" };
+  }
+  if (hour24 > 12) {
+    return { hour: hour24 - 12, amPm: "PM" };
+  }
+  return { hour: hour24, amPm: "AM" };
+}
+
+function to24Hour(hour12: number, amPm: string): number {
+  if (amPm === "PM" && hour12 !== 12) {
+    return hour12 + 12;
+  }
+  if (amPm === "AM" && hour12 === 12) {
+    return 0;
+  }
+  return hour12;
+}
+
+function getRoundedCurrentTime(): { hour24: number; minutes: number } {
+  const now = new Date();
+  let minutes = Math.round(now.getMinutes() / 5) * 5;
+  let hour24 = now.getHours();
+  if (minutes === 60) {
+    minutes = 0;
+    hour24 = (hour24 + 1) % 24;
+  }
+  return { hour24, minutes };
+}
+
+function addMinutesTo12Hour(hour12: number, minute: number, amPm: string, minutesToAdd: number): { hour: number; minute: number; amPm: string } {
+  let totalMinutes = minute + minutesToAdd;
+  let hour24 = to24Hour(hour12, amPm);
+
+  if (totalMinutes >= 60) {
+    totalMinutes -= 60;
+    hour24 += 1;
+  }
+
+  if (hour24 >= 24) {
+    hour24 -= 24;
+  }
+
+  const result = to12Hour(hour24);
+  return { hour: result.hour, minute: totalMinutes, amPm: result.amPm };
+}
+
 const canEdit = computed(() => {
   if (!props.integrationCapabilities)
     return true;
@@ -289,58 +341,17 @@ watch(recurrenceUntil, () => {
 
 function handleAllDayToggle() {
   if (!allDay.value) {
-    const now = new Date();
+    const { hour24, minutes } = getRoundedCurrentTime();
+    const startTime = to12Hour(hour24);
 
-    const currentMinutes = now.getMinutes();
-    const roundedMinutes = Math.round(currentMinutes / 5) * 5;
+    startHour.value = startTime.hour;
+    startMinute.value = minutes;
+    startAmPm.value = startTime.amPm;
 
-    let currentHour = now.getHours();
-    let adjustedMinutes = roundedMinutes;
-
-    if (adjustedMinutes === 60) {
-      adjustedMinutes = 0;
-      currentHour += 1;
-    }
-
-    let startHourValue = currentHour;
-    let startAmPmValue = "AM";
-
-    if (startHourValue === 0) {
-      startHourValue = 12;
-    }
-    else if (startHourValue > 12) {
-      startHourValue -= 12;
-      startAmPmValue = "PM";
-    }
-    else if (startHourValue === 12) {
-      startAmPmValue = "PM";
-    }
-
-    startHour.value = startHourValue;
-    startMinute.value = adjustedMinutes;
-    startAmPm.value = startAmPmValue;
-
-    let endHourValue = startHour.value;
-    let endMinuteValue = startMinute.value + 30;
-    let endAmPmValue = startAmPm.value;
-
-    if (endMinuteValue >= 60) {
-      endMinuteValue -= 60;
-      endHourValue += 1;
-    }
-
-    if (endHourValue > 12) {
-      endHourValue -= 12;
-      endAmPmValue = endAmPmValue === "AM" ? "PM" : "AM";
-    }
-
-    if (endHourValue === 0) {
-      endHourValue = 12;
-    }
-
-    endHour.value = endHourValue;
-    endMinute.value = endMinuteValue;
-    endAmPm.value = endAmPmValue;
+    const endTime = addMinutesTo12Hour(startTime.hour, minutes, startTime.amPm, 30);
+    endHour.value = endTime.hour;
+    endMinute.value = endTime.minute;
+    endAmPm.value = endTime.amPm;
   }
 }
 
@@ -363,65 +374,17 @@ watch(() => props.event, async (newEvent) => {
         endDate.value = parseDate(startDateStr);
       }
 
-      // Set default time to current time rounded to nearest 5 minutes
-      const now = new Date();
-      const currentMinutes = now.getMinutes();
-      const roundedMinutes = Math.round(currentMinutes / 5) * 5;
-      let currentHour = now.getHours();
-      let adjustedMinutes = roundedMinutes;
+      const { hour24, minutes } = getRoundedCurrentTime();
+      const startTime = to12Hour(hour24);
 
-      if (adjustedMinutes === 60) {
-        adjustedMinutes = 0;
-        currentHour += 1;
-      }
+      startHour.value = startTime.hour;
+      startMinute.value = minutes;
+      startAmPm.value = startTime.amPm;
 
-      let startHourValue = currentHour;
-      let startAmPmValue = "AM";
-
-      if (startHourValue === 0) {
-        startHourValue = 12;
-      }
-      else if (startHourValue > 12) {
-        startHourValue -= 12;
-        startAmPmValue = "PM";
-      }
-      else if (startHourValue === 12) {
-        startAmPmValue = "PM";
-      }
-
-      startHour.value = startHourValue;
-      startMinute.value = adjustedMinutes;
-      startAmPm.value = startAmPmValue;
-
-      // End time is 30 minutes after start
-      let endHourValue = currentHour;
-      let endMinuteValue = adjustedMinutes + 30;
-      let endAmPmValue = startAmPmValue;
-
-      if (endMinuteValue >= 60) {
-        endMinuteValue -= 60;
-        endHourValue += 1;
-      }
-
-      if (endHourValue >= 24) {
-        endHourValue -= 24;
-      }
-
-      if (endHourValue === 0) {
-        endHourValue = 12;
-        endAmPmValue = "AM";
-      }
-      else if (endHourValue > 12) {
-        endHourValue -= 12;
-        endAmPmValue = "PM";
-      }
-      else if (endHourValue === 12) {
-        endAmPmValue = "PM";
-      }
-
-      endHour.value = endHourValue;
-      endMinute.value = endMinuteValue;
-      endAmPm.value = endAmPmValue;
+      const endTime = addMinutesTo12Hour(startTime.hour, minutes, startTime.amPm, 30);
+      endHour.value = endTime.hour;
+      endMinute.value = endTime.minute;
+      endAmPm.value = endTime.amPm;
 
       allDay.value = newEvent.allDay || false;
       return;
@@ -482,18 +445,19 @@ watch(() => props.event, async (newEvent) => {
     const startTimeParts = startTimeStr.split(":");
     if (startTimeParts.length >= 2) {
       const startTimeHour = Number.parseInt(startTimeParts[0]!);
-      const startHourValue = startTimeHour === 0 ? 12 : startTimeHour > 12 ? startTimeHour - 12 : startTimeHour;
-      startHour.value = startHourValue;
+      const startConverted = to12Hour(startTimeHour);
+      startHour.value = startConverted.hour;
       startMinute.value = Number.parseInt(startTimeParts[1]!);
-      startAmPm.value = startTimeHour >= 12 ? "PM" : "AM";
+      startAmPm.value = startConverted.amPm;
     }
 
     const endTimeParts = endTimeStr.split(":");
     if (endTimeParts.length >= 2) {
       const endTimeHour = Number.parseInt(endTimeParts[0]!);
-      endHour.value = endTimeHour === 0 ? 12 : endTimeHour > 12 ? endTimeHour - 12 : endTimeHour;
+      const endConverted = to12Hour(endTimeHour);
+      endHour.value = endConverted.hour;
       endMinute.value = Number.parseInt(endTimeParts[1]!);
-      endAmPm.value = endTimeHour >= 12 ? "PM" : "AM";
+      endAmPm.value = endConverted.amPm;
     }
     allDay.value = newEvent.allDay || false;
     location.value = newEvent.location || "";
@@ -517,7 +481,6 @@ function resetForm() {
   description.value = "";
 
   const now = new Date();
-
   const todayString = now.toISOString().split("T")[0];
   if (todayString) {
     const todayDate = parseDate(todayString);
@@ -525,56 +488,17 @@ function resetForm() {
     endDate.value = todayDate;
   }
 
-  const currentMinutes = now.getMinutes();
-  const roundedMinutes = Math.round(currentMinutes / 5) * 5;
+  const { hour24, minutes } = getRoundedCurrentTime();
+  const startTime = to12Hour(hour24);
 
-  let currentHour = now.getHours();
-  let adjustedMinutes = roundedMinutes;
+  startHour.value = startTime.hour;
+  startMinute.value = minutes;
+  startAmPm.value = startTime.amPm;
 
-  if (adjustedMinutes === 60) {
-    adjustedMinutes = 0;
-    currentHour += 1;
-  }
-
-  let startHourValue = currentHour;
-  let startAmPmValue = "AM";
-
-  if (startHourValue === 0) {
-    startHourValue = 12;
-  }
-  else if (startHourValue > 12) {
-    startHourValue -= 12;
-    startAmPmValue = "PM";
-  }
-  else if (startHourValue === 12) {
-    startAmPmValue = "PM";
-  }
-
-  startHour.value = startHourValue;
-  startMinute.value = adjustedMinutes;
-  startAmPm.value = startAmPmValue;
-
-  let endHourValue = startHour.value;
-  let endMinuteValue = startMinute.value + 30;
-  let endAmPmValue = startAmPm.value;
-
-  if (endMinuteValue >= 60) {
-    endMinuteValue -= 60;
-    endHourValue += 1;
-  }
-
-  if (endHourValue > 12) {
-    endHourValue -= 12;
-    endAmPmValue = endAmPmValue === "AM" ? "PM" : "AM";
-  }
-
-  if (endHourValue === 0) {
-    endHourValue = 12;
-  }
-
-  endHour.value = endHourValue;
-  endMinute.value = endMinuteValue;
-  endAmPm.value = endAmPmValue;
+  const endTime = addMinutesTo12Hour(startTime.hour, minutes, startTime.amPm, 30);
+  endHour.value = endTime.hour;
+  endMinute.value = endTime.minute;
+  endAmPm.value = endTime.amPm;
 
   allDay.value = false;
   location.value = "";
@@ -583,17 +507,7 @@ function resetForm() {
   isSubmitting.value = false;
   isDeleting.value = false;
 
-  isRecurring.value = false;
-  recurrenceType.value = "weekly";
-  recurrenceInterval.value = 1;
-  recurrenceEndType.value = "never";
-  recurrenceCount.value = 10;
-  recurrenceUntil.value = new CalendarDate(2025, 12, 31);
-  recurrenceDays.value = [];
-  recurrenceMonthlyType.value = "day";
-  recurrenceMonthlyWeekday.value = { week: 1, day: 1 };
-  recurrenceYearlyType.value = "day";
-  recurrenceYearlyWeekday.value = { week: 1, day: 1, month: 0 };
+  resetRecurrenceFields();
 }
 
 function updateEndTime() {
@@ -601,27 +515,10 @@ function updateEndTime() {
     return;
 
   if (startDate.value.toDate(getLocalTimeZone()).getTime() === endDate.value.toDate(getLocalTimeZone()).getTime() && isStartTimeAfterEndTime()) {
-    let endHourValue = startHour.value;
-    let endMinuteValue = startMinute.value + 30;
-    let endAmPmValue = startAmPm.value;
-
-    if (endMinuteValue >= 60) {
-      endMinuteValue -= 60;
-      endHourValue += 1;
-    }
-
-    if (endHourValue > 12) {
-      endHourValue -= 12;
-      endAmPmValue = endAmPmValue === "AM" ? "PM" : "AM";
-    }
-
-    if (endHourValue === 0) {
-      endHourValue = 12;
-    }
-
-    endHour.value = endHourValue;
-    endMinute.value = endMinuteValue;
-    endAmPm.value = endAmPmValue;
+    const endTime = addMinutesTo12Hour(startHour.value, startMinute.value, startAmPm.value, 30);
+    endHour.value = endTime.hour;
+    endMinute.value = endTime.minute;
+    endAmPm.value = endTime.amPm;
   }
 }
 
@@ -629,47 +526,38 @@ function updateStartTime() {
   if (allDay.value)
     return;
 
-  if (startDate.value.toDate(getLocalTimeZone()).getTime() === endDate.value.toDate(getLocalTimeZone()).getTime() && isEndTimeBeforeStartTime()) {
-    let startHourValue = endHour.value;
-    let startMinuteValue = endMinute.value - 30;
-    let startAmPmValue = endAmPm.value;
+  if (startDate.value.toDate(getLocalTimeZone()).getTime() === endDate.value.toDate(getLocalTimeZone()).getTime() && isStartTimeAfterEndTime()) {
+    let endHour24 = to24Hour(endHour.value, endAmPm.value);
+    let adjustedMinute = endMinute.value - 30;
 
-    if (startMinuteValue < 0) {
-      startMinuteValue += 60;
-      startHourValue -= 1;
+    if (adjustedMinute < 0) {
+      adjustedMinute += 60;
+      endHour24 -= 1;
     }
 
-    if (startHourValue < 1) {
-      startHourValue += 12;
-      startAmPmValue = startAmPmValue === "AM" ? "PM" : "AM";
+    if (endHour24 < 0) {
+      endHour24 += 24;
     }
 
-    if (startHourValue === 0) {
-      startHourValue = 12;
-    }
-
-    startHour.value = startHourValue;
-    startMinute.value = startMinuteValue;
-    startAmPm.value = startAmPmValue;
+    const newStartTime = to12Hour(endHour24);
+    startHour.value = newStartTime.hour;
+    startMinute.value = adjustedMinute;
+    startAmPm.value = newStartTime.amPm;
   }
 }
 
 function isStartTimeAfterEndTime(): boolean {
-  const startTime24 = startAmPm.value === "PM" && startHour.value !== 12 ? startHour.value + 12 : startHour.value === 12 && startAmPm.value === "AM" ? 0 : startHour.value;
-  const endTime24 = endAmPm.value === "PM" && endHour.value !== 12 ? endHour.value + 12 : endHour.value === 12 && endAmPm.value === "AM" ? 0 : endHour.value;
+  const startTime24 = to24Hour(startHour.value, startAmPm.value);
+  const endTime24 = to24Hour(endHour.value, endAmPm.value);
 
-  const startMinutes = startTime24 * 60 + startMinute.value;
-  const endMinutes = endTime24 * 60 + endMinute.value;
+  const startTotalMinutes = startTime24 * 60 + startMinute.value;
+  const endTotalMinutes = endTime24 * 60 + endMinute.value;
 
   if (startDate.value.toDate(getLocalTimeZone()).getTime() === endDate.value.toDate(getLocalTimeZone()).getTime()) {
-    return startMinutes > endMinutes;
+    return startTotalMinutes > endTotalMinutes;
   }
 
   return false;
-}
-
-function isEndTimeBeforeStartTime(): boolean {
-  return isStartTimeAfterEndTime();
 }
 
 function toggleRecurrenceDay(day: number) {
@@ -945,8 +833,8 @@ function handleSave() {
       const startLocal = startDate.value.toDate(getLocalTimeZone());
       const endLocal = endDate.value.toDate(getLocalTimeZone());
 
-      const startHours24 = startAmPm.value === "PM" && startHour.value !== 12 ? startHour.value + 12 : startHour.value === 12 && startAmPm.value === "AM" ? 0 : startHour.value;
-      const endHours24 = endAmPm.value === "PM" && endHour.value !== 12 ? endHour.value + 12 : endHour.value === 12 && endAmPm.value === "AM" ? 0 : endHour.value;
+      const startHours24 = to24Hour(startHour.value, startAmPm.value);
+      const endHours24 = to24Hour(endHour.value, endAmPm.value);
 
       if (
         startHours24 < StartHour
@@ -1117,14 +1005,52 @@ function handleDelete() {
 
   <div
     v-if="isOpen"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-    @click="handleClose"
+    :class="isDesktop
+      ? 'fixed inset-0 z-[100] flex items-center justify-center bg-black/50'
+      : 'fixed inset-0 z-[100] bg-default'"
+    @click="isDesktop ? handleClose() : undefined"
   >
     <div
-      class="w-full max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto bg-default rounded-lg border border-default shadow-lg"
+      :class="isDesktop
+        ? 'w-full max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto bg-default rounded-lg border border-default shadow-lg'
+        : 'h-full flex flex-col'"
       @click.stop
     >
-      <div class="flex items-center justify-between p-4 border-b border-default">
+      <!-- Mobile top bar -->
+      <div
+        v-if="!isDesktop"
+        class="flex items-center justify-between p-3 border-b border-default shrink-0"
+      >
+        <UButton
+          color="neutral"
+          variant="ghost"
+          @click="handleClose"
+        >
+          Cancel
+        </UButton>
+        <h2 class="text-base font-semibold leading-6">
+          {{ event?.id ? 'Edit Event' : 'New Event' }}
+        </h2>
+        <UButton
+          v-if="!isReadOnly"
+          color="primary"
+          :loading="isSubmitting"
+          :disabled="isSubmitting"
+          @click="handleSave"
+        >
+          Save
+        </UButton>
+        <span
+          v-else
+          class="w-[60px]"
+        />
+      </div>
+
+      <!-- Desktop header -->
+      <div
+        v-if="isDesktop"
+        class="flex items-center justify-between p-4 border-b border-default"
+      >
         <h2 class="text-base font-semibold leading-6">
           {{ event?.id ? 'Edit Event' : 'Create Event' }}
         </h2>
@@ -1137,7 +1063,7 @@ function handleDelete() {
           @click="handleClose"
         />
       </div>
-      <div class="p-4 space-y-6">
+      <div :class="isDesktop ? 'p-4 space-y-6' : 'flex-1 overflow-y-auto p-4 space-y-6'">
         <div
           v-if="error"
           role="alert"
@@ -1537,7 +1463,12 @@ function handleDelete() {
           </div>
         </div>
       </div>
-      <div class="flex justify-between p-4 border-t border-default">
+
+      <!-- Desktop footer -->
+      <div
+        v-if="isDesktop"
+        class="flex justify-between p-4 border-t border-default"
+      >
         <div class="flex gap-2">
           <UButton
             v-if="event?.id && canDelete"
@@ -1578,6 +1509,24 @@ function handleDelete() {
             Save
           </UButton>
         </div>
+      </div>
+
+      <!-- Mobile delete section -->
+      <div
+        v-if="!isDesktop && event?.id && canDelete"
+        class="p-4 pb-[env(safe-area-inset-bottom,16px)] shrink-0"
+      >
+        <UButton
+          color="error"
+          variant="soft"
+          icon="i-lucide-trash"
+          class="w-full"
+          :loading="isDeleting"
+          :disabled="isDeleting"
+          @click="handleDelete"
+        >
+          Delete Event
+        </UButton>
       </div>
     </div>
   </div>

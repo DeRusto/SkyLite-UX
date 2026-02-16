@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CalendarEvent } from "~/types/calendar";
 
+import { useBreakpoint } from "~/composables/useBreakpoint";
 import { useCalendar } from "~/composables/useCalendar";
 import { useStableDate } from "~/composables/useStableDate";
 
@@ -16,6 +17,20 @@ const emit = defineEmits<{
 }>();
 
 const { getStableDate } = useStableDate();
+const { isDesktop } = useBreakpoint();
+
+const isPhone = ref(false);
+if (import.meta.client) {
+  isPhone.value = window.innerWidth < 640;
+  const smQuery = window.matchMedia("(max-width: 639px)");
+  const smHandler = (e: MediaQueryListEvent) => {
+    isPhone.value = e.matches;
+  };
+  smQuery.addEventListener("change", smHandler);
+  onScopeDispose(() => {
+    smQuery.removeEventListener("change", smHandler);
+  });
+}
 
 const { isToday, getAllEventsForDay, handleEventClick: _handleEventClick, getLocalWeekDays, getEventsForDateRange } = useCalendar();
 
@@ -28,6 +43,10 @@ const weekDays = computed(() => {
   const days = getLocalWeekDays(sunday);
   return days;
 });
+
+const selectedDayIndex = ref(0);
+const selectedWeekDay = computed(() => weekDays.value[selectedDayIndex.value] || weekDays.value[0]);
+const tabletDays = computed(() => weekDays.value.slice(0, 4));
 
 const nextWeekDays = computed(() => {
   const start = props.startDate || getStableDate();
@@ -89,83 +108,19 @@ function handleAddEvent(day: Date) {
 
 <template>
   <div class="w-full">
-    <div class="grid grid-cols-4 grid-rows-2 border border-default">
-      <div
-        v-for="day in firstRow"
-        :key="day.toISOString()"
-        class="relative border-r border-b border-default last:border-r-0 flex flex-col"
-        style="height: 300px;"
-        :class="{
-          'bg-muted/25': !isToday(day),
-          'bg-info/10': isToday(day),
-        }"
-      >
-        <div class="flex items-center justify-between p-2 border-b border-default flex-shrink-0">
-          <div class="text-sm font-medium text-muted">
-            <NuxtTime :datetime="day" weekday="short" />
-          </div>
-          <div
-            class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold"
-            :class="{
-              'bg-primary text-white': isToday(day),
-              'text-muted': !isToday(day),
-            }"
-          >
-            <NuxtTime :datetime="day" day="numeric" />
-          </div>
-        </div>
+    <!-- Desktop layout (lg+): 4-col grid with 2 rows -->
+    <template v-if="isDesktop">
+      <div class="grid grid-cols-4 grid-rows-2 border border-default">
         <div
-          class="overflow-y-auto px-2 py-1 space-y-1 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col"
-          style="height: 240px;"
+          v-for="day in firstRow"
+          :key="day.toISOString()"
+          class="relative border-r border-b border-default last:border-r-0 flex flex-col"
+          style="height: 300px;"
+          :class="{
+            'bg-muted/25': !isToday(day),
+            'bg-info/10': isToday(day),
+          }"
         >
-          <div
-            v-for="(event) in getAllEventsForDay(events, day)"
-            :key="event.id"
-            class="rounded"
-          >
-            <CalendarEventItem
-              :event="event"
-              view="week"
-              :current-day="day"
-              class="rounded"
-              @click="(e) => handleEventClick(event, e)"
-            />
-          </div>
-          <div
-            v-show="getAllEventsForDay(events, day).length === 0"
-            class="flex flex-col items-center justify-center gap-1 text-muted flex-1"
-          >
-            <UIcon name="i-lucide-calendar-off" class="w-8 h-8" />
-            <span class="text-lg text-muted">
-              {{ isToday(day) ? 'No events today' : 'No events' }}
-            </span>
-          </div>
-        </div>
-        <div class="p-2 border-t border-default flex-shrink-0">
-          <UButton
-            variant="ghost"
-            size="sm"
-            icon="i-lucide-plus"
-            class="w-full text-muted hover:text-primary hover:bg-primary/10"
-            :aria-label="`Add event on ${day.toDateString()}`"
-            @click="handleAddEvent(day)"
-          >
-            Add Event
-          </UButton>
-        </div>
-      </div>
-      <div
-        v-for="day in secondRow"
-        :key="day.toISOString()"
-        class="relative border-r border-default last:border-r-0 flex flex-col"
-        style="height: 300px;"
-        :class="{
-          'bg-muted/25': day && !isToday(day) && !isLastDay(day),
-          'bg-primary/10': day && isToday(day),
-          'bg-muted/50': day && isLastDay(day),
-        }"
-      >
-        <template v-if="day && !isLastDay(day)">
           <div class="flex items-center justify-between p-2 border-b border-default flex-shrink-0">
             <div class="text-sm font-medium text-muted">
               <NuxtTime :datetime="day" weekday="short" />
@@ -201,8 +156,8 @@ function handleAddEvent(day: Date) {
               v-show="getAllEventsForDay(events, day).length === 0"
               class="flex flex-col items-center justify-center gap-1 text-muted flex-1"
             >
-              <UIcon name="i-lucide-calendar-off" class="w-6 h-6" />
-              <span class="text-md text-muted">
+              <UIcon name="i-lucide-calendar-off" class="w-8 h-8" />
+              <span class="text-lg text-muted">
                 {{ isToday(day) ? 'No events today' : 'No events' }}
               </span>
             </div>
@@ -219,39 +174,218 @@ function handleAddEvent(day: Date) {
               Add Event
             </UButton>
           </div>
-        </template>
-
-        <template v-else-if="day && isLastDay(day)">
-          <div class="flex items-center justify-between p-2 border-b border-default flex-shrink-0">
-            <div class="text-sm font-medium text-primary">
-              Next Week
+        </div>
+        <div
+          v-for="day in secondRow"
+          :key="day.toISOString()"
+          class="relative border-r border-default last:border-r-0 flex flex-col"
+          style="height: 300px;"
+          :class="{
+            'bg-muted/25': day && !isToday(day) && !isLastDay(day),
+            'bg-primary/10': day && isToday(day),
+            'bg-muted/50': day && isLastDay(day),
+          }"
+        >
+          <template v-if="day && !isLastDay(day)">
+            <div class="flex items-center justify-between p-2 border-b border-default flex-shrink-0">
+              <div class="text-sm font-medium text-muted">
+                <NuxtTime :datetime="day" weekday="short" />
+              </div>
+              <div
+                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold"
+                :class="{
+                  'bg-primary text-white': isToday(day),
+                  'text-muted': !isToday(day),
+                }"
+              >
+                <NuxtTime :datetime="day" day="numeric" />
+              </div>
             </div>
-            <div class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold bg-primary/20 text-white">
-              <UIcon name="i-lucide-calendar-days" class="w-4 h-4" />
+            <div
+              class="overflow-y-auto px-2 py-1 space-y-1 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col"
+              style="height: 240px;"
+            >
+              <div
+                v-for="(event) in getAllEventsForDay(events, day)"
+                :key="event.id"
+                class="rounded"
+              >
+                <CalendarEventItem
+                  :event="event"
+                  view="week"
+                  :current-day="day"
+                  class="rounded"
+                  @click="(e) => handleEventClick(event, e)"
+                />
+              </div>
+              <div
+                v-show="getAllEventsForDay(events, day).length === 0"
+                class="flex flex-col items-center justify-center gap-1 text-muted flex-1"
+              >
+                <UIcon name="i-lucide-calendar-off" class="w-6 h-6" />
+                <span class="text-md text-muted">
+                  {{ isToday(day) ? 'No events today' : 'No events' }}
+                </span>
+              </div>
+            </div>
+            <div class="p-2 border-t border-default flex-shrink-0">
+              <UButton
+                variant="ghost"
+                size="sm"
+                icon="i-lucide-plus"
+                class="w-full text-muted hover:text-primary hover:bg-primary/10"
+                :aria-label="`Add event on ${day.toDateString()}`"
+                @click="handleAddEvent(day)"
+              >
+                Add Event
+              </UButton>
+            </div>
+          </template>
+
+          <template v-else-if="day && isLastDay(day)">
+            <div class="flex items-center justify-between p-2 border-b border-default flex-shrink-0">
+              <div class="text-sm font-medium text-primary">
+                Next Week
+              </div>
+              <div class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold bg-primary/20 text-white">
+                <UIcon name="i-lucide-calendar-days" class="w-4 h-4" />
+              </div>
+            </div>
+            <div
+              class="overflow-y-auto px-2 py-1 space-y-1 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col"
+              style="height: 240px;"
+            >
+              <div class="flex flex-col items-center justify-center gap-2 text-primary flex-1">
+                <div class="text-center">
+                  <div class="text-lg font-semibold">
+                    {{ nextWeekEventCount }}
+                  </div>
+                  <div class="text-xs opacity-75">
+                    {{ nextWeekEventCount === 1 ? 'event' : 'events' }}
+                  </div>
+                </div>
+                <div class="text-xs text-center opacity-75">
+                  <div class="text-xs opacity-50 mt-2">
+                    Coming up next week
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- Phone layout (< sm): Day carousel -->
+    <template v-else-if="isPhone">
+      <div class="flex flex-col h-full">
+        <!-- Date chips row -->
+        <div
+          class="flex gap-2 px-3 py-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-shrink-0"
+        >
+          <button
+            v-for="(day, index) in weekDays"
+            :key="day.toISOString()"
+            class="flex flex-col items-center justify-center px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0"
+            :class="{
+              'bg-primary text-white': selectedDayIndex === index,
+              'ring-2 ring-info': isToday(day) && selectedDayIndex !== index,
+              'text-muted': !isToday(day) && selectedDayIndex !== index,
+            }"
+            @click="selectedDayIndex = index"
+          >
+            <NuxtTime
+              :datetime="day"
+              weekday="short"
+            />
+            <NuxtTime
+              :datetime="day"
+              day="numeric"
+            />
+          </button>
+        </div>
+
+        <!-- Events for selected day -->
+        <div
+          v-if="selectedWeekDay"
+          class="flex-1 overflow-y-auto px-3 py-2 space-y-2"
+        >
+          <CalendarEventItem
+            v-for="event in getAllEventsForDay(events, selectedWeekDay)"
+            :key="event.id"
+            :event="event"
+            view="agenda"
+            class="mb-2"
+            @click="(e) => handleEventClick(event, e)"
+          />
+          <div
+            v-if="getAllEventsForDay(events, selectedWeekDay).length === 0"
+            class="flex flex-col items-center justify-center gap-2 text-muted py-12"
+          >
+            <UIcon name="i-lucide-calendar-off" class="w-10 h-10" />
+            <span class="text-lg">
+              {{ isToday(selectedWeekDay) ? 'No events today' : 'No events' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Tablet layout (sm to lg): 4 column grid -->
+    <template v-else>
+      <div class="grid grid-cols-4 border border-default">
+        <div
+          v-for="day in tabletDays"
+          :key="day.toISOString()"
+          class="relative border-r border-default last:border-r-0 flex flex-col"
+          style="height: 400px;"
+          :class="{
+            'bg-muted/25': !isToday(day),
+            'bg-info/10': isToday(day),
+          }"
+        >
+          <div class="flex items-center justify-between p-2 border-b border-default flex-shrink-0">
+            <div class="text-sm font-medium text-muted">
+              <NuxtTime :datetime="day" weekday="short" />
+            </div>
+            <div
+              class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold"
+              :class="{
+                'bg-primary text-white': isToday(day),
+                'text-muted': !isToday(day),
+              }"
+            >
+              <NuxtTime :datetime="day" day="numeric" />
             </div>
           </div>
           <div
-            class="overflow-y-auto px-2 py-1 space-y-1 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col"
-            style="height: 240px;"
+            class="flex-1 overflow-y-auto px-2 py-1 space-y-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col"
           >
-            <div class="flex flex-col items-center justify-center gap-2 text-primary flex-1">
-              <div class="text-center">
-                <div class="text-lg font-semibold">
-                  {{ nextWeekEventCount }}
-                </div>
-                <div class="text-xs opacity-75">
-                  {{ nextWeekEventCount === 1 ? 'event' : 'events' }}
-                </div>
-              </div>
-              <div class="text-xs text-center opacity-75">
-                <div class="text-xs opacity-50 mt-2">
-                  Coming up next week
-                </div>
-              </div>
+            <div
+              v-for="event in getAllEventsForDay(events, day)"
+              :key="event.id"
+              class="rounded"
+            >
+              <CalendarEventItem
+                :event="event"
+                view="week"
+                :current-day="day"
+                class="rounded"
+                @click="(e) => handleEventClick(event, e)"
+              />
+            </div>
+            <div
+              v-show="getAllEventsForDay(events, day).length === 0"
+              class="flex flex-col items-center justify-center gap-1 text-muted flex-1"
+            >
+              <UIcon name="i-lucide-calendar-off" class="w-6 h-6" />
+              <span class="text-sm text-muted">
+                {{ isToday(day) ? 'No events today' : 'No events' }}
+              </span>
             </div>
           </div>
-        </template>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>

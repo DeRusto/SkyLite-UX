@@ -3,8 +3,8 @@ import type { ICalSettings, IntegrationConfig } from "~/types/integrations";
 // This file contains all integration configurations that are used by both client and server
 import type { DialogField } from "~/types/ui";
 
-import type { HomeAssistantWeatherSettings } from "./home-assistant/homeAssistantWeather";
 import type { GooglePhotosSettings } from "./google-photos/googlePhotos";
+import type { HomeAssistantWeatherSettings } from "./home-assistant/homeAssistantWeather";
 import type { ImmichSettings } from "./immich/immichPhotos";
 
 import { createGoogleCalendarService } from "./google-calendar/googleCalendar";
@@ -220,9 +220,14 @@ export const integrationConfigs: IntegrationConfig[] = [
   },
   // ================================================
   // Meal integration configs can support the following list-level capabilities:
+  // - get_recipes: Can get recipes from the integration
+  // - add_recipe: Can add new recipes to the integration
+  // - get_meal_plan: Can get meal plans from the integration
+  // - add_meal_plan: Can add meals to the meal plan
+  // - edit_meal_plan: Can edit meals in the meal plan
+  // - delete_meal_plan: Can delete meals from the meal plan
   // ================================================
   // TODO: Add meal integration configs
-  // TODO: Define meal capabilities
   // ================================================
   // Shopping integration configs can support the following list-level capabilities:
   // - add_items: Can add new items to lists

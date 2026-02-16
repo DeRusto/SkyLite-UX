@@ -1,12 +1,9 @@
-import { createError, defineEventHandler, readBody } from "h3";
-
-import prisma from "~/lib/prisma";
-
-import type { CalendarEvent } from "~/types/calendar";
-
 import type { GoogleCalendarSettings } from "~~/server/integrations/google-calendar/types";
 
 import { GoogleCalendarServerService } from "~~/server/integrations/google-calendar/client";
+import { createError, defineEventHandler, readBody } from "h3";
+
+import prisma from "~/lib/prisma";
 
 /**
  * Create an event in Google Calendar

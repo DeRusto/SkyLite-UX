@@ -1,5 +1,3 @@
-// Weather composable for fetching and caching weather data
-
 export type CurrentWeather = {
   temperature: number;
   feelsLike: number;
@@ -43,19 +41,16 @@ export type WeatherForecast = {
   fetchedAt: string;
 };
 
-// Shared state
 const currentWeather = ref<CurrentWeather | null>(null);
 const forecast = ref<WeatherForecast | null>(null);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 const lastFetch = ref<Date | null>(null);
 
-// Cache duration in milliseconds (30 minutes)
 const CACHE_DURATION = 30 * 60 * 1000;
 
 export function useWeather() {
   const fetchCurrentWeather = async (options?: { lat?: number; lon?: number; units?: string }) => {
-    // Check if we have cached data that's still valid
     if (currentWeather.value && lastFetch.value) {
       const elapsed = Date.now() - lastFetch.value.getTime();
       if (elapsed < CACHE_DURATION) {
@@ -119,7 +114,6 @@ export function useWeather() {
     await fetchForecast();
   };
 
-  // Format temperature display
   const formatTemperature = (temp: number, units?: "fahrenheit" | "celsius") => {
     const unit = units || currentWeather.value?.units || "fahrenheit";
     return `${temp}°${unit === "fahrenheit" ? "F" : "C"}`;

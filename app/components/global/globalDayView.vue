@@ -17,6 +17,12 @@ const emit = defineEmits<{
   (e: "dateSelect", date: Date): void;
 }>();
 
+const { isDesktop: _isDesktop } = useBreakpoint();
+const isPhone = ref(false);
+if (import.meta.client) {
+  isPhone.value = window.innerWidth < 640;
+}
+
 const { isToday, isSelectedDate: _isSelectedDate, handleDateSelect: _handleDateSelect, getMiniCalendarWeeks, getAllEventsForDay, getAgendaEventsForDay, getEventsForDateRange } = useCalendar();
 
 const miniCalendarWeeks = computed(() => getMiniCalendarWeeks(props.currentDate));
@@ -51,7 +57,7 @@ function handleEventClick(event: CalendarEvent, e: MouseEvent) {
 
 <template>
   <div class="flex h-full w-full">
-    <div class="w-[40%] flex-shrink-0 border-r border-default">
+    <div v-if="!isPhone" class="w-[40%] flex-shrink-0 border-r border-default">
       <div class="p-4">
         <div class="flex items-center justify-center mb-4">
           <h2 class="text-lg font-semibold text-highlighted">
@@ -117,7 +123,7 @@ function handleEventClick(event: CalendarEvent, e: MouseEvent) {
         </div>
       </div>
     </div>
-    <div class="w-[60%] flex-1">
+    <div :class="isPhone ? 'w-full' : 'w-[60%] flex-1'">
       <div class="h-full">
         <div class="flex items-center p-4 border-b border-default">
           <div class="flex items-center gap-3">

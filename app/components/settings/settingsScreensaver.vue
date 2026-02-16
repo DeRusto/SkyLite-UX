@@ -60,7 +60,7 @@ const photoIntegrations = computed(() => {
 const selectedPhotoIntegration = computed(() => {
   if (!settings.value?.selectedPhotoSource)
     return photoIntegrations.value[0] || null;
-  return photoIntegrations.value.find(i => i.id === settings.value.selectedPhotoSource) || photoIntegrations.value[0] || null;
+  return photoIntegrations.value.find(i => i.id === settings.value?.selectedPhotoSource) || photoIntegrations.value[0] || null;
 });
 
 // Get the active Immich integration (if any)
@@ -604,7 +604,11 @@ watch(immichIntegration, (newVal) => {
 
           <!-- Last Sync Status -->
           <div v-if="selectedPhotoIntegration?.service === 'immich' && (lastSync || syncing)" class="mb-4 text-xs text-muted flex items-center gap-2">
-            <UIcon :name="syncing ? 'i-lucide-loader-2' : 'i-lucide-check-circle'" :class="{ 'animate-spin': syncing }" class="h-3 w-3" />
+            <UIcon
+              :name="syncing ? 'i-lucide-loader-2' : 'i-lucide-check-circle'"
+              :class="{ 'animate-spin': syncing }"
+              class="h-3 w-3"
+            />
             <span>
               {{ syncing ? "Syncing..." : `Last synced: ${formatLastSync(lastSync)}` }}
             </span>
@@ -652,14 +656,14 @@ watch(immichIntegration, (newVal) => {
         <template v-else>
           <div class="mb-4 p-3 bg-muted/20 rounded-lg flex items-center gap-3">
             <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <UIcon :name="photoIntegrations[0].service === 'immich' ? 'i-lucide-camera' : 'i-lucide-image'" class="h-4 w-4 text-primary" />
+              <UIcon :name="photoIntegrations[0]?.service === 'immich' ? 'i-lucide-camera' : 'i-lucide-image'" class="h-4 w-4 text-primary" />
             </div>
             <div class="flex-1">
               <p class="font-medium text-highlighted text-sm">
-                {{ photoIntegrations[0].name }}
+                {{ photoIntegrations[0]?.name }}
               </p>
               <p class="text-xs text-muted capitalize">
-                {{ photoIntegrations[0].service === 'google-photos' ? 'Google Photos' : photoIntegrations[0].service }}
+                {{ photoIntegrations[0]?.service === 'google-photos' ? 'Google Photos' : photoIntegrations[0]?.service }}
               </p>
             </div>
 
@@ -679,7 +683,11 @@ watch(immichIntegration, (newVal) => {
 
           <!-- Last Sync Status -->
           <div v-if="lastSync || syncing" class="mb-4 text-xs text-muted flex items-center gap-2">
-            <UIcon :name="syncing ? 'i-lucide-loader-2' : 'i-lucide-check-circle'" :class="{ 'animate-spin': syncing }" class="h-3 w-3" />
+            <UIcon
+              :name="syncing ? 'i-lucide-loader-2' : 'i-lucide-check-circle'"
+              :class="{ 'animate-spin': syncing }"
+              class="h-3 w-3"
+            />
             <span>
               {{ syncing ? "Syncing..." : `Last synced: ${formatLastSync(lastSync)}` }}
             </span>
