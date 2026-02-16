@@ -23,6 +23,15 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  const query = getQuery(event);
+  const limit = Math.max(1, Number.parseInt(query.limit as string, 10) || 50);
+  const offset = Math.max(0, Number.parseInt(query.offset as string, 10) || 0);
+
+  // To correctly get the items for a specific page in a merged stream, we need to fetch
+  // at least (offset + limit) items from each source, then sort and slice.
+  // This ensures that we don't miss items that should be in the requested range.
+  const fetchCount = offset + limit;
+
   // Get chore completions (points earned)
   const choreCompletions = await prisma.choreCompletion.findMany({
     where: {
@@ -35,6 +44,7 @@ export default defineEventHandler(async (event) => {
       },
     },
     orderBy: { completedAt: "desc" },
+    take: fetchCount,
   });
 
   // Get reward redemptions (points spent)
@@ -49,6 +59,7 @@ export default defineEventHandler(async (event) => {
       },
     },
     orderBy: { redeemedAt: "desc" },
+    take: fetchCount,
   });
 
   // Combine and sort history
@@ -71,11 +82,13 @@ export default defineEventHandler(async (event) => {
     const dateA = a.date ? new Date(a.date).getTime() : 0;
     const dateB = b.date ? new Date(b.date).getTime() : 0;
     return dateB - dateA;
-  });
+  }).slice(offset, offset + limit);
 
   return {
     userId,
     userName: user.name,
     history,
+    limit,
+    offset,
   };
 });
