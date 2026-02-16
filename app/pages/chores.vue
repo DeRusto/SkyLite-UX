@@ -80,6 +80,11 @@ function handlePinVerified() {
   }
 }
 
+function handlePinClose() {
+  isPinDialogOpen.value = false;
+  pendingChoreAction.value = null;
+}
+
 type ChoreUser = {
   id: string;
   name: string;
@@ -511,7 +516,7 @@ onMounted(() => {
       :is-open="isPinDialogOpen"
       :user-id="selectedUserId"
       title="Adult Verification Required"
-      @close="isPinDialogOpen = false"
+      @close="handlePinClose"
       @verified="handlePinVerified"
     />
   </div>

@@ -128,6 +128,11 @@ function handlePinVerified() {
   }
 }
 
+function handlePinClose() {
+  isPinDialogOpen.value = false;
+  pendingRewardAction.value = null;
+}
+
 // Fetch rewards
 async function fetchRewards() {
   try {
@@ -586,7 +591,7 @@ onMounted(async () => {
       :is-open="isPinDialogOpen"
       :user-id="selectedUserId"
       title="Adult Verification Required"
-      @close="isPinDialogOpen = false"
+      @close="handlePinClose"
       @verified="handlePinVerified"
     />
   </div>
