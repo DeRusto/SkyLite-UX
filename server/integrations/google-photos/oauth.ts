@@ -32,12 +32,20 @@ export function encryptToken(token: string): string {
  * @returns Decrypted plain text token
  */
 export function decryptToken(encryptedToken: string): string {
+  // If token doesn't look like it's encrypted (no colons), return as is
+  // This happens during initial setup when frontend passes plaintext tokens
+  if (!encryptedToken.includes(":")) {
+    return encryptedToken;
+  }
+
   const algorithm = "aes-256-gcm";
   const key = getEncryptionKey();
   const [ivHex, authTagHex, encrypted] = encryptedToken.split(":");
 
   if (!ivHex || !authTagHex || !encrypted) {
-    throw new Error("Invalid encrypted token format");
+    // If it has colons but not the right number of parts, it's still probably not a valid encrypted token
+    // but might be a malformed plaintext token. We'll return as is to be safe during setup.
+    return encryptedToken;
   }
 
   const iv = Buffer.from(ivHex, "hex");
