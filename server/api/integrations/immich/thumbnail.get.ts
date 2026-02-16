@@ -1,4 +1,5 @@
 import { consola } from "consola";
+import { addDays } from "date-fns";
 import { createError, defineEventHandler, getQuery, setResponseHeader } from "h3";
 import { Buffer } from "node:buffer";
 
@@ -8,6 +9,10 @@ import { decryptToken } from "../../../integrations/google-calendar/oauth";
 
 // Cache expiration: 7 days
 const CACHE_EXPIRY_DAYS = 7;
+
+// Module-level: track last prune time
+let lastPruneTime = 0;
+const PRUNE_INTERVAL_MS = 60_000; // at most once per minute
 
 /**
  * GET /api/integrations/immich/thumbnail
@@ -64,7 +69,9 @@ export default defineEventHandler(async (event) => {
   if (thumbnailType === "asset") {
     try {
       // Periodically clean up expired cache entries (10% chance to avoid overhead)
-      if (Math.random() < 0.1) {
+      const nowTs = Date.now();
+      if (Math.random() < 0.1 && nowTs - lastPruneTime > PRUNE_INTERVAL_MS) {
+        lastPruneTime = nowTs;
         prisma.photoCache.deleteMany({
           where: { expiresAt: { lt: new Date() } },
         }).catch(err => consola.warn("Failed to prune photo cache:", err));
@@ -175,8 +182,7 @@ export default defineEventHandler(async (event) => {
     // Cache the photo (only for assets, not person thumbnails)
     if (thumbnailType === "asset") {
       try {
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + CACHE_EXPIRY_DAYS);
+        const expiresAt = addDays(new Date(), CACHE_EXPIRY_DAYS);
 
         await prisma.photoCache.upsert({
           where: {
