@@ -22,8 +22,8 @@ onUnmounted(() => {
 
 <template>
   <UApp>
-    <div :class="app - layout">
-      <div :class="app - container">
+    <div class="app-layout">
+      <div class="app-container">
         <GlobalAppLoading :is-loading="isLoading" :loading-message="loadingMessage || ''" />
 
         <NuxtLayout>
