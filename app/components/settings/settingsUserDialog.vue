@@ -43,7 +43,7 @@ watch(() => props.user, (newUser) => {
     email.value = newUser.email || "";
     color.value = newUser.color || "#06b6d4";
     avatar.value = newUser.avatar && !newUser.avatar.startsWith("https://ui-avatars.com/api/") ? newUser.avatar : "";
-    role.value = (newUser as User & { role?: "ADULT" | "CHILD" }).role || "CHILD";
+    role.value = newUser.role;
     pin.value = ""; // Don't populate PIN for security
     error.value = null;
   }
