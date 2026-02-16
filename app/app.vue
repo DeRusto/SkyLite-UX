@@ -22,8 +22,8 @@ onUnmounted(() => {
 
 <template>
   <UApp>
-    <div :class="app-layout">
-      <div :class="app-container">
+    <div class="app-layout">
+      <div class="app-container">
         <GlobalAppLoading :is-loading="isLoading" :loading-message="loadingMessage || ''" />
 
         <NuxtLayout>
@@ -54,13 +54,13 @@ onUnmounted(() => {
 }
 
 /* Base Layout (Mobile First - Fullscreen) */
-  .app-layout {
+.app-layout {
   position: fixed;
   inset: 0;
   overflow: hidden;
   background-color: var(--ui-bg-default, #ffffff);
 }
-  
+
 .app-container {
   position: relative;
   width: 100%;
@@ -86,7 +86,7 @@ onUnmounted(() => {
     justify-content: center;
     background-color: #000;
   }
-  
+
   .dark .app-layout {
     background-color: #000;
   }

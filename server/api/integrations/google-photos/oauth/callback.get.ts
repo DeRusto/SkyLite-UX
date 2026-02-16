@@ -1,7 +1,7 @@
 import { consola } from "consola";
 import { createError, defineEventHandler, getQuery, sendRedirect } from "h3";
 
-import { createOAuth2Client, encryptToken, exchangeCodeForTokens } from "../../../../integrations/google-photos/oauth";
+import { createOAuth2Client, exchangeCodeForTokens } from "../../../../integrations/google-photos/oauth";
 
 /**
  * Handle OAuth2 callback from Google for Photos API
@@ -32,16 +32,12 @@ export default defineEventHandler(async (event) => {
     // Exchange code for tokens
     const tokenInfo = await exchangeCodeForTokens(oauth2Client, code);
 
-    // Encrypt tokens for secure transmission
-    const encryptedAccessToken = encryptToken(tokenInfo.accessToken);
-    const encryptedRefreshToken = encryptToken(tokenInfo.refreshToken);
-
-    // Redirect to settings with encrypted tokens
-    // The frontend will use these to complete integration setup
+    // Tokens are now passed in plaintext to the frontend and will be encrypted
+    // before database persistence in the integration API handlers.
     const redirectUrl = `/settings?oauth_success=true`
       + `&service=google-photos`
-      + `&access_token=${encodeURIComponent(encryptedAccessToken)}`
-      + `&refresh_token=${encodeURIComponent(encryptedRefreshToken)}`
+      + `&access_token=${encodeURIComponent(tokenInfo.accessToken)}`
+      + `&refresh_token=${encodeURIComponent(tokenInfo.refreshToken)}`
       + `&token_expiry=${tokenInfo.expiryDate}`;
 
     return sendRedirect(event, redirectUrl);

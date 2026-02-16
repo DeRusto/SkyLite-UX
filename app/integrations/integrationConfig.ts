@@ -364,11 +364,11 @@ const serviceFactoryMap = {
     const useUserColors = settings?.useUserColors || false;
     return createICalService(_id, baseUrl, eventColor, user, useUserColors);
   },
-  "calendar:google-calendar": (id: string, _apiKey: string, _baseUrl: string, _settings?: unknown) => createGoogleCalendarService(id),
+  "calendar:google-calendar": (id: string, _apiKey: string, _baseUrl: string, _settings?: unknown, accessToken?: string | null, refreshToken?: string | null, tokenExpiry?: Date | null) => createGoogleCalendarService(id, accessToken, refreshToken, tokenExpiry),
   "weather:home-assistant": (id: string, apiKey: string, baseUrl: string, settings?: HomeAssistantWeatherSettings) => {
     return createHomeAssistantWeatherService(id, apiKey, baseUrl, settings);
   },
-  "photos:google-photos": (id: string, _apiKey: string, _baseUrl: string, _settings?: GooglePhotosSettings) => createGooglePhotosService(id),
+  "photos:google-photos": (id: string, _apiKey: string, _baseUrl: string, _settings?: GooglePhotosSettings, accessToken?: string | null, refreshToken?: string | null, tokenExpiry?: Date | null) => createGooglePhotosService(id, accessToken, refreshToken, tokenExpiry),
   "photos:immich": (id: string, apiKey: string, baseUrl: string, settings?: ImmichSettings) => createImmichService(id, apiKey, baseUrl, settings),
   "shopping:mealie": (id: string, apiKey: string, baseUrl: string, _settings?: unknown) => createMealieService(id, apiKey, baseUrl),
   "shopping:tandoor": (id: string, apiKey: string, baseUrl: string, _settings?: unknown) => createTandoorService(id, apiKey, baseUrl),
