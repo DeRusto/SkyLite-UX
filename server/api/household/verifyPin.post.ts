@@ -17,10 +17,8 @@ export default defineEventHandler(async (event) => {
   const settings = await prisma.householdSettings.findFirst();
 
   if (!settings || !settings.parentPin) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "No parent PIN has been set",
-    });
+    // If no parent PIN is set, allow access
+    return { valid: true };
   }
 
   // Verify PIN (supports both hashed and legacy plaintext)
