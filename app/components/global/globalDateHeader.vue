@@ -241,20 +241,6 @@ function handleToday() {
       </h2>
 
       <div class="flex items-center gap-1">
-        <UDropdownMenu
-          v-if="showViewSelector"
-          :items="items"
-        >
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="sm"
-            trailing-icon="i-lucide-chevron-down"
-          >
-            <span class="capitalize">{{ view }}</span>
-          </UButton>
-        </UDropdownMenu>
-
         <UPopover
           v-if="showUserFilter && users && users.length > 0"
           :popper="{ placement: 'bottom-end' }"
@@ -301,6 +287,20 @@ function handleToday() {
             </div>
           </template>
         </UPopover>
+
+        <UDropdownMenu
+          v-if="showViewSelector"
+          :items="items"
+        >
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="sm"
+            trailing-icon="i-lucide-chevron-down"
+          >
+            <span class="capitalize">{{ view }}</span>
+          </UButton>
+        </UDropdownMenu>
       </div>
     </div>
 
@@ -393,6 +393,49 @@ function handleToday() {
         </h2>
       </div>
 
+      <!-- User Filter Badges -->
+      <div
+        v-if="showUserFilter && users && users.length > 0"
+        class="flex items-center gap-2 mt-2 sm:mt-0"
+      >
+        <div class="flex items-center gap-1 flex-wrap">
+          <button
+            v-for="user in users"
+            :key="user.id"
+            type="button"
+            class="flex items-center gap-1.5 px-2 py-1 rounded-full text-sm font-medium transition-all border-2"
+            :class="isUserSelected(user.id)
+              ? 'opacity-100 shadow-sm'
+              : 'opacity-40 hover:opacity-70'"
+            :style="{
+              backgroundColor: isUserSelected(user.id) ? `${user.color || '#22d3ee'}20` : 'transparent',
+              borderColor: user.color || '#22d3ee',
+              color: user.color || '#22d3ee',
+            }"
+            :aria-label="`Filter by ${user.name}`"
+            :aria-pressed="isUserSelected(user.id)"
+            @click="toggleUserFilter(user.id)"
+          >
+            <UAvatar
+              :src="user.avatar || undefined"
+              :alt="user.name"
+              size="xs"
+              :style="{ backgroundColor: user.color || '#22d3ee' }"
+            />
+            <span>{{ user.name }}</span>
+          </button>
+          <button
+            v-if="selectedUsers.length > 0"
+            type="button"
+            class="text-xs text-muted hover:text-highlighted underline ml-1"
+            aria-label="Clear user filter"
+            @click="clearUserFilter"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
       <div
         v-if="showNavigation"
         class="flex items-center justify-between gap-2"
@@ -452,49 +495,6 @@ function handleToday() {
             :loading="isExporting"
             @click="handleExport"
           />
-        </div>
-      </div>
-
-      <!-- User Filter Badges -->
-      <div
-        v-if="showUserFilter && users && users.length > 0"
-        class="flex items-center gap-2 mt-2 sm:mt-0"
-      >
-        <div class="flex items-center gap-1 flex-wrap">
-          <button
-            v-for="user in users"
-            :key="user.id"
-            type="button"
-            class="flex items-center gap-1.5 px-2 py-1 rounded-full text-sm font-medium transition-all border-2"
-            :class="isUserSelected(user.id)
-              ? 'opacity-100 shadow-sm'
-              : 'opacity-40 hover:opacity-70'"
-            :style="{
-              backgroundColor: isUserSelected(user.id) ? `${user.color || '#22d3ee'}20` : 'transparent',
-              borderColor: user.color || '#22d3ee',
-              color: user.color || '#22d3ee',
-            }"
-            :aria-label="`Filter by ${user.name}`"
-            :aria-pressed="isUserSelected(user.id)"
-            @click="toggleUserFilter(user.id)"
-          >
-            <UAvatar
-              :src="user.avatar || undefined"
-              :alt="user.name"
-              size="xs"
-              :style="{ backgroundColor: user.color || '#22d3ee' }"
-            />
-            <span>{{ user.name }}</span>
-          </button>
-          <button
-            v-if="selectedUsers.length > 0"
-            type="button"
-            class="text-xs text-muted hover:text-highlighted underline ml-1"
-            aria-label="Clear user filter"
-            @click="clearUserFilter"
-          >
-            Clear
-          </button>
         </div>
       </div>
     </div>
