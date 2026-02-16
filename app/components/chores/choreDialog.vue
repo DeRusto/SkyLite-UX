@@ -1,11 +1,14 @@
 <script setup lang="ts">
 const props = defineProps<{
   isOpen: boolean;
+  chore?: any | null;
 }>();
 
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "created"): void;
+  (e: "updated"): void;
+  (e: "deleted"): void;
 }>();
 
 type User = {
@@ -74,22 +77,40 @@ async function handleSave() {
     isSubmitting.value = true;
     error.value = null;
 
-    await $fetch("/api/chores", {
-      method: "POST",
-      body: {
-        name: name.value.trim(),
-        description: description.value.trim() || undefined,
-        pointValue: pointValue.value,
-        recurrence: recurrence.value,
-        assignedUserId: assignedUserId.value || undefined,
-        dueDate: dueDate.value || undefined,
-        icon: icon.value || undefined,
-      },
-    });
+    if (props.chore?.id) {
+      await $fetch(`/api/chores/${props.chore.id}`, {
+        method: "PUT" as any,
+        body: {
+          name: name.value.trim(),
+          description: description.value.trim() || undefined,
+          pointValue: pointValue.value,
+          recurrence: recurrence.value,
+          assignedUserId: assignedUserId.value || undefined,
+          dueDate: dueDate.value || undefined,
+          icon: icon.value || undefined,
+        },
+      });
+      showSuccess("Chore Updated", `"${name.value}" has been updated.`);
+      emit("updated");
+    }
+    else {
+      await $fetch("/api/chores", {
+        method: "POST",
+        body: {
+          name: name.value.trim(),
+          description: description.value.trim() || undefined,
+          pointValue: pointValue.value,
+          recurrence: recurrence.value,
+          assignedUserId: assignedUserId.value || undefined,
+          dueDate: dueDate.value || undefined,
+          icon: icon.value || undefined,
+        },
+      });
+      showSuccess("Chore Created", `"${name.value}" has been created.`);
+      emit("created");
+    }
 
-    showSuccess("Chore Created", `"${name.value}" has been created.`);
     resetForm();
-    emit("created");
     emit("close");
   }
   catch (err: unknown) {
@@ -107,9 +128,49 @@ function handleClose() {
   emit("close");
 }
 
+async function handleDelete() {
+  if (!props.chore?.id)
+    return;
+
+  try {
+    isSubmitting.value = true;
+    error.value = null;
+
+    await $fetch(`/api/chores/${props.chore.id}`, {
+      method: "DELETE" as any,
+    });
+
+    showSuccess("Chore Deleted", `"${name.value}" has been removed.`);
+    emit("deleted");
+    emit("close");
+    resetForm();
+  }
+  catch (err: unknown) {
+    const fetchError = err as { data?: { message?: string } };
+    error.value = fetchError.data?.message || "Failed to delete chore";
+    showError("Error", error.value);
+  }
+  finally {
+    isSubmitting.value = false;
+  }
+}
+
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
     fetchUsers();
+    if (props.chore) {
+      name.value = props.chore.name;
+      description.value = props.chore.description || "";
+      pointValue.value = props.chore.pointValue;
+      recurrence.value = props.chore.recurrence;
+      assignedUserId.value = props.chore.assignedUserId;
+      // @ts-expect-error - dueDate might be undefined in chore object
+      dueDate.value = props.chore.dueDate ? new Date(props.chore.dueDate).toISOString().split("T")[0] : null;
+      icon.value = props.chore.icon || null;
+    }
+    else {
+      resetForm();
+    }
   }
 });
 </script>
@@ -117,12 +178,14 @@ watch(() => props.isOpen, (isOpen) => {
 <template>
   <GlobalDialog
     :is-open="isOpen"
-    title="Create Chore"
+    :title="chore ? 'Edit Chore' : 'Create Chore'"
     :is-submitting="isSubmitting"
-    save-label="Create Chore"
+    :save-label="chore ? 'Update Chore' : 'Create Chore'"
+    :show-delete="!!chore"
     :error="error"
     @close="handleClose"
     @save="handleSave"
+    @delete="handleDelete"
   >
     <div class="space-y-4">
       <UFormField label="Name" required>

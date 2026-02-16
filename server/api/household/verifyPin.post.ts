@@ -16,16 +16,16 @@ export default defineEventHandler(async (event) => {
 
   const settings = await prisma.householdSettings.findFirst();
 
-  if (!settings || !settings.parentPin) {
-    // If no parent PIN is set, allow access
+  if (!settings || !settings.adultPin) {
+    // If no adult PIN is set, allow access
     return { valid: true };
   }
 
   // Verify PIN (supports both hashed and legacy plaintext)
-  let isValid = await verifyPin(body.pin, settings.parentPin);
+  let isValid = await verifyPin(body.pin, settings.adultPin);
 
   // Migration: If verification failed, check if it's a legacy plaintext PIN
-  if (!isValid && settings.parentPin === body.pin) {
+  if (!isValid && settings.adultPin === body.pin) {
     isValid = true;
 
     // Upgrade to hashed PIN
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
       const hashed = await hashPin(body.pin);
       await prisma.householdSettings.update({
         where: { id: settings.id },
-        data: { parentPin: hashed },
+        data: { adultPin: hashed },
       });
     }
     catch (error) {

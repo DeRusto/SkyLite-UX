@@ -1,6 +1,6 @@
 ---
 title: Docker
-parent: Installation
+adult: Installation
 layout: default
 nav_order: 3
 permalink: /installation/docker/

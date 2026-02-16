@@ -18,7 +18,8 @@ const name = ref("");
 const email = ref("");
 const color = ref("#3b82f6");
 const avatar = ref("");
-const role = ref<"PARENT" | "CHILD">("CHILD");
+const role = ref<"ADULT" | "CHILD">("CHILD");
+const pin = ref("");
 const error = ref<string | null>(null);
 
 const chip = computed(() => ({ backgroundColor: color.value }));
@@ -42,7 +43,8 @@ watch(() => props.user, (newUser) => {
     email.value = newUser.email || "";
     color.value = newUser.color || "#06b6d4";
     avatar.value = newUser.avatar && !newUser.avatar.startsWith("https://ui-avatars.com/api/") ? newUser.avatar : "";
-    role.value = (newUser as User & { role?: "PARENT" | "CHILD" }).role || "CHILD";
+    role.value = (newUser as User & { role?: "ADULT" | "CHILD" }).role || "CHILD";
+    pin.value = ""; // Don't populate PIN for security
     error.value = null;
   }
   else {
@@ -62,6 +64,7 @@ function resetForm() {
   color.value = "#06b6d4";
   avatar.value = "";
   role.value = "CHILD";
+  pin.value = "";
   error.value = null;
 }
 
@@ -75,12 +78,18 @@ function handleSave() {
     return;
   }
 
+  if (role.value === "ADULT" && pin.value && !/^\d{4}$/.test(pin.value)) {
+    error.value = "PIN must be exactly 4 digits";
+    return;
+  }
+
   emit("save", {
     name: name.value.trim(),
     email: email.value?.trim() || "",
     color: color.value,
     avatar: avatar.value || getDefaultAvatarUrl(),
     role: role.value,
+    pin: pin.value || undefined,
     todoOrder: 0,
   } as CreateUserInput);
 }
@@ -158,6 +167,43 @@ function handleDelete() {
             :ui="{ base: 'w-full' }"
           />
         </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">User Type</label>
+        <UButtonGroup class="w-full">
+          <UButton
+            :variant="role === 'ADULT' ? 'solid' : 'outline'"
+            class="flex-1 justify-center"
+            @click="role = 'ADULT'"
+          >
+            Adult
+          </UButton>
+          <UButton
+            :variant="role === 'CHILD' ? 'solid' : 'outline'"
+            class="flex-1 justify-center"
+            @click="role = 'CHILD'"
+          >
+            Child
+          </UButton>
+        </UButtonGroup>
+      </div>
+
+      <div v-if="role === 'ADULT'" class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">PIN (4 digits)</label>
+        <UInput
+          v-model="pin"
+          placeholder="Enter 4-digit PIN"
+          type="password"
+          maxlength="4"
+          pattern="[0-9]*"
+          inputmode="numeric"
+          class="w-full"
+          :ui="{ base: 'w-full' }"
+        />
+        <p class="text-xs text-muted">
+          Used to unlock adult features like managing chores and rewards.
+        </p>
       </div>
     </div>
   </GlobalDialog>

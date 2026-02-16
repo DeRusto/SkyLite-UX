@@ -9,7 +9,7 @@ npm warn Unknown project config "strict-peer-dependencies". This will stop worki
   1:1  error  Filename is not in camel case. Rename it to `claude.md`  unicorn/filename-case
 
 /app/app/pages/settings.vue
-   89:7   error  'hasParentPin' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+   89:7   error  'hasAdultPin' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
   100:19  error  'usersData' is assigned a value but never used. Allowed unused vars must match /^_/u     unused-imports/no-unused-vars
   585:39  error  This line has 2 statements. Maximum allowed is 1                                         style/max-statements-per-line
 

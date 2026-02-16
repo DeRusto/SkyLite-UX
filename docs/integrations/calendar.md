@@ -1,6 +1,6 @@
 ---
 title: Calendar
-parent: Integrations
+adult: Integrations
 layout: default
 nav_order: 4
 permalink: /integrations/calendar/

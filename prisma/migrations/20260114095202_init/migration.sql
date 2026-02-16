@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('PARENT', 'CHILD');
+CREATE TYPE "UserRole" AS ENUM ('ADULT', 'CHILD');
 
 -- CreateEnum
 CREATE TYPE "ChoreRecurrence" AS ENUM ('NONE', 'DAILY', 'WEEKLY', 'MONTHLY');
@@ -17,7 +17,7 @@ CREATE TYPE "ScreensaverActivationMode" AS ENUM ('IDLE', 'SCHEDULED', 'MANUAL');
 CREATE TYPE "TransitionEffect" AS ENUM ('FADE', 'SLIDE', 'ZOOM', 'NONE');
 
 -- CreateEnum
-CREATE TYPE "ChoreCompletionMode" AS ENUM ('SELF_CLAIM', 'PARENT_VERIFY');
+CREATE TYPE "ChoreCompletionMode" AS ENUM ('SELF_CLAIM', 'ADULT_VERIFY');
 
 -- AlterTable
 ALTER TABLE "integrations" ADD COLUMN     "accessToken" TEXT,
@@ -159,7 +159,7 @@ CREATE TABLE "household_settings" (
     "familyName" TEXT NOT NULL DEFAULT 'Our Family',
     "choreCompletionMode" "ChoreCompletionMode" NOT NULL DEFAULT 'SELF_CLAIM',
     "rewardApprovalThreshold" INTEGER,
-    "parentPin" TEXT,
+    "adultPin" TEXT,
 
     CONSTRAINT "household_settings_pkey" PRIMARY KEY ("id")
 );
