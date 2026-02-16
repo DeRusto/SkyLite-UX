@@ -37,9 +37,11 @@ export class GoogleCalendarService implements CalendarIntegrationService {
       await $fetch("/api/integrations/google-calendar/calendars", {
         query: {
           integrationId: this.integrationId,
-          accessToken: this.accessToken || "",
-          refreshToken: this.refreshToken || "",
-          tokenExpiry: this.tokenExpiry ? this.tokenExpiry.getTime() : "",
+        },
+        headers: {
+          "x-access-token": this.accessToken || "",
+          "x-refresh-token": this.refreshToken || "",
+          "x-token-expiry": this.tokenExpiry ? String(this.tokenExpiry.getTime()) : "",
         },
       });
 

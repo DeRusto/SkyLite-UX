@@ -1,10 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import { encryptToken as encryptCalendarToken } from "~~/server/integrations/google-calendar/oauth";
+import { encryptToken as encryptPhotosToken } from "~~/server/integrations/google-photos/oauth";
 import { consola } from "consola";
 import { createError, defineEventHandler, readBody } from "h3";
 
+import prisma from "~/lib/prisma";
 import { integrationRegistry } from "~/types/integrations";
-
-const prisma = new PrismaClient();
 
 export default defineEventHandler(async (event) => {
   try {
@@ -32,6 +32,23 @@ export default defineEventHandler(async (event) => {
       tokenType,
     } = body;
 
+    // Encrypt tokens if provided (Google Calendar/Photos)
+    let finalAccessToken = accessToken;
+    let finalRefreshToken = refreshToken;
+
+    if (service === "google-calendar") {
+      if (accessToken)
+        finalAccessToken = encryptCalendarToken(accessToken);
+      if (refreshToken)
+        finalRefreshToken = encryptCalendarToken(refreshToken);
+    }
+    else if (service === "google-photos") {
+      if (accessToken)
+        finalAccessToken = encryptPhotosToken(accessToken);
+      if (refreshToken)
+        finalRefreshToken = encryptPhotosToken(refreshToken);
+    }
+
     if (apiKey || baseUrl || accessToken || refreshToken) {
       const currentIntegration = await prisma.integration.findUnique({
         where: { id },
@@ -54,8 +71,8 @@ export default defineEventHandler(async (event) => {
         ...(icon !== undefined && { icon }),
         ...(enabled !== undefined && { enabled }),
         ...(settings && { settings }),
-        ...(accessToken && { accessToken }),
-        ...(refreshToken && { refreshToken }),
+        ...(finalAccessToken && { accessToken: finalAccessToken }),
+        ...(finalRefreshToken && { refreshToken: finalRefreshToken }),
         ...(tokenExpiry && { tokenExpiry: new Date(tokenExpiry) }),
         ...(tokenType && { tokenType }),
       };
@@ -139,8 +156,8 @@ export default defineEventHandler(async (event) => {
         ...(icon !== undefined && { icon }),
         ...(enabled !== undefined && { enabled }),
         ...(settings && { settings }),
-        ...(accessToken && { accessToken }),
-        ...(refreshToken && { refreshToken }),
+        ...(finalAccessToken && { accessToken: finalAccessToken }),
+        ...(finalRefreshToken && { refreshToken: finalRefreshToken }),
         ...(tokenExpiry && { tokenExpiry: new Date(tokenExpiry) }),
         ...(tokenType && { tokenType }),
       },
