@@ -39,7 +39,7 @@
 
   <security_and_access_control>
     <user_roles>
-      <role name="parent">
+      <role name="adult">
         <permissions>
           - Full access to all features
           - Create, edit, delete calendar events
@@ -51,10 +51,10 @@
           - Access settings and system configuration
         </permissions>
         <protected_routes>
-          - /settings/integrations (parent only)
-          - /settings/users (parent only)
-          - /chores/manage (parent only for creating/editing chores)
-          - /rewards/manage (parent only for creating/editing rewards)
+          - /settings/integrations (adult only)
+          - /settings/users (adult only)
+          - /chores/manage (adult only for creating/editing chores)
+          - /rewards/manage (adult only for creating/editing rewards)
         </protected_routes>
       </role>
       <role name="child">
@@ -77,12 +77,12 @@
     <authentication>
       <method>Local user profiles (no login required for family use on dedicated device)</method>
       <session_timeout>None (designed for always-on display)</session_timeout>
-      <parent_verification>PIN or password for parent-only actions</parent_verification>
+      <adult_verification>PIN or password for adult-only actions</adult_verification>
     </authentication>
     <sensitive_operations>
       - Deleting calendar events requires confirmation
-      - Modifying integration settings requires parent verification
-      - Redeeming high-value rewards may require parent approval
+      - Modifying integration settings requires adult verification
+      - Redeeming high-value rewards may require adult approval
     </sensitive_operations>
   </security_and_access_control>
 
@@ -137,9 +137,9 @@
     </photo_screensaver>
 
     <chores_system>
-      - Parent creates chores with:
+      - Adult creates chores with:
         - Name and description
-        - Point value (set by parent)
+        - Point value (set by adult)
         - Recurrence: one-time, daily, weekly, monthly
         - Assignment: specific child or open for anyone to claim
         - Optional due date/time for one-off chores
@@ -148,7 +148,7 @@
       - Chore cards showing name, points, assignee, due date
       - Two completion modes (configurable per household):
         - Self-claim: child marks chore complete, points awarded automatically
-        - Parent verification: child marks complete, parent must approve
+        - Adult verification: child marks complete, adult must approve
       - Chore status tracking: available, in-progress, pending-approval, completed
       - Recurring chores auto-reset based on schedule
       - Chore history/log for tracking completed chores
@@ -157,7 +157,7 @@
     </chores_system>
 
     <rewards_system>
-      - Parent creates rewards catalog:
+      - Adult creates rewards catalog:
         - Reward name and description
         - Point cost to redeem
         - Optional quantity limit
@@ -166,7 +166,7 @@
       - Kids view available rewards with point costs
       - Kids see their current point balance
       - Redeem points for rewards with confirmation
-      - Optional parent approval for redemptions above threshold
+      - Optional adult approval for redemptions above threshold
       - Redemption history tracking
       - Point balance updates in real-time
       - Visual celebration/animation on successful redemption
@@ -217,7 +217,7 @@
   <database_schema>
     <tables>
       <existing_tables>
-        - User: id, name, color, isParent, createdAt, updatedAt
+        - User: id, name, color, isAdult, createdAt, updatedAt
         - CalendarEvent: id, title, description, location, startTime, endTime, allDay, color, createdAt, updatedAt
         - CalendarEventUser: id, eventId, userId
         - CalendarEventMapping: id, localEventId, externalEventId, integrationId, syncDirection, lastSynced
@@ -258,9 +258,9 @@
           - id, integrationId, externalAlbumId, name, enabled, lastSync
         </PhotoAlbum>
         <HouseholdSettings>
-          - id, choreCompletionMode (SELF_CLAIM, PARENT_VERIFY)
+          - id, choreCompletionMode (SELF_CLAIM, ADULT_VERIFY)
           - rewardApprovalThreshold (nullable)
-          - parentPin (encrypted)
+          - adultPin (encrypted)
         </HouseholdSettings>
       </new_tables>
     </tables>
@@ -300,7 +300,7 @@
       - DELETE /api/chores/:id
       - POST /api/chores/:id/claim (child claims a chore)
       - POST /api/chores/:id/complete (mark chore as done)
-      - POST /api/chores/:id/verify (parent approves completion)
+      - POST /api/chores/:id/verify (adult approves completion)
       - GET /api/chores/history
     </chores>
     <rewards>
@@ -448,7 +448,7 @@
       <tasks>
         - Create Prisma schema for chores tables
         - Implement chores CRUD API endpoints
-        - Create chores management UI (parent)
+        - Create chores management UI (adult)
         - Create chores display UI (all users)
         - Implement claim/complete/verify flow
         - Add recurring chore logic
@@ -460,7 +460,7 @@
       <tasks>
         - Create Prisma schema for rewards tables
         - Implement rewards CRUD API endpoints
-        - Create rewards management UI (parent)
+        - Create rewards management UI (adult)
         - Create rewards catalog UI (kids)
         - Implement redemption flow
         - Add point balance displays

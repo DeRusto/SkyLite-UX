@@ -2,6 +2,7 @@
 import { consola } from "consola";
 
 import GlobalFloatingActionButton from "~/components/global/globalFloatingActionButton.vue";
+import RewardDialog from "~/components/rewards/rewardDialog.vue";
 import SettingsPinDialog from "~/components/settings/settingsPinDialog.vue";
 
 const { showSuccess, showError, showWarning } = useAlertToast();
@@ -9,21 +10,16 @@ const { showSuccess, showError, showWarning } = useAlertToast();
 // PIN protection for reward management
 const isPinDialogOpen = ref(false);
 const isRewardManagementUnlocked = ref(false);
-const hasParentPin = ref(false);
+const hasAdultPin = ref(false);
 
-// Check if parent PIN is set
-async function checkParentPin() {
+// Check if adult PIN is set
+async function checkAdultPin() {
   try {
-    const settings = await $fetch<{ hasParentPin: boolean }>("/api/household/settings");
-    hasParentPin.value = settings.hasParentPin;
-    // If no PIN is set, auto-unlock reward management
-    if (!settings.hasParentPin) {
-      isRewardManagementUnlocked.value = true;
-    }
+    const settings = await $fetch<{ hasAdultPin: boolean }>("/api/household/settings");
+    hasAdultPin.value = settings.hasAdultPin;
   }
   catch (err) {
     consola.warn("Rewards: Failed to check household settings:", err);
-    isRewardManagementUnlocked.value = true;
   }
 }
 
@@ -73,33 +69,50 @@ const redeeming = ref<string | null>(null);
 const approving = ref<string | null>(null);
 
 const showCreateDialog = ref(false);
+const editingReward = ref<Reward | null>(null);
 const showRedeemConfirm = ref(false);
 const showRejectConfirm = ref(false);
 const pendingRedeemReward = ref<Reward | null>(null);
 const pendingRejectRedemption = ref<Redemption | null>(null);
-const newReward = ref({
-  name: "",
-  description: "",
-  pointCost: 10,
-  quantityAvailable: null as number | null,
-  expiresAt: null as string | null,
-  icon: null as string | null,
+
+// Check if current user is an adult
+const selectedUser = computed(() => users.value.find(u => u.id === selectedUserId.value));
+const isAdult = computed(() => selectedUser.value?.role === "ADULT");
+
+// Watch user selection to reset unlock state or prompt for PIN
+watch(selectedUserId, (newId, oldId) => {
+  if (newId !== oldId) {
+    isRewardManagementUnlocked.value = false;
+    // Only prompt for PIN if we already had a selected user (ignore initial set)
+    if (isAdult.value && oldId) {
+      isPinDialogOpen.value = true;
+    }
+  }
 });
-const createError = ref("");
 
 // PIN protection handlers
 function handleCreateReward() {
-  if (hasParentPin.value && !isRewardManagementUnlocked.value) {
+  if (isAdult.value && !isRewardManagementUnlocked.value) {
     isPinDialogOpen.value = true;
   }
-  else {
+  else if (isAdult.value) {
+    editingReward.value = null;
+    showCreateDialog.value = true;
+  }
+}
+
+function handleEditReward(reward: Reward) {
+  if (isAdult.value && !isRewardManagementUnlocked.value) {
+    isPinDialogOpen.value = true;
+  }
+  else if (isAdult.value) {
+    editingReward.value = reward;
     showCreateDialog.value = true;
   }
 }
 
 function handlePinVerified() {
   isRewardManagementUnlocked.value = true;
-  showCreateDialog.value = true;
 }
 
 // Fetch rewards
@@ -142,7 +155,7 @@ async function fetchUserPoints() {
   }
 }
 
-// Fetch pending redemptions (for parent approval)
+// Fetch pending redemptions (for adult approval)
 async function fetchPendingRedemptions() {
   try {
     const data = await $fetch<Redemption[]>("/api/rewards/redemptions?status=PENDING");
@@ -152,12 +165,6 @@ async function fetchPendingRedemptions() {
     console.error("Failed to fetch pending redemptions:", error);
   }
 }
-
-// Check if current user is a parent
-const isParent = computed(() => {
-  const user = users.value.find(u => u.id === selectedUserId.value);
-  return user?.role === "PARENT";
-});
 
 // Current points display
 const currentPoints = computed(() => userPoints.value?.currentBalance ?? 0);
@@ -228,9 +235,9 @@ async function confirmRedeemReward() {
   }
 }
 
-// Approve a pending redemption (parent only)
+// Approve a pending redemption (adult only)
 async function approveRedemption(redemptionId: string) {
-  if (!selectedUserId.value || !isParent.value)
+  if (!selectedUserId.value || !isAdult.value)
     return;
 
   try {
@@ -264,9 +271,9 @@ function requestRejectRedemption(redemption: Redemption) {
   showRejectConfirm.value = true;
 }
 
-// Confirm reject a pending redemption (parent only)
+// Confirm reject a pending redemption (adult only)
 async function confirmRejectRedemption() {
-  if (!selectedUserId.value || !isParent.value || !pendingRejectRedemption.value)
+  if (!selectedUserId.value || !isAdult.value || !pendingRejectRedemption.value)
     return;
 
   showRejectConfirm.value = false;
@@ -295,49 +302,6 @@ async function confirmRejectRedemption() {
   }
 }
 
-// Create a new reward (parent only)
-async function createReward() {
-  if (!newReward.value.name.trim()) {
-    createError.value = "Name is required";
-    return;
-  }
-  if (newReward.value.pointCost < 1) {
-    createError.value = "Point cost must be at least 1";
-    return;
-  }
-
-  try {
-    createError.value = "";
-    await $fetch("/api/rewards", {
-      method: "POST",
-      body: {
-        name: newReward.value.name,
-        description: newReward.value.description || undefined,
-        pointCost: newReward.value.pointCost,
-        quantityAvailable: newReward.value.quantityAvailable,
-        expiresAt: newReward.value.expiresAt,
-        icon: newReward.value.icon,
-      },
-    });
-
-    showCreateDialog.value = false;
-    newReward.value = {
-      name: "",
-      description: "",
-      pointCost: 10,
-      quantityAvailable: null,
-      expiresAt: null,
-      icon: null,
-    };
-
-    await fetchRewards();
-  }
-  catch (error: unknown) {
-    const fetchError = error as { data?: { message?: string } };
-    createError.value = fetchError.data?.message || "Failed to create reward";
-  }
-}
-
 // Watch for user selection changes
 watch(selectedUserId, () => {
   fetchUserPoints();
@@ -349,7 +313,7 @@ onMounted(async () => {
     fetchRewards(),
     fetchUsers(),
     fetchPendingRedemptions(),
-    checkParentPin(),
+    checkAdultPin(),
   ]);
   await fetchUserPoints();
   loading.value = false;
@@ -371,7 +335,7 @@ onMounted(async () => {
           </h1>
           <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <!-- User selector -->
-            <div v-if="users.length > 0" class="flex items-center gap-2">
+            <div v-if="users && users.length > 0" class="flex items-center gap-2">
               <span class="text-sm text-muted">Acting as:</span>
               <select
                 v-model="selectedUserId"
@@ -395,8 +359,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Pending Approvals Section (Parent only) -->
-        <div v-if="isParent && pendingRedemptions.length > 0" class="mb-8">
+        <!-- Pending Approvals Section (Adult only) -->
+        <div v-if="isAdult && pendingRedemptions.length > 0" class="mb-8">
           <h2 class="text-lg font-semibold text-highlighted mb-4">
             <UIcon name="i-lucide-clock" class="w-5 h-5 inline mr-2" />
             Pending Approvals ({{ pendingRedemptions.length }})
@@ -464,12 +428,12 @@ onMounted(async () => {
             Rewards can be redeemed using points earned from completing chores. Check back soon for available rewards!
           </p>
           <UButton
-            v-if="isParent"
+            v-if="isAdult"
             class="mt-4"
             @click="handleCreateReward"
           >
-            <UIcon :name="hasParentPin && !isRewardManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'" class="w-4 h-4 mr-1" />
-            {{ hasParentPin && !isRewardManagementUnlocked ? 'Unlock to Create Reward' : 'Create First Reward' }}
+            <UIcon :name="hasAdultPin && !isRewardManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'" class="w-4 h-4 mr-1" />
+            {{ hasAdultPin && !isRewardManagementUnlocked ? 'Unlock to Create Reward' : 'Create First Reward' }}
           </UButton>
         </div>
 
@@ -499,6 +463,15 @@ onMounted(async () => {
                   </div>
                 </div>
               </div>
+              <UButton
+                v-if="isAdult && isRewardManagementUnlocked"
+                icon="i-lucide-pencil"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                aria-label="Edit reward"
+                @click.stop="handleEditReward(reward)"
+              />
             </div>
 
             <p v-if="reward.description" class="text-sm text-muted mb-3">
@@ -530,57 +503,26 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Floating action button for creating rewards (parent only) -->
+    <!-- Floating action button for creating rewards (adult only) -->
     <GlobalFloatingActionButton
-      v-if="isParent"
-      :icon="hasParentPin && !isRewardManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'"
-      :label="hasParentPin && !isRewardManagementUnlocked ? 'Unlock to add reward' : 'Add new reward'"
+      v-if="isAdult"
+      :icon="!isRewardManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'"
+      :label="!isRewardManagementUnlocked ? 'Unlock to manage rewards' : 'Add new reward'"
       color="primary"
       size="lg"
       position="bottom-right"
       @click="handleCreateReward"
     />
 
-    <!-- Create Reward Dialog -->
-    <GlobalDialog
+    <!-- Create/Edit Reward Dialog -->
+    <RewardDialog
       :is-open="showCreateDialog"
-      title="Create Reward"
-      :error="createError"
-      save-label="Create Reward"
+      :reward="editingReward"
       @close="showCreateDialog = false"
-      @save="createReward"
-    >
-      <div class="space-y-4">
-        <UFormField label="Name" required>
-          <UInput v-model="newReward.name" placeholder="Reward name" />
-        </UFormField>
-
-        <UFormField label="Description">
-          <UTextarea v-model="newReward.description" placeholder="Optional description" />
-        </UFormField>
-
-        <UFormField label="Point Cost" required>
-          <UInput
-            v-model.number="newReward.pointCost"
-            type="number"
-            :min="1"
-          />
-        </UFormField>
-
-        <UFormField label="Quantity Available">
-          <UInput
-            v-model.number="newReward.quantityAvailable"
-            type="number"
-            :min="0"
-            placeholder="Leave empty for unlimited"
-          />
-        </UFormField>
-
-        <UFormField label="Expiration Date">
-          <UInput v-model="newReward.expiresAt" type="date" />
-        </UFormField>
-      </div>
-    </GlobalDialog>
+      @created="fetchRewards"
+      @updated="fetchRewards"
+      @deleted="fetchRewards"
+    />
 
     <!-- Redeem Confirmation Modal -->
     <GlobalDialog
@@ -629,7 +571,8 @@ onMounted(async () => {
     <!-- PIN verification dialog -->
     <SettingsPinDialog
       :is-open="isPinDialogOpen"
-      title="Parent Access Required"
+      :user-id="selectedUserId"
+      title="Adult Verification Required"
       @close="isPinDialogOpen = false"
       @verified="handlePinVerified"
     />

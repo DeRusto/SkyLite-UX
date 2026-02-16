@@ -18,7 +18,7 @@ datasource db {
 // ============================================
 
 enum UserRole {
-  PARENT
+  ADULT
   CHILD
 }
 
@@ -63,7 +63,7 @@ enum TransitionEffect {
 
 enum ChoreCompletionMode {
   SELF_CLAIM
-  PARENT_VERIFY
+  ADULT_VERIFY
 }
 
 // ============================================
@@ -76,6 +76,7 @@ model User {
   email     String?  @unique
   avatar    String?
   color     String?
+  pin       String?
   role      UserRole @default(CHILD)
   todoOrder Int      @default(0)
   createdAt DateTime @default(now())
@@ -378,8 +379,8 @@ model HouseholdSettings {
   id                      String              @id @default(cuid())
   familyName              String              @default("Our Family")
   choreCompletionMode     ChoreCompletionMode @default(SELF_CLAIM)
-  rewardApprovalThreshold Int?                // Points threshold requiring parent approval
-  parentPin               String?             // Encrypted PIN for parent verification
+  rewardApprovalThreshold Int?                // Points threshold requiring adult approval
+  adultPin                String?             // Encrypted PIN for adult verification
 
   @@map("household_settings")
 }
