@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.3.0",
+    "@playwright/test": "^1.58.2",
     "@iconify-json/lucide": "^1.2.45",
     "@iconify-json/simple-icons": "^1.2.37",
     "@nuxt/eslint": "^1.2.0",
