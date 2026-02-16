@@ -1,7 +1,8 @@
-const isDesktop = ref(true);
 let initialized = false;
 
 export function useBreakpoint() {
+  const isDesktop = useState("isDesktop", () => true);
+
   if (import.meta.client && !initialized) {
     initialized = true;
     const query = window.matchMedia("(min-width: 1024px)");
