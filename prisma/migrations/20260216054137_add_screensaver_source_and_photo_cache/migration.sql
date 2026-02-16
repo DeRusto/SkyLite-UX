@@ -22,7 +22,5 @@ CREATE INDEX "calendar_events_start_idx" ON "calendar_events"("start");
 CREATE INDEX "calendar_events_end_idx" ON "calendar_events"("end");
 
 -- CreateIndex
-CREATE INDEX "photo_cache_integrationId_assetId_idx" ON "photo_cache"("integrationId", "assetId");
-
 -- CreateIndex
 CREATE UNIQUE INDEX "photo_cache_integrationId_assetId_size_key" ON "photo_cache"("integrationId", "assetId", "size");

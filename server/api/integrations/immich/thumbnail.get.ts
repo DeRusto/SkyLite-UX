@@ -63,6 +63,13 @@ export default defineEventHandler(async (event) => {
   // Check cache first (only for assets, not person thumbnails)
   if (thumbnailType === "asset") {
     try {
+      // Periodically clean up expired cache entries (10% chance to avoid overhead)
+      if (Math.random() < 0.1) {
+        prisma.photoCache.deleteMany({
+          where: { expiresAt: { lt: new Date() } },
+        }).catch(err => consola.warn("Failed to prune photo cache:", err));
+      }
+
       const cachedPhoto = await prisma.photoCache.findUnique({
         where: {
           integrationId_assetId_size: {
