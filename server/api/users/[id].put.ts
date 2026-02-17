@@ -9,15 +9,24 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event);
 
   // Calendar linkage fields must be updated together
-  const hasCalendarId = body.calendarId !== undefined;
-  const hasIntegrationId = body.calendarIntegrationId !== undefined;
-  const hasService = body.calendarService !== undefined;
+  const cal = body.calendarId;
+  const int = body.calendarIntegrationId;
+  const svc = body.calendarService;
 
-  if ((hasCalendarId || hasIntegrationId || hasService) && !(hasCalendarId && hasIntegrationId && hasService)) {
-    throw createError({
-      statusCode: 400,
-      message: "calendarId, calendarIntegrationId, and calendarService must be provided together",
-    });
+  // Check if any of the fields are provided (not undefined)
+  const isProvided = body.calendarId !== undefined || body.calendarIntegrationId !== undefined || body.calendarService !== undefined;
+
+  if (isProvided) {
+    // If any are provided, ensure they are either all null (unlinking) or all non-null (linking)
+    const allNull = cal == null && int == null && svc == null;
+    const allNonNull = cal != null && int != null && svc != null;
+
+    if (!(allNull || allNonNull)) {
+      throw createError({
+        statusCode: 400,
+        message: "calendarId, calendarIntegrationId, and calendarService must be provided together as either all null or all non-null",
+      });
+    }
   }
 
   try {

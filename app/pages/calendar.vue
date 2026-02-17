@@ -94,54 +94,54 @@ async function handleEventAdd(event: CalendarEvent) {
       }
     }
 
-    if (!event.integrationId) {
-      const { data: cachedEvents } = useNuxtData("calendar-events");
-      const previousEvents = cachedEvents.value ? [...cachedEvents.value] : [];
+    if (event.integrationId) {
+      showError("Not Supported", "Adding events to this integration is not supported");
+      return;
+    }
 
-      const newEvent = {
-        ...event,
-        id: `temp-${Date.now()}`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+    const { data: cachedEvents } = useNuxtData("calendar-events");
+    const previousEvents = cachedEvents.value ? [...cachedEvents.value] : [];
+
+    const newEvent = {
+      ...event,
+      id: `temp-${Date.now()}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    if (cachedEvents.value && Array.isArray(cachedEvents.value)) {
+      cachedEvents.value.push(newEvent);
+    }
+
+    try {
+      const eventColor = getEventUserColors(event);
+      const { createEvent } = useCalendarEvents();
+      const createdEvent = await createEvent({
+        title: event.title,
+        description: event.description,
+        start: event.start,
+        end: event.end,
+        allDay: event.allDay,
+        color: eventColor,
+        location: event.location,
+        ical_event: event.ical_event,
+        users: event.users,
+      });
 
       if (cachedEvents.value && Array.isArray(cachedEvents.value)) {
-        cachedEvents.value.push(newEvent);
-      }
-
-      try {
-        const eventColor = getEventUserColors(event);
-        const { createEvent } = useCalendarEvents();
-        const createdEvent = await createEvent({
-          title: event.title,
-          description: event.description,
-          start: event.start,
-          end: event.end,
-          allDay: event.allDay,
-          color: eventColor,
-          location: event.location,
-          ical_event: event.ical_event,
-          users: event.users,
-        });
-
-        if (cachedEvents.value && Array.isArray(cachedEvents.value)) {
-          const tempIndex = cachedEvents.value.findIndex((e: CalendarEvent) => e.id === newEvent.id);
-          if (tempIndex !== -1) {
-            cachedEvents.value[tempIndex] = createdEvent;
-          }
+        const tempIndex = cachedEvents.value.findIndex((e: CalendarEvent) => e.id === newEvent.id);
+        if (tempIndex !== -1) {
+          cachedEvents.value[tempIndex] = createdEvent;
         }
+      }
 
-        showSuccess("Event Created", "Local event created successfully");
-      }
-      catch (error) {
-        if (cachedEvents.value && previousEvents.length > 0) {
-          cachedEvents.value.splice(0, cachedEvents.value.length, ...previousEvents);
-        }
-        throw error;
-      }
+      showSuccess("Event Created", "Local event created successfully");
     }
-    else {
-      showError("Not Supported", "Adding events to this integration is not yet supported");
+    catch (error) {
+      if (cachedEvents.value && previousEvents.length > 0) {
+        cachedEvents.value.splice(0, cachedEvents.value.length, ...previousEvents);
+      }
+      throw error;
     }
   }
   catch {
@@ -181,43 +181,38 @@ async function handleEventUpdate(event: CalendarEvent) {
       }
     }
 
-    if (!event.integrationId) {
-      const { data: cachedEvents } = useNuxtData("calendar-events");
-      const previousEvents = cachedEvents.value ? [...cachedEvents.value] : [];
+    const { data: cachedEvents } = useNuxtData("calendar-events");
+    const previousEvents = cachedEvents.value ? [...cachedEvents.value] : [];
 
-      if (cachedEvents.value && Array.isArray(cachedEvents.value)) {
-        const eventIndex = cachedEvents.value.findIndex((e: CalendarEvent) => e.id === event.id);
-        if (eventIndex !== -1) {
-          cachedEvents.value[eventIndex] = { ...cachedEvents.value[eventIndex], ...event };
-        }
-      }
-
-      try {
-        const eventColor = getEventUserColors(event);
-        const { updateEvent } = useCalendarEvents();
-        await updateEvent(event.id, {
-          title: event.title,
-          description: event.description,
-          start: event.start,
-          end: event.end,
-          allDay: event.allDay,
-          color: eventColor,
-          location: event.location,
-          ical_event: event.ical_event,
-          users: event.users,
-        });
-
-        showSuccess("Event Updated", "Local event updated successfully");
-      }
-      catch (error) {
-        if (cachedEvents.value && previousEvents.length > 0) {
-          cachedEvents.value.splice(0, cachedEvents.value.length, ...previousEvents);
-        }
-        throw error;
+    if (cachedEvents.value && Array.isArray(cachedEvents.value)) {
+      const eventIndex = cachedEvents.value.findIndex((e: CalendarEvent) => e.id === event.id);
+      if (eventIndex !== -1) {
+        cachedEvents.value[eventIndex] = { ...cachedEvents.value[eventIndex], ...event };
       }
     }
-    else {
-      showError("Not Supported", "Updating events in this integration is not yet supported");
+
+    try {
+      const eventColor = getEventUserColors(event);
+      const { updateEvent } = useCalendarEvents();
+      await updateEvent(event.id, {
+        title: event.title,
+        description: event.description,
+        start: event.start,
+        end: event.end,
+        allDay: event.allDay,
+        color: eventColor,
+        location: event.location,
+        ical_event: event.ical_event,
+        users: event.users,
+      });
+
+      showSuccess("Event Updated", "Local event updated successfully");
+    }
+    catch (error) {
+      if (cachedEvents.value && previousEvents.length > 0) {
+        cachedEvents.value.splice(0, cachedEvents.value.length, ...previousEvents);
+      }
+      throw error;
     }
   }
   catch {
@@ -266,25 +261,23 @@ async function handleEventDelete(eventId: string) {
       }
     }
 
-    if (!event.integrationId) {
-      const { data: cachedEvents } = useNuxtData("calendar-events");
-      const previousEvents = cachedEvents.value ? [...cachedEvents.value] : [];
+    const { data: cachedEvents } = useNuxtData("calendar-events");
+    const previousEvents = cachedEvents.value ? [...cachedEvents.value] : [];
 
-      if (cachedEvents.value && Array.isArray(cachedEvents.value)) {
-        cachedEvents.value.splice(0, cachedEvents.value.length, ...cachedEvents.value.filter((e: CalendarEvent) => e.id !== eventId));
-      }
+    if (cachedEvents.value && Array.isArray(cachedEvents.value)) {
+      cachedEvents.value.splice(0, cachedEvents.value.length, ...cachedEvents.value.filter((e: CalendarEvent) => e.id !== eventId));
+    }
 
-      try {
-        const { deleteEvent } = useCalendarEvents();
-        await deleteEvent(eventId);
-        showSuccess("Event Deleted", "Local event deleted successfully");
+    try {
+      const { deleteEvent } = useCalendarEvents();
+      await deleteEvent(eventId);
+      showSuccess("Event Deleted", "Local event deleted successfully");
+    }
+    catch (error) {
+      if (cachedEvents.value && previousEvents.length > 0) {
+        cachedEvents.value.splice(0, cachedEvents.value.length, ...previousEvents);
       }
-      catch (error) {
-        if (cachedEvents.value && previousEvents.length > 0) {
-          cachedEvents.value.splice(0, cachedEvents.value.length, ...previousEvents);
-        }
-        throw error;
-      }
+      throw error;
     }
   }
   catch {
