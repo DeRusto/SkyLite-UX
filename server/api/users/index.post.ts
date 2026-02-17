@@ -19,6 +19,9 @@ export default defineEventHandler(async (event) => {
           color: body.color || null,
           role: body.role === "ADULT" ? "ADULT" : "CHILD",
           pin: body.pin ? await hashPin(body.pin) : null,
+          calendarId: body.calendarId || null,
+          calendarIntegrationId: body.calendarIntegrationId || null,
+          calendarService: body.calendarService || null,
         },
       });
 

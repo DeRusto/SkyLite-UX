@@ -20,7 +20,16 @@ const color = ref("#3b82f6");
 const avatar = ref("");
 const role = ref<"ADULT" | "CHILD">("CHILD");
 const pin = ref("");
+const calendarId = ref<string | null>(null);
+const calendarIntegrationId = ref<string | null>(null);
+const calendarService = ref<string | null>(null);
 const error = ref<string | null>(null);
+
+const { data: calendarData, refresh: refreshCalendars } = useFetch<{ calendars: any[] }>("/api/calendars", {
+  immediate: false,
+});
+
+const availableCalendars = computed(() => calendarData.value?.calendars || []);
 
 const chip = computed(() => ({ backgroundColor: color.value }));
 
@@ -45,6 +54,9 @@ watch(() => props.user, (newUser) => {
     avatar.value = newUser.avatar && !newUser.avatar.startsWith("https://ui-avatars.com/api/") ? newUser.avatar : "";
     role.value = newUser.role;
     pin.value = ""; // Don't populate PIN for security
+    calendarId.value = newUser.calendarId || null;
+    calendarIntegrationId.value = newUser.calendarIntegrationId || null;
+    calendarService.value = newUser.calendarService || null;
     error.value = null;
   }
   else {
@@ -53,7 +65,10 @@ watch(() => props.user, (newUser) => {
 }, { immediate: true });
 
 watch(() => props.isOpen, (isOpen) => {
-  if (!isOpen) {
+  if (isOpen) {
+    refreshCalendars();
+  }
+  else {
     resetForm();
   }
 });
@@ -71,6 +86,9 @@ function resetForm() {
   avatar.value = "";
   role.value = "CHILD";
   pin.value = "";
+  calendarId.value = null;
+  calendarIntegrationId.value = null;
+  calendarService.value = null;
   error.value = null;
 }
 
@@ -96,6 +114,9 @@ function handleSave() {
     avatar: avatar.value || getDefaultAvatarUrl(),
     role: role.value,
     pin: role.value === "CHILD" ? undefined : (pin.value || undefined),
+    calendarId: calendarId.value,
+    calendarIntegrationId: calendarIntegrationId.value,
+    calendarService: calendarService.value,
     todoOrder: 0,
   } as CreateUserInput);
 }
@@ -210,6 +231,39 @@ function handleDelete() {
         <p class="text-xs text-muted">
           Used to unlock adult features like managing chores and rewards.
         </p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Linked Calendar</label>
+        <p class="text-xs text-muted mb-2">
+          Associate this user with a specific calendar to automatically route their events and enable filtering.
+        </p>
+        <div v-if="availableCalendars.length > 0">
+          <USelect
+            :model-value="calendarId"
+            :items="[
+              { label: 'None', value: null },
+              ...availableCalendars.map(cal => ({ label: `${cal.integrationName}: ${cal.summary}`, value: cal.id }))
+            ]"
+            placeholder="Select a calendar"
+            class="w-full"
+            @update:model-value="(val) => {
+              const selected = availableCalendars.find(c => c.id === val);
+              if (selected) {
+                calendarId = selected.id;
+                calendarIntegrationId = selected.integrationId;
+                calendarService = selected.service;
+              } else {
+                calendarId = null;
+                calendarIntegrationId = null;
+                calendarService = null;
+              }
+            }"
+          />
+        </div>
+        <div v-else class="text-sm text-muted py-2 bg-muted/30 rounded px-3">
+          No calendar integrations found. Connect a Google Calendar or iCal in Settings > Integrations first.
+        </div>
       </div>
     </div>
   </GlobalDialog>

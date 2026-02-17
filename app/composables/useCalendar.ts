@@ -9,12 +9,14 @@ import type { Integration } from "~/types/database";
 
 import { useStableDate } from "~/composables/useStableDate";
 import { useSyncManager } from "~/composables/useSyncManager";
+import { useUsers } from "~/composables/useUsers";
 import { getBrowserTimezone, isTimezoneRegistered } from "~/types/global";
 
 export function useCalendar() {
   const { data: nativeEvents } = useNuxtData<CalendarEvent[]>("calendar-events");
 
   const { integrations } = useIntegrations();
+  const { users } = useUsers();
 
   const { getSyncDataByType, getCachedIntegrationData } = useSyncManager();
 
@@ -335,16 +337,40 @@ export function useCalendar() {
       integration.type === "calendar" && integration.enabled,
     );
 
+    const usersList = users.value || [];
+
     calendarIntegrations.forEach((integration) => {
       try {
         const integrationEvents = getCachedIntegrationData("calendar", integration.id) as CalendarEvent[];
 
         if (integrationEvents && Array.isArray(integrationEvents)) {
-          const eventsWithIntegrationId = integrationEvents.map(event => ({
-            ...event,
-            integrationId: integration.id,
-            integrationName: integration.name || "Unknown",
-          }));
+          const eventsWithIntegrationId = integrationEvents.map((event) => {
+            // Find users linked to this integration and calendar
+            // For iCal, we match by integrationId as the "calendar" is the integration itself
+            const linkedUsers = usersList.filter(u =>
+              u.calendarIntegrationId === integration.id
+              && (u.calendarId === event.calendarId || integration.service === "iCal"),
+            );
+
+            const eventUsers = [...(event.users || [])];
+            linkedUsers.forEach((u) => {
+              if (!eventUsers.some(eu => eu.id === u.id)) {
+                eventUsers.push({
+                  id: u.id,
+                  name: u.name,
+                  avatar: u.avatar || null,
+                  color: u.color || null,
+                });
+              }
+            });
+
+            return {
+              ...event,
+              integrationId: integration.id,
+              integrationName: integration.name || "Unknown",
+              users: eventUsers,
+            };
+          });
           events.push(...eventsWithIntegrationId);
         }
       }

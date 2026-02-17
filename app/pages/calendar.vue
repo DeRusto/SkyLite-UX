@@ -8,10 +8,13 @@ import { useAlertToast } from "~/composables/useAlertToast";
 import { useCalendar } from "~/composables/useCalendar";
 import { useCalendarEvents } from "~/composables/useCalendarEvents";
 import { useIntegrations } from "~/composables/useIntegrations";
+import { useUsers } from "~/composables/useUsers";
 import { integrationRegistry } from "~/types/integrations";
 
 const route = useRoute();
 const { allEvents, getEventUserColors } = useCalendar();
+const { users } = useUsers();
+const { integrations } = useIntegrations();
 const { showError, showSuccess } = useAlertToast();
 
 const router = useRouter();
@@ -44,6 +47,34 @@ function handleUserFilterChange(userIds: string[]) {
 
 async function handleEventAdd(event: CalendarEvent) {
   try {
+    // Check if event is for a single user with a linked calendar
+    const selectedUsers = event.users || [];
+    if (selectedUsers.length === 1 && selectedUsers[0]) {
+      const userId = selectedUsers[0].id;
+      const user = users.value.find(u => u.id === userId);
+
+      if (user?.calendarIntegrationId && user?.calendarId) {
+        const integration = (integrations.value as Integration[]).find(i => i.id === user.calendarIntegrationId);
+        if (integration) {
+          const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
+          if (config?.capabilities.includes("add_events")) {
+            await $fetch(`/api/integrations/${integration.service}/events`, {
+              method: "POST",
+              body: {
+                integrationId: integration.id,
+                calendarEvent: event,
+                calendarId: user.calendarId,
+              },
+            });
+
+            await refreshNuxtData("calendar-events");
+            showSuccess("Event Created", `Event added to ${user.name}'s calendar`);
+            return;
+          }
+        }
+      }
+    }
+
     if (!event.integrationId) {
       const { data: cachedEvents } = useNuxtData("calendar-events");
       const previousEvents = cachedEvents.value ? [...cachedEvents.value] : [];
@@ -101,6 +132,32 @@ async function handleEventAdd(event: CalendarEvent) {
 
 async function handleEventUpdate(event: CalendarEvent) {
   try {
+    if (event.integrationId) {
+      const integration = (integrations.value as Integration[]).find(i => i.id === event.integrationId);
+      if (integration) {
+        const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
+        if (config?.capabilities.includes("edit_events")) {
+          // Remove integration prefix from ID for the API call
+          // Google Calendar uses 'google-' prefix, others use service name
+          const prefix = integration.service === "google-calendar" ? "google" : integration.service;
+          const integrationEventId = event.id.replace(`${prefix}-${integration.id}-`, "");
+
+          await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
+            method: "PUT",
+            body: {
+              integrationId: integration.id,
+              updates: event,
+              calendarId: event.calendarId,
+            },
+          });
+
+          await refreshNuxtData("calendar-events");
+          showSuccess("Event Updated", "Integration event updated successfully");
+          return;
+        }
+      }
+    }
+
     if (!event.integrationId) {
       const { data: cachedEvents } = useNuxtData("calendar-events");
       const previousEvents = cachedEvents.value ? [...cachedEvents.value] : [];
@@ -152,6 +209,31 @@ async function handleEventDelete(eventId: string) {
     if (!event) {
       showError("Event Not Found", "The event could not be found.");
       return;
+    }
+
+    if (event.integrationId) {
+      const integration = (integrations.value as Integration[]).find(i => i.id === event.integrationId);
+      if (integration) {
+        const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
+        if (config?.capabilities.includes("delete_events")) {
+          // Remove integration prefix from ID for the API call
+          // Google Calendar uses 'google-' prefix, others use service name
+          const prefix = integration.service === "google-calendar" ? "google" : integration.service;
+          const integrationEventId = event.id.replace(`${prefix}-${integration.id}-`, "");
+
+          await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
+            method: "DELETE",
+            body: {
+              integrationId: integration.id,
+              calendarId: event.calendarId,
+            },
+          });
+
+          await refreshNuxtData("calendar-events");
+          showSuccess("Event Deleted", "Integration event deleted successfully");
+          return;
+        }
+      }
     }
 
     if (!event.integrationId) {

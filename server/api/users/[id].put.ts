@@ -19,6 +19,9 @@ export default defineEventHandler(async (event) => {
           role: body.role ?? undefined,
           pin: body.pin ? await hashPin(body.pin) : undefined,
           todoOrder: body.todoOrder ?? undefined,
+          calendarId: body.calendarId !== undefined ? body.calendarId : undefined,
+          calendarIntegrationId: body.calendarIntegrationId !== undefined ? body.calendarIntegrationId : undefined,
+          calendarService: body.calendarService !== undefined ? body.calendarService : undefined,
         },
       }),
       ...(body.name
