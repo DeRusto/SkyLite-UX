@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { consola } from "consola";
 import { isValid, parseISO } from "date-fns";
 
 import type { CalendarEvent } from "~/types/calendar";
@@ -15,9 +16,16 @@ const route = useRoute();
 const { allEvents, getEventUserColors } = useCalendar();
 const { users } = useUsers();
 const { integrations } = useIntegrations();
-const { showError, showSuccess } = useAlertToast();
+const { showError, showSuccess, showWarning } = useAlertToast();
 
 const router = useRouter();
+
+const typedIntegrations = computed(() => (integrations.value ?? []) as Integration[]);
+
+function getIntegrationEventId(event: CalendarEvent, integration: Integration) {
+  const prefix = integration.service === "google-calendar" ? "google" : integration.service;
+  return event.id.replace(`${prefix}-${integration.id}-`, "");
+}
 
 // Handle deep link to specific date via ?date=YYYY-MM-DD query parameter
 const currentDate = useState<Date>("calendar-current-date");
@@ -54,10 +62,13 @@ async function handleEventAdd(event: CalendarEvent) {
       const user = users.value.find(u => u.id === userId);
 
       if (user?.calendarIntegrationId && user?.calendarId) {
-        const integration = (integrations.value as Integration[]).find(i => i.id === user.calendarIntegrationId);
-        if (integration) {
-          const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
-          if (config?.capabilities.includes("add_events")) {
+        const integration = typedIntegrations.value.find(i => i.id === user.calendarIntegrationId);
+        const config = integration
+          ? integrationRegistry.get(`${integration.type}:${integration.service}`)
+          : null;
+
+        if (integration && config) {
+          if (config.capabilities.includes("add_events")) {
             await $fetch(`/api/integrations/${integration.service}/events`, {
               method: "POST",
               body: {
@@ -71,6 +82,10 @@ async function handleEventAdd(event: CalendarEvent) {
             showSuccess("Event Created", `Event added to ${user.name}'s calendar`);
             return;
           }
+        }
+        else {
+          consola.warn(`Integration ${user.calendarIntegrationId} not found for user ${user.id}. Creating local event.`);
+          showWarning("Integration Not Found", `Linked calendar integration not found. Event will be created locally in SkyLite.`);
         }
       }
     }
@@ -133,14 +148,11 @@ async function handleEventAdd(event: CalendarEvent) {
 async function handleEventUpdate(event: CalendarEvent) {
   try {
     if (event.integrationId) {
-      const integration = (integrations.value as Integration[]).find(i => i.id === event.integrationId);
+      const integration = typedIntegrations.value.find(i => i.id === event.integrationId);
       if (integration) {
         const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
         if (config?.capabilities.includes("edit_events")) {
-          // Remove integration prefix from ID for the API call
-          // Google Calendar uses 'google-' prefix, others use service name
-          const prefix = integration.service === "google-calendar" ? "google" : integration.service;
-          const integrationEventId = event.id.replace(`${prefix}-${integration.id}-`, "");
+          const integrationEventId = getIntegrationEventId(event, integration);
 
           await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
             method: "PUT",
@@ -153,6 +165,10 @@ async function handleEventUpdate(event: CalendarEvent) {
 
           await refreshNuxtData("calendar-events");
           showSuccess("Event Updated", "Integration event updated successfully");
+          return;
+        }
+        else {
+          showError("Not Supported", "Updating events in this integration is not supported");
           return;
         }
       }
@@ -204,7 +220,7 @@ async function handleEventUpdate(event: CalendarEvent) {
 
 async function handleEventDelete(eventId: string) {
   try {
-    const event = allEvents.value.find(e => e.id === eventId);
+    const event = allEvents.value.find(e => e.id === eventId) as CalendarEvent | undefined;
 
     if (!event) {
       showError("Event Not Found", "The event could not be found.");
@@ -212,25 +228,22 @@ async function handleEventDelete(eventId: string) {
     }
 
     if (event.integrationId) {
-      const integration = (integrations.value as Integration[]).find(i => i.id === event.integrationId);
+      const integration = typedIntegrations.value.find(i => i.id === event.integrationId);
       if (integration) {
         const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
         if (config?.capabilities.includes("delete_events")) {
-          // Remove integration prefix from ID for the API call
-          // Google Calendar uses 'google-' prefix, others use service name
-          const prefix = integration.service === "google-calendar" ? "google" : integration.service;
-          const integrationEventId = event.id.replace(`${prefix}-${integration.id}-`, "");
+          const integrationEventId = getIntegrationEventId(event, integration);
 
-          await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
+          await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}?integrationId=${integration.id}&calendarId=${event.calendarId}`, {
             method: "DELETE",
-            body: {
-              integrationId: integration.id,
-              calendarId: event.calendarId,
-            },
           });
 
           await refreshNuxtData("calendar-events");
           showSuccess("Event Deleted", "Integration event deleted successfully");
+          return;
+        }
+        else {
+          showError("Not Supported", "Deleting events from this integration is not supported");
           return;
         }
       }
@@ -269,8 +282,7 @@ function getEventIntegrationCapabilities(event: CalendarEvent): { capabilities: 
   if (!event.integrationId)
     return undefined;
 
-  const { integrations } = useIntegrations();
-  const integration = (integrations.value as readonly Integration[] || []).find(i => i.id === event.integrationId);
+  const integration = typedIntegrations.value.find(i => i.id === event.integrationId);
   if (!integration)
     return undefined;
 

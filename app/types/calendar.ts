@@ -2,6 +2,15 @@ import type { ICalEvent } from "../../server/integrations/iCal/types";
 
 export type CalendarView = "month" | "week" | "day" | "agenda";
 
+export type AvailableCalendar = {
+  id: string;
+  summary: string;
+  integrationId: string;
+  integrationName: string;
+  service: string;
+  color?: string;
+};
+
 export type CalendarEvent = {
   id: string;
   title: string;

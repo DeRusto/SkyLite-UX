@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 
+import type { AvailableCalendar } from "~/types/calendar";
 import type { CreateUserInput, User } from "~/types/database";
 
 const props = defineProps<{
@@ -25,7 +26,7 @@ const calendarIntegrationId = ref<string | null>(null);
 const calendarService = ref<string | null>(null);
 const error = ref<string | null>(null);
 
-const { data: calendarData, refresh: refreshCalendars } = useFetch<{ calendars: any[] }>("/api/calendars", {
+const { data: calendarData, refresh: refreshCalendars } = useFetch<{ calendars: AvailableCalendar[] }>("/api/calendars", {
   immediate: false,
 });
 
@@ -78,6 +79,20 @@ watch(role, (newRole) => {
     pin.value = "";
   }
 });
+
+function handleCalendarSelect(val: string | null) {
+  const selected = availableCalendars.value.find(c => c.id === val);
+  if (selected) {
+    calendarId.value = selected.id;
+    calendarIntegrationId.value = selected.integrationId;
+    calendarService.value = selected.service;
+  }
+  else {
+    calendarId.value = null;
+    calendarIntegrationId.value = null;
+    calendarService.value = null;
+  }
+}
 
 function resetForm() {
   name.value = "";
@@ -247,18 +262,7 @@ function handleDelete() {
             ]"
             placeholder="Select a calendar"
             class="w-full"
-            @update:model-value="(val) => {
-              const selected = availableCalendars.find(c => c.id === val);
-              if (selected) {
-                calendarId = selected.id;
-                calendarIntegrationId = selected.integrationId;
-                calendarService = selected.service;
-              } else {
-                calendarId = null;
-                calendarIntegrationId = null;
-                calendarService = null;
-              }
-            }"
+            @update:model-value="handleCalendarSelect"
           />
         </div>
         <div v-else class="text-sm text-muted py-2 bg-muted/30 rounded px-3">

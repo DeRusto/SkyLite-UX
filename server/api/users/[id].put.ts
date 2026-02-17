@@ -7,6 +7,18 @@ export default defineEventHandler(async (event) => {
   }
   const body = await readBody(event);
 
+  // Calendar linkage fields must be updated together
+  const hasCalendarId = body.calendarId !== undefined;
+  const hasIntegrationId = body.calendarIntegrationId !== undefined;
+  const hasService = body.calendarService !== undefined;
+
+  if ((hasCalendarId || hasIntegrationId || hasService) && !(hasCalendarId && hasIntegrationId && hasService)) {
+    throw createError({
+      statusCode: 400,
+      message: "calendarId, calendarIntegrationId, and calendarService must be provided together",
+    });
+  }
+
   try {
     const [updatedUser] = await prisma.$transaction([
       prisma.user.update({

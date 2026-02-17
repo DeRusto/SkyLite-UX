@@ -1,6 +1,9 @@
 import { GoogleCalendarServerService } from "~~/server/integrations/google-calendar/client";
-import { defineEventHandler } from "h3";
+import { defineEventHandler, createError } from "h3";
 import prisma from "~/lib/prisma";
+import consola from "consola";
+import type { GoogleCalendarSettings } from "~~/server/integrations/google-calendar/types";
+import type { AvailableCalendar } from "~/types/calendar";
 
 export default defineEventHandler(async (_event) => {
   try {
@@ -11,46 +14,51 @@ export default defineEventHandler(async (_event) => {
       },
     });
 
-    const allCalendars = [];
-
-    for (const integration of integrations) {
+    const results = await Promise.allSettled(integrations.map(async (integration) => {
       if (integration.service === "google-calendar") {
-        try {
-          if (integration.accessToken && integration.refreshToken) {
-            const service = new GoogleCalendarServerService(
-              integration.id,
-              integration.accessToken,
-              integration.refreshToken,
-              integration.tokenExpiry,
-              integration.settings as any || {},
-            );
-            await service.initialize();
-            const calendars = await service.listCalendars();
+        if (integration.accessToken && integration.refreshToken) {
+          const settings = (integration.settings as unknown as GoogleCalendarSettings) ?? { selectedCalendars: [] };
+          const service = new GoogleCalendarServerService(
+            integration.id,
+            integration.accessToken,
+            integration.refreshToken,
+            integration.tokenExpiry,
+            settings,
+          );
+          await service.initialize();
+          const calendars = await service.listCalendars();
 
-            allCalendars.push(...calendars.map(cal => ({
-              id: cal.id,
-              summary: cal.summary,
-              integrationId: integration.id,
-              integrationName: integration.name,
-              service: integration.service,
-              color: cal.backgroundColor,
-            })));
-          }
-        } catch (err) {
-          console.error(`Failed to fetch calendars for integration ${integration.id}:`, err);
+          return calendars.map((cal): AvailableCalendar => ({
+            id: cal.id,
+            summary: cal.summary,
+            integrationId: integration.id,
+            integrationName: integration.name,
+            service: integration.service,
+            color: cal.backgroundColor,
+          }));
         }
       } else if (integration.service === "iCal") {
         // For iCal, the integration itself is the calendar
-        allCalendars.push({
-          id: integration.id, // Use integration ID as calendar ID for iCal
+        return [{
+          id: integration.id,
           summary: integration.name,
           integrationId: integration.id,
           integrationName: integration.name,
           service: integration.service,
           color: (integration.settings as any)?.eventColor || "#06b6d4",
-        });
+        } as AvailableCalendar];
       }
-    }
+      return [] as AvailableCalendar[];
+    }));
+
+    const allCalendars: AvailableCalendar[] = [];
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        allCalendars.push(...result.value);
+      } else {
+        consola.error(`Failed to fetch calendars for integration ${integrations[index]?.id}:`, result.reason);
+      }
+    });
 
     return { calendars: allCalendars };
   } catch (error) {
