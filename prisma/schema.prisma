@@ -79,6 +79,10 @@ model User {
   pin       String?
   role      UserRole @default(CHILD)
   todoOrder Int      @default(0)
+  calendarId           String?
+  calendarIntegrationId String?
+  calendarIntegration   Integration? @relation(fields: [calendarIntegrationId], references: [id], onDelete: SetNull)
+  calendarService      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -91,6 +95,7 @@ model User {
   rewardApprovals    RewardRedemption[]  @relation("RewardApprovals")
   points             UserPoints?
 
+  @@index([calendarIntegrationId])
   @@map("users")
 }
 
@@ -168,6 +173,8 @@ model Integration {
   tokenType       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  linkedUsers User[]
 
   @@unique([name])
   @@map("integrations")

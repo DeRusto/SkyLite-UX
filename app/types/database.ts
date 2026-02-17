@@ -3,6 +3,9 @@ import type { Priority, Prisma } from "@prisma/client";
 export type User = Prisma.UserGetPayload<Record<string, never>> & {
   avatar?: string | null;
   color?: string | null;
+  calendarId?: string | null;
+  calendarIntegrationId?: string | null;
+  calendarService?: string | null;
 };
 export type UserWithTodos = Prisma.UserGetPayload<{
   include: {
