@@ -1,3 +1,4 @@
+import { consola } from "consola";
 import prisma from "~/lib/prisma";
 
 export default defineEventHandler(async (event) => {
@@ -48,9 +49,10 @@ export default defineEventHandler(async (event) => {
     return updatedUser;
   }
   catch (error) {
+    consola.error("Failed to update user:", error);
     throw createError({
       statusCode: 500,
-      message: `Failed to update user: ${error}`,
+      message: "Failed to update user",
     });
   }
 });

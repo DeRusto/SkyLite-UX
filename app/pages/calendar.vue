@@ -82,6 +82,10 @@ async function handleEventAdd(event: CalendarEvent) {
             showSuccess("Event Created", `Event added to ${user.name}'s calendar`);
             return;
           }
+          else {
+            consola.warn(`Integration ${integration.service} does not support add_events for user ${user.id}. Creating local event.`);
+            showWarning("Not Supported", `Linked calendar does not support adding events. Event will be created locally in SkyLite.`);
+          }
         }
         else {
           consola.warn(`Integration ${user.calendarIntegrationId} not found for user ${user.id}. Creating local event.`);
@@ -149,28 +153,31 @@ async function handleEventUpdate(event: CalendarEvent) {
   try {
     if (event.integrationId) {
       const integration = typedIntegrations.value.find(i => i.id === event.integrationId);
-      if (integration) {
-        const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
-        if (config?.capabilities.includes("edit_events")) {
-          const integrationEventId = getIntegrationEventId(event, integration);
+      if (!integration) {
+        showError("Integration Not Found", "The linked calendar integration could not be found.");
+        return;
+      }
 
-          await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
-            method: "PUT",
-            body: {
-              integrationId: integration.id,
-              updates: event,
-              calendarId: event.calendarId,
-            },
-          });
+      const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
+      if (config?.capabilities.includes("edit_events")) {
+        const integrationEventId = getIntegrationEventId(event, integration);
 
-          await refreshNuxtData("calendar-events");
-          showSuccess("Event Updated", "Integration event updated successfully");
-          return;
-        }
-        else {
-          showError("Not Supported", "Updating events in this integration is not supported");
-          return;
-        }
+        await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
+          method: "PUT",
+          body: {
+            integrationId: integration.id,
+            updates: event,
+            calendarId: event.calendarId,
+          },
+        });
+
+        await refreshNuxtData("calendar-events");
+        showSuccess("Event Updated", "Integration event updated successfully");
+        return;
+      }
+      else {
+        showError("Not Supported", "Updating events in this integration is not supported");
+        return;
       }
     }
 
@@ -229,23 +236,33 @@ async function handleEventDelete(eventId: string) {
 
     if (event.integrationId) {
       const integration = typedIntegrations.value.find(i => i.id === event.integrationId);
-      if (integration) {
-        const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
-        if (config?.capabilities.includes("delete_events")) {
-          const integrationEventId = getIntegrationEventId(event, integration);
+      if (!integration) {
+        showError("Integration Not Found", "The linked calendar integration could not be found.");
+        return;
+      }
 
-          await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}?integrationId=${integration.id}&calendarId=${event.calendarId}`, {
-            method: "DELETE",
-          });
+      const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
+      if (config?.capabilities.includes("delete_events")) {
+        const integrationEventId = getIntegrationEventId(event, integration);
 
-          await refreshNuxtData("calendar-events");
-          showSuccess("Event Deleted", "Integration event deleted successfully");
-          return;
+        const params = new URLSearchParams({
+          integrationId: integration.id,
+        });
+        if (event.calendarId) {
+          params.set("calendarId", event.calendarId);
         }
-        else {
-          showError("Not Supported", "Deleting events from this integration is not supported");
-          return;
-        }
+
+        await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}?${params.toString()}`, {
+          method: "DELETE",
+        });
+
+        await refreshNuxtData("calendar-events");
+        showSuccess("Event Deleted", "Integration event deleted successfully");
+        return;
+      }
+      else {
+        showError("Not Supported", "Deleting events from this integration is not supported");
+        return;
       }
     }
 
@@ -268,9 +285,6 @@ async function handleEventDelete(eventId: string) {
         }
         throw error;
       }
-    }
-    else {
-      showError("Not Supported", "Deleting events from this integration is not yet supported");
     }
   }
   catch {
