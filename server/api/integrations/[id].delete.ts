@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
     return { success: true };
   }
   catch (error: any) {
-    if (error.statusCode) {
+    if (error?.statusCode) {
       throw error;
     }
     consola.error("Failed to delete integration:", error);

@@ -9,17 +9,17 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event);
 
   // Calendar linkage fields must be updated together
-  const cal = body.calendarId;
-  const int = body.calendarIntegrationId;
-  const svc = body.calendarService;
+  const calendarId = body.calendarId;
+  const integrationId = body.calendarIntegrationId;
+  const calendarService = body.calendarService;
 
   // Check if any of the fields are provided (not undefined)
   const isProvided = body.calendarId !== undefined || body.calendarIntegrationId !== undefined || body.calendarService !== undefined;
 
   if (isProvided) {
     // If any are provided, ensure they are either all null (unlinking) or all non-null (linking)
-    const allNull = cal == null && int == null && svc == null;
-    const allNonNull = cal != null && int != null && svc != null;
+    const allNull = calendarId == null && integrationId == null && calendarService == null;
+    const allNonNull = calendarId != null && integrationId != null && calendarService != null;
 
     if (!(allNull || allNonNull)) {
       throw createError({

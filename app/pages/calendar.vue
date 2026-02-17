@@ -20,6 +20,7 @@ const { showError, showSuccess, showWarning } = useAlertToast();
 
 const router = useRouter();
 
+const { createEvent, updateEvent, deleteEvent } = useCalendarEvents();
 const typedIntegrations = computed(() => (integrations.value ?? []) as Integration[]);
 
 function getIntegrationEventId(event: CalendarEvent, integration: Integration) {
@@ -115,7 +116,6 @@ async function handleEventAdd(event: CalendarEvent) {
 
     try {
       const eventColor = getEventUserColors(event);
-      const { createEvent } = useCalendarEvents();
       const createdEvent = await createEvent({
         title: event.title,
         description: event.description,
@@ -138,7 +138,7 @@ async function handleEventAdd(event: CalendarEvent) {
       showSuccess("Event Created", "Local event created successfully");
     }
     catch (error) {
-      if (cachedEvents.value && previousEvents.length > 0) {
+      if (cachedEvents.value) {
         cachedEvents.value.splice(0, cachedEvents.value.length, ...previousEvents);
       }
       throw error;
@@ -193,7 +193,6 @@ async function handleEventUpdate(event: CalendarEvent) {
 
     try {
       const eventColor = getEventUserColors(event);
-      const { updateEvent } = useCalendarEvents();
       await updateEvent(event.id, {
         title: event.title,
         description: event.description,
@@ -209,7 +208,7 @@ async function handleEventUpdate(event: CalendarEvent) {
       showSuccess("Event Updated", "Local event updated successfully");
     }
     catch (error) {
-      if (cachedEvents.value && previousEvents.length > 0) {
+      if (cachedEvents.value) {
         cachedEvents.value.splice(0, cachedEvents.value.length, ...previousEvents);
       }
       throw error;
@@ -269,12 +268,11 @@ async function handleEventDelete(eventId: string) {
     }
 
     try {
-      const { deleteEvent } = useCalendarEvents();
       await deleteEvent(eventId);
       showSuccess("Event Deleted", "Local event deleted successfully");
     }
     catch (error) {
-      if (cachedEvents.value && previousEvents.length > 0) {
+      if (cachedEvents.value) {
         cachedEvents.value.splice(0, cachedEvents.value.length, ...previousEvents);
       }
       throw error;
