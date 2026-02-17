@@ -206,7 +206,7 @@ const petsSelected = computed(() => selectedPeopleIds.value.filter(id => pets.va
         </div>
       </div>
 
-      <div class="max-h-60 overflow-y-auto">
+      <div>
         <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
           <div
             v-for="person in people"
@@ -278,7 +278,7 @@ const petsSelected = computed(() => selectedPeopleIds.value.filter(id => pets.va
         </div>
       </div>
 
-      <div class="max-h-60 overflow-y-auto">
+      <div>
         <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
           <div
             v-for="pet in pets"

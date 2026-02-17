@@ -584,19 +584,8 @@ function handleDelete() {
         </div>
       </template>
 
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <UCheckbox
-            v-model="enabled"
-            label="Enable integration"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Integration Specific Footer Content -->
-    <template #footer-left>
-      <div v-if="service === 'google-photos' && integration?.id" class="p-4 border-t border-default bg-muted/5 w-full">
+      <!-- Integration Specific Settings -->
+      <div v-if="service === 'google-photos' && integration?.id" class="pt-6 border-t border-default">
         <settingsGooglePhotosAlbumSelector
           :integration-id="integration.id"
           :access-token="integration.accessToken || ''"
@@ -605,7 +594,7 @@ function handleDelete() {
         />
       </div>
 
-      <div v-if="service === 'immich' && integration?.id" class="p-4 border-t border-default bg-muted/5 w-full space-y-4">
+      <div v-if="service === 'immich' && integration?.id" class="pt-6 border-t border-default space-y-8">
         <settingsImmichAlbumSelector
           :integration-id="integration.id"
           :selected-albums="(settingsData.selectedAlbums as string[]) || []"
@@ -617,6 +606,15 @@ function handleDelete() {
           @people-selected="handleImmichPeopleSelected"
         />
       </div>
-    </template>
+
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <UCheckbox
+            v-model="enabled"
+            label="Enable integration"
+          />
+        </div>
+      </div>
+    </div>
   </GlobalDialog>
 </template>
