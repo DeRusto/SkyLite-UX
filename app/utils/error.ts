@@ -8,6 +8,11 @@ export type FetchErrorShape = {
 };
 
 /**
+ * Named type for Nuxt Fetch Errors to be used in casts and signatures.
+ */
+export type NuxtFetchError = FetchErrorShape;
+
+/**
  * Utility to extract a human-readable error message from an API error.
  * Handles Nuxt $fetch errors, standard Errors, and fallback messages.
  */

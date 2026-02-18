@@ -1,7 +1,5 @@
 import { consola } from "consola";
 
-import type { CalendarEvent } from "~/types/calendar";
-import type { Integration, ShoppingListWithItemsAndCount, TodoWithUser } from "~/types/database";
 import type { IntegrationSyncData, SyncConnectionStatus, SyncStatus } from "~/types/sync";
 
 export function getIntegrationCacheKey(integrationType: string, integrationId: string): string {
@@ -87,13 +85,13 @@ export function useSyncManager() {
     return status;
   };
 
-  const getSyncDataByType = (integrationType: string, integrationsList?: Integration[]) => {
+  const getSyncDataByType = (integrationType: string, integrationsList?: any[]) => {
     const data = getAllSyncData();
     const integrations = integrationsList || [];
 
     return integrations
-      .filter((integration: Integration) => integration.type === integrationType)
-      .map((integration: Integration) => ({
+      .filter((integration: any) => integration.type === integrationType)
+      .map((integration: any) => ({
         integration,
         syncData: data[integration.id],
         cachedData: getCachedIntegrationData(integrationType, integration.id),
@@ -101,15 +99,15 @@ export function useSyncManager() {
       .filter(item => item.syncData);
   };
 
-  const getShoppingSyncData = (integrationsList?: Integration[]) => {
+  const getShoppingSyncData = (integrationsList?: any[]) => {
     return getSyncDataByType("shopping", integrationsList);
   };
 
-  const getCalendarSyncData = (integrationsList?: Integration[]) => {
+  const getCalendarSyncData = (integrationsList?: any[]) => {
     return getSyncDataByType("calendar", integrationsList);
   };
 
-  const getTodoSyncData = (integrationsList?: Integration[]) => {
+  const getTodoSyncData = (integrationsList?: any[]) => {
     return getSyncDataByType("todo", integrationsList);
   };
 
@@ -158,10 +156,10 @@ export function useSyncManager() {
     }
   };
 
-  const updateIntegrationCache = (
+  const updateIntegrationCache = <T = unknown[]>(
     integrationType: string,
     integrationId: string,
-    data: CalendarEvent[] | ShoppingListWithItemsAndCount[] | TodoWithUser[],
+    data: T,
   ) => {
     const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
     nuxtApp.payload.data[cacheKey] = data;

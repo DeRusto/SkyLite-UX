@@ -9,6 +9,7 @@ import { useIntegrations } from "~/composables/useIntegrations";
 import { useUsers } from "~/composables/useUsers";
 import { integrationRegistry } from "~/types/integrations";
 import { getErrorMessage } from "~/utils/error";
+import { performOptimisticUpdate } from "~/utils/optimistic";
 
 export function useCalendarEvents() {
   const loading = ref(false);
@@ -51,21 +52,6 @@ export function useCalendarEvents() {
     return event.id;
   }
 
-  async function performOptimisticUpdate<T>(
-    request: () => Promise<T>,
-    apply: () => any,
-    rollback: () => void,
-  ): Promise<T> {
-    apply();
-    try {
-      return await request();
-    }
-    catch (err) {
-      rollback();
-      throw err;
-    }
-  }
-
   const addEvent = async (event: CalendarEvent) => {
     try {
       // Check if event is for a single user with a linked calendar
@@ -83,13 +69,13 @@ export function useCalendarEvents() {
           if (integration && config) {
             if (config.capabilities.includes("add_events")) {
               await $fetch(`/api/integrations/${integration.service}/events`, {
-                method: "POST" as any,
+                method: "POST",
                 body: {
                   integrationId: integration.id,
                   calendarEvent: event,
                   calendarId: user.calendarId,
                 },
-              });
+              } as any);
 
               await refreshNuxtData("calendar-events");
               showSuccess("Event Created", `Event added to ${user.name}'s calendar`);
@@ -114,16 +100,17 @@ export function useCalendarEvents() {
 
       // Local event optimistic update
       const previousEvents = events.value ? [...events.value] : [];
+      const tempId = `temp-${Date.now()}`;
       const newEvent = {
         ...event,
-        id: `temp-${Date.now()}`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        id: tempId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       const createdEvent = await performOptimisticUpdate(
         () => $fetch<CalendarEvent>("/api/calendar-events", {
-          method: "POST" as any,
+          method: "POST",
           body: {
             title: event.title,
             description: event.description,
@@ -138,7 +125,7 @@ export function useCalendarEvents() {
         }),
         () => {
           if (events.value && Array.isArray(events.value)) {
-            events.value.push(newEvent);
+            events.value.push(newEvent as any);
           }
         },
         () => {
@@ -149,7 +136,7 @@ export function useCalendarEvents() {
       );
 
       if (events.value && Array.isArray(events.value)) {
-        const tempIndex = events.value.findIndex((e: CalendarEvent) => e.id === newEvent.id);
+        const tempIndex = events.value.findIndex((e: CalendarEvent) => e.id === tempId);
         if (tempIndex !== -1) {
           events.value[tempIndex] = createdEvent;
         }
@@ -179,13 +166,13 @@ export function useCalendarEvents() {
           const integrationEventId = getIntegrationEventId(event, integration);
 
           await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
-            method: "PUT" as any,
+            method: "PUT",
             body: {
               integrationId: integration.id,
               updates: event,
               calendarId: event.calendarId,
             },
-          });
+          } as any);
 
           await refreshNuxtData("calendar-events");
           showSuccess("Event Updated", "Integration event updated successfully");
@@ -202,7 +189,7 @@ export function useCalendarEvents() {
 
       const updatedEvent = await performOptimisticUpdate(
         () => $fetch<CalendarEvent>(`/api/calendar-events/${event.id}`, {
-          method: "PUT" as any,
+          method: "PUT",
           body: {
             title: event.title,
             description: event.description,
@@ -214,7 +201,7 @@ export function useCalendarEvents() {
             ical_event: event.ical_event,
             users: event.users,
           },
-        }),
+        } as any),
         () => {
           if (events.value && Array.isArray(events.value)) {
             const eventIndex = events.value.findIndex((e: CalendarEvent) => e.id === event.id);
@@ -261,12 +248,12 @@ export function useCalendarEvents() {
           const integrationEventId = getIntegrationEventId(event, integration);
 
           await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
-            method: "DELETE" as any,
+            method: "DELETE",
             query: {
               integrationId: integration.id,
               calendarId: event.calendarId,
             },
-          });
+          } as any);
 
           await refreshNuxtData("calendar-events");
           showSuccess("Event Deleted", "Integration event deleted successfully");
@@ -284,11 +271,14 @@ export function useCalendarEvents() {
       await performOptimisticUpdate(
         // @ts-expect-error - Excessive stack depth in Nuxt route types
         () => $fetch(`/api/calendar-events/${eventId}`, {
-          method: "DELETE" as any,
-        }),
+          method: "DELETE",
+        } as any),
         () => {
           if (events.value && Array.isArray(events.value)) {
-            events.value.splice(0, events.value.length, ...events.value.filter((e: CalendarEvent) => e.id !== eventId));
+            const index = events.value.findIndex(e => e.id === eventId);
+            if (index !== -1) {
+              events.value.splice(index, 1);
+            }
           }
         },
         () => {

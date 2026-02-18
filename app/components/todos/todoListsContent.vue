@@ -12,8 +12,9 @@ import { useAlertToast } from "~/composables/useAlertToast";
 import { useStableDate } from "~/composables/useStableDate";
 import { useTodoColumns } from "~/composables/useTodoColumns";
 import { useTodos } from "~/composables/useTodos";
+import { getErrorMessage } from "~/utils/error";
 
-const { showError, showSuccess } = useAlertToast();
+const { showSuccess } = useAlertToast();
 const { parseStableDate } = useStableDate();
 
 const { data: todoColumns } = useNuxtData<TodoColumn[]>("todo-columns");
@@ -132,9 +133,7 @@ async function handleTodoSave(todoData: TodoListItem) {
     showSuccess("Todo Saved", wasEdit ? "Todo updated successfully" : "Todo created successfully");
   }
   catch (err) {
-    consola.error("Todo Lists: Failed to save todo:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Save Todo", errorMessage);
+    consola.error("Todo Lists: Failed to save todo:", getErrorMessage(err));
   }
 }
 
@@ -143,11 +142,11 @@ async function handleTodoDelete(todoId: string) {
     await deleteTodo(todoId);
     consola.debug("Todo Lists: Todo deleted successfully");
     showSuccess("Todo Deleted", "Todo has been removed successfully");
+    todoItemDialog.value = false;
+    editingTodo.value = null;
   }
   catch (err) {
-    consola.error("Todo Lists: Failed to delete todo:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Delete Todo", errorMessage);
+    consola.error("Todo Lists: Failed to delete todo:", getErrorMessage(err));
   }
 }
 
@@ -166,9 +165,7 @@ async function handleColumnSave(columnData: { name: string }) {
     showSuccess("Column Saved", wasEdit ? "Column updated successfully" : "Column created successfully");
   }
   catch (err) {
-    consola.error("Todo Lists: Failed to save todo column:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Save Column", errorMessage);
+    consola.error("Todo Lists: Failed to save todo column:", getErrorMessage(err));
   }
 }
 
@@ -177,11 +174,11 @@ async function handleColumnDelete(columnId: string) {
     await deleteTodoColumn(columnId);
     consola.debug("Todo Lists: Todo column deleted successfully");
     showSuccess("Column Deleted", "Column has been removed successfully");
+    todoColumnDialog.value = false;
+    editingColumn.value = null;
   }
   catch (err) {
-    consola.error("Todo Lists: Failed to delete todo column:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Delete Column", errorMessage);
+    consola.error("Todo Lists: Failed to delete todo column:", getErrorMessage(err));
   }
 }
 
@@ -208,9 +205,7 @@ async function handleReorderColumn(columnIndex: number, direction: "left" | "rig
     consola.debug("Todo Lists: Column reordered successfully");
   }
   catch (err) {
-    consola.error("Todo Lists: Failed to reorder column:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Reorder Column", errorMessage);
+    consola.error("Todo Lists: Failed to reorder column:", getErrorMessage(err));
   }
   finally {
     reorderingColumns.value.delete(column.id);
@@ -233,9 +228,7 @@ async function handleReorderTodo(itemId: string, direction: "up" | "down") {
     consola.debug("Todo Lists: Todo reordered successfully");
   }
   catch (err) {
-    consola.error("Todo Lists: Failed to reorder todo:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Reorder Todo", errorMessage);
+    consola.error("Todo Lists: Failed to reorder todo:", getErrorMessage(err));
   }
   finally {
     reorderingTodos.value.delete(itemId);
@@ -249,9 +242,7 @@ async function handleClearCompleted(columnId: string) {
     showSuccess("Completed Cleared", "Completed todos have been removed");
   }
   catch (err) {
-    consola.error("Todo Lists: Failed to clear completed todos:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Clear Completed", errorMessage);
+    consola.error("Todo Lists: Failed to clear completed todos:", getErrorMessage(err));
   }
 }
 
@@ -266,9 +257,7 @@ async function handleToggleTodo(itemId: string, completed: boolean) {
     consola.debug("Todo Lists: Todo toggled successfully");
   }
   catch (err) {
-    consola.error("Todo Lists: Failed to toggle todo:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Update Todo", errorMessage);
+    consola.error("Todo Lists: Failed to toggle todo:", getErrorMessage(err));
   }
 }
 </script>

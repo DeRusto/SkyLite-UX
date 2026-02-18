@@ -4,6 +4,7 @@ import type { TodoColumn } from "~/types/database";
 
 import { useAlertToast } from "~/composables/useAlertToast";
 import { getErrorMessage } from "~/utils/error";
+import { performOptimisticUpdate } from "~/utils/optimistic";
 
 export function useTodoColumns() {
   const loading = ref(false);
@@ -36,30 +37,39 @@ export function useTodoColumns() {
     isDefault?: boolean;
   }) => {
     const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
+    const tempId = crypto.randomUUID();
     const newColumn: any = {
-      ...columnData,
-      id: crypto.randomUUID(),
+      id: tempId,
+      name: columnData.name,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      isDefault: columnData.isDefault || false,
+      isDefault: columnData.isDefault ?? false,
       order: (todoColumns.value?.length || 0) + 1,
-      userId: columnData.userId || null,
+      userId: columnData.userId ?? null,
       user: null,
       _count: { todos: 0 },
     };
 
-    if (todoColumns.value && Array.isArray(todoColumns.value)) {
-      todoColumns.value.push(newColumn);
-    }
-
     try {
-      const createdColumn = await $fetch<TodoColumn>("/api/todo-columns", {
-        method: "POST" as any,
-        body: columnData,
-      });
+      const createdColumn = await performOptimisticUpdate(
+        () => $fetch<TodoColumn>("/api/todo-columns", {
+          method: "POST" as any,
+          body: columnData,
+        }),
+        () => {
+          if (todoColumns.value && Array.isArray(todoColumns.value)) {
+            todoColumns.value.push(newColumn);
+          }
+        },
+        () => {
+          if (todoColumns.value) {
+            todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
+          }
+        },
+      );
 
       if (todoColumns.value && Array.isArray(todoColumns.value)) {
-        const tempIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === newColumn.id);
+        const tempIndex = todoColumns.value.findIndex((c: any) => c.id === tempId);
         if (tempIndex !== -1) {
           todoColumns.value[tempIndex] = createdColumn;
         }
@@ -69,9 +79,6 @@ export function useTodoColumns() {
       return createdColumn;
     }
     catch (err) {
-      if (todoColumns.value) {
-        todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
-      }
       error.value = getErrorMessage(err, "Failed to create todo column");
       showError("Error", error.value);
       throw err;
@@ -81,26 +88,39 @@ export function useTodoColumns() {
   const updateTodoColumn = async (columnId: string, updates: { name?: string }) => {
     const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
 
-    if (todoColumns.value && Array.isArray(todoColumns.value)) {
-      const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
-      if (columnIndex !== -1) {
-        todoColumns.value[columnIndex] = { ...todoColumns.value[columnIndex], ...updates } as any;
-      }
-    }
-
     try {
-      const updatedColumn = await $fetch<TodoColumn>(`/api/todo-columns/${columnId}`, {
-        method: "PUT" as any,
-        body: updates,
-      });
+      const updatedColumnFromResponse = await performOptimisticUpdate(
+        () => $fetch<TodoColumn>(`/api/todo-columns/${columnId}`, {
+          method: "PUT" as any,
+          body: updates,
+        } as any),
+        () => {
+          if (todoColumns.value && Array.isArray(todoColumns.value)) {
+            const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
+            if (columnIndex !== -1) {
+              todoColumns.value[columnIndex] = { ...todoColumns.value[columnIndex], ...updates } as any;
+            }
+          }
+        },
+        () => {
+          if (todoColumns.value) {
+            todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
+          }
+        },
+      );
+
+      // Reconciliation
+      if (todoColumns.value && Array.isArray(todoColumns.value)) {
+        const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
+        if (columnIndex !== -1) {
+          todoColumns.value[columnIndex] = updatedColumnFromResponse;
+        }
+      }
 
       error.value = null;
-      return updatedColumn;
+      return updatedColumnFromResponse;
     }
     catch (err) {
-      if (todoColumns.value) {
-        todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
-      }
       error.value = getErrorMessage(err, "Failed to update todo column");
       showError("Error", error.value);
       throw err;
@@ -110,25 +130,30 @@ export function useTodoColumns() {
   const deleteTodoColumn = async (columnId: string) => {
     const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
 
-    if (todoColumns.value && Array.isArray(todoColumns.value)) {
-      const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
-      if (columnIndex !== -1) {
-        todoColumns.value.splice(columnIndex, 1);
-      }
-    }
-
     try {
-      await $fetch(`/api/todo-columns/${columnId}`, {
-        method: "DELETE" as any,
-      });
-
-      error.value = null;
-      return true;
+      return await performOptimisticUpdate(
+        async () => {
+          await $fetch(`/api/todo-columns/${columnId}`, {
+            method: "DELETE" as any,
+          } as any);
+          return true;
+        },
+        () => {
+          if (todoColumns.value && Array.isArray(todoColumns.value)) {
+            const columnIndex = todoColumns.value.findIndex((c: any) => c.id === columnId);
+            if (columnIndex !== -1) {
+              todoColumns.value.splice(columnIndex, 1);
+            }
+          }
+        },
+        () => {
+          if (todoColumns.value) {
+            todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
+          }
+        },
+      );
     }
     catch (err) {
-      if (todoColumns.value) {
-        todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
-      }
       error.value = getErrorMessage(err, "Failed to delete todo column");
       showError("Error", error.value);
       throw err;
@@ -146,27 +171,37 @@ export function useTodoColumns() {
       columns.splice(toIndex, 0, movedColumn);
     }
 
-    if (todoColumns.value) {
-      todoColumns.value.splice(0, todoColumns.value.length, ...columns.map((c, i) => ({ ...c, order: i } as any)));
-    }
-
-    const reorders = columns.map((column, index) => ({
-      id: column.id,
+    const updatedColumns = columns.map((column, index) => ({
+      ...column,
       order: index,
     }));
 
+    const reorders = updatedColumns.map(column => ({
+      id: column.id,
+      order: column.order,
+    }));
+
     try {
-      await $fetch("/api/todo-columns/reorder", {
-        method: "PUT" as any,
-        body: { reorders },
-      });
+      await performOptimisticUpdate(
+        () => $fetch("/api/todo-columns/reorder", {
+          method: "PUT" as any,
+          body: { reorders },
+        } as any),
+        () => {
+          if (todoColumns.value) {
+            todoColumns.value.splice(0, todoColumns.value.length, ...updatedColumns as any);
+          }
+        },
+        () => {
+          if (todoColumns.value) {
+            todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
+          }
+        },
+      );
 
       error.value = null;
     }
     catch (err) {
-      if (todoColumns.value) {
-        todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
-      }
       error.value = getErrorMessage(err, "Failed to reorder todo columns");
       showError("Error", error.value);
       throw err;

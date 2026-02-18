@@ -105,14 +105,14 @@ export function useShoppingIntegrations() {
     const tempId = crypto.randomUUID();
     const newItem: any = {
       id: tempId,
-      name: itemData.name || itemData.notes || "Unknown",
-      checked: false,
-      order: 0,
-      notes: itemData.notes || null,
-      quantity: itemData.quantity || 1,
-      unit: itemData.unit || null,
-      label: null,
-      food: null,
+      name: itemData.name ?? itemData.notes ?? "Unknown",
+      checked: itemData.checked ?? false,
+      order: itemData.order ?? 0,
+      notes: itemData.notes ?? null,
+      quantity: itemData.quantity ?? 1,
+      unit: itemData.unit ?? null,
+      label: itemData.label ?? null,
+      food: itemData.food ?? null,
       source: "integration",
       integrationId,
     };
@@ -129,7 +129,7 @@ export function useShoppingIntegrations() {
           }
           const updatedLists = [...integrationLists];
           updatedLists[listIndex] = updatedList;
-          updateIntegrationCache("shopping", integrationId, updatedLists as any);
+          updateIntegrationCache("shopping", integrationId, updatedLists);
         }
       }
     }
@@ -155,7 +155,7 @@ export function useShoppingIntegrations() {
               const updatedList = { ...list, items: updatedItems };
               const updatedLists = [...currentLists];
               updatedLists[listIndex] = updatedList;
-              updateIntegrationCache("shopping", integrationId, updatedLists as any);
+              updateIntegrationCache("shopping", integrationId, updatedLists);
             }
           }
         }
@@ -187,7 +187,7 @@ export function useShoppingIntegrations() {
     if (integrationLists && Array.isArray(integrationLists)) {
       let itemFound = false;
       const updatedLists = integrationLists.map((list: ShoppingList) => {
-        const itemIndex = list.items?.findIndex((i: any) => i.id === itemId);
+        const itemIndex = list.items?.findIndex((i: ShoppingListItem) => i.id === itemId);
         if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
           itemFound = true;
           const updatedItems = [...list.items];
@@ -198,7 +198,7 @@ export function useShoppingIntegrations() {
       });
 
       if (itemFound) {
-        updateIntegrationCache("shopping", integrationId, updatedLists as any);
+        updateIntegrationCache("shopping", integrationId, updatedLists);
       }
     }
 
@@ -208,6 +208,27 @@ export function useShoppingIntegrations() {
       if (!updatedItem) {
         throw new Error("Service does not support updating shopping list items");
       }
+
+      // Reconciliation
+      const currentLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
+      if (currentLists && Array.isArray(currentLists)) {
+        let reconciled = false;
+        const reconciledLists = currentLists.map((list: ShoppingList) => {
+          const itemIndex = list.items?.findIndex((i: ShoppingListItem) => i.id === itemId);
+          if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
+            reconciled = true;
+            const reconciledItems = [...list.items];
+            reconciledItems[itemIndex] = updatedItem;
+            return { ...list, items: reconciledItems };
+          }
+          return list;
+        });
+
+        if (reconciled) {
+          updateIntegrationCache("shopping", integrationId, reconciledLists);
+        }
+      }
+
       return updatedItem;
     }
     catch (err) {
@@ -260,13 +281,17 @@ export function useShoppingIntegrations() {
           }
           const updatedLists = [...integrationLists];
           updatedLists[listIndex] = updatedList;
-          updateIntegrationCache("shopping", integrationId, updatedLists as any);
+          updateIntegrationCache("shopping", integrationId, updatedLists);
         }
       }
     }
 
     try {
-      await (service as unknown as { deleteShoppingListItems?: (ids: string[]) => Promise<void> }).deleteShoppingListItems?.(itemsToDelete);
+      const serviceObj = service as unknown as { deleteShoppingListItems?: (ids: string[]) => Promise<void> };
+      if (typeof serviceObj.deleteShoppingListItems !== "function") {
+        throw new TypeError(`Integration service ${integrationId} does not implement deleteShoppingListItems. Cannot clear items: ${itemsToDelete.join(", ")}`);
+      }
+      await serviceObj.deleteShoppingListItems(itemsToDelete);
     }
     catch (err) {
       updateIntegrationCache("shopping", integrationId, previousLists);

@@ -6,10 +6,12 @@ import GlobalFloatingActionButton from "~/components/global/globalFloatingAction
 import GlobalList from "~/components/global/globalList.vue";
 import TodoColumnDialog from "~/components/todos/todoColumnDialog.vue";
 import TodoItemDialog from "~/components/todos/todoItemDialog.vue";
+import { useAlertToast } from "~/composables/useAlertToast";
 import { useStableDate } from "~/composables/useStableDate";
 import { useTodoColumns } from "~/composables/useTodoColumns";
 import { useTodos } from "~/composables/useTodos";
 
+const { showSuccess } = useAlertToast();
 const { parseStableDate } = useStableDate();
 
 const { data: todoColumns } = useNuxtData<TodoColumn[]>("todo-columns");
@@ -107,6 +109,7 @@ async function handleTodoSave(todoData: TodoListItem) {
         order: todoData.order,
         todoColumnId: todoData.todoColumnId,
       });
+      showSuccess("Todo Updated", "Todo updated successfully");
     }
     else {
       await createTodo({
@@ -118,6 +121,7 @@ async function handleTodoSave(todoData: TodoListItem) {
         order: todoData.order,
         todoColumnId: todoData.todoColumnId,
       });
+      showSuccess("Todo Created", "Todo created successfully");
     }
     todoItemDialog.value = false;
     editingTodo.value = null;
@@ -130,6 +134,7 @@ async function handleTodoSave(todoData: TodoListItem) {
 async function handleTodoDelete(todoId: string) {
   try {
     await deleteTodo(todoId);
+    showSuccess("Todo Deleted", "Todo deleted successfully");
   }
   catch {
     // Handled by composable
@@ -140,9 +145,11 @@ async function handleColumnSave(columnData: { name: string }) {
   try {
     if (editingColumn.value?.id) {
       await updateTodoColumn(editingColumn.value.id, columnData);
+      showSuccess("Column Updated", "Todo column updated successfully");
     }
     else {
       await createTodoColumn(columnData);
+      showSuccess("Column Created", "Todo column created successfully");
     }
     todoColumnDialog.value = false;
     editingColumn.value = null;
@@ -155,6 +162,7 @@ async function handleColumnSave(columnData: { name: string }) {
 async function handleColumnDelete(columnId: string) {
   try {
     await deleteTodoColumn(columnId);
+    showSuccess("Column Deleted", "Todo column deleted successfully");
   }
   catch {
     // Handled by composable
@@ -190,6 +198,7 @@ async function handleReorderTodo(itemId: string, direction: "up" | "down") {
 async function handleClearCompleted(columnId: string) {
   try {
     await clearCompleted(columnId);
+    showSuccess("Items Cleared", "Completed todos removed");
   }
   catch {
     // Handled by composable

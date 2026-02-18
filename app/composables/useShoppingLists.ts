@@ -4,6 +4,7 @@ import type { CreateShoppingListInput, CreateShoppingListItemInput, ShoppingList
 
 import { useAlertToast } from "~/composables/useAlertToast";
 import { getErrorMessage } from "~/utils/error";
+import { performOptimisticUpdate } from "~/utils/optimistic";
 
 export function useShoppingLists() {
   const loading = ref(false);
@@ -33,28 +34,37 @@ export function useShoppingLists() {
 
   const createShoppingList = async (listData: CreateShoppingListInput) => {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const tempId = crypto.randomUUID();
     const newList: any = {
-      id: crypto.randomUUID(),
+      id: tempId,
       name: listData.name,
       createdAt: new Date(),
       updatedAt: new Date(),
-      order: (shoppingLists.value?.length || 0) + 1,
+      order: listData.order ?? (shoppingLists.value?.length || 0) + 1,
       items: [],
       _count: { items: 0 },
     };
 
-    if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      shoppingLists.value.push(newList);
-    }
-
     try {
-      const createdList = await $fetch<ShoppingListWithOrder>("/api/shopping-lists", {
-        method: "POST" as any,
-        body: listData,
-      });
+      const createdList = await performOptimisticUpdate(
+        () => $fetch<ShoppingListWithOrder>("/api/shopping-lists", {
+          method: "POST" as any,
+          body: listData,
+        }),
+        () => {
+          if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
+            shoppingLists.value.push(newList);
+          }
+        },
+        () => {
+          if (shoppingLists.value) {
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
+          }
+        },
+      );
 
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-        const tempIndex = shoppingLists.value.findIndex((l: any) => l.id === newList.id);
+        const tempIndex = shoppingLists.value.findIndex((l: any) => l.id === tempId);
         if (tempIndex !== -1) {
           shoppingLists.value[tempIndex] = createdList;
         }
@@ -63,9 +73,6 @@ export function useShoppingLists() {
       return createdList;
     }
     catch (err) {
-      if (shoppingLists.value) {
-        shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
-      }
       const message = getErrorMessage(err, "Failed to create shopping list");
       showError("Error", message);
       throw err;
@@ -75,25 +82,38 @@ export function useShoppingLists() {
   const updateShoppingList = async (listId: string, updates: { name?: string }) => {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
 
-    if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
-      if (listIndex !== -1) {
-        shoppingLists.value[listIndex] = { ...shoppingLists.value[listIndex], ...updates } as any;
-      }
-    }
-
     try {
-      const updatedList = await $fetch<ShoppingListWithOrder>(`/api/shopping-lists/${listId}`, {
-        method: "PUT" as any,
-        body: updates,
-      });
+      const updatedListFromResponse = await performOptimisticUpdate(
+        () => $fetch<ShoppingListWithOrder>(`/api/shopping-lists/${listId}`, {
+          method: "PUT" as any,
+          body: updates,
+        }),
+        () => {
+          if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
+            const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+            if (listIndex !== -1) {
+              shoppingLists.value[listIndex] = { ...shoppingLists.value[listIndex], ...updates } as any;
+            }
+          }
+        },
+        () => {
+          if (shoppingLists.value) {
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
+          }
+        },
+      );
 
-      return updatedList;
+      // Reconciliation
+      if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
+        const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+        if (listIndex !== -1) {
+          shoppingLists.value[listIndex] = updatedListFromResponse;
+        }
+      }
+
+      return updatedListFromResponse;
     }
     catch (err) {
-      if (shoppingLists.value) {
-        shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
-      }
       const message = getErrorMessage(err, "Failed to update shopping list");
       showError("Error", message);
       throw err;
@@ -103,28 +123,36 @@ export function useShoppingLists() {
   const updateShoppingListItem = async (itemId: string, updates: UpdateShoppingListItemInput) => {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
 
-    if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      for (let listIndex = 0; listIndex < shoppingLists.value.length; listIndex++) {
-        const list = shoppingLists.value[listIndex];
-        if (list) {
-          const itemIndex = list.items?.findIndex((i: any) => i.id === itemId);
-          if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
-            const updatedItems = [...list.items];
-            updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates } as any;
-            shoppingLists.value[listIndex] = { ...list, items: updatedItems as any };
-            break;
-          }
-        }
-      }
-    }
-
     try {
-      const updatedItem = await $fetch<ShoppingListItem>(`/api/shopping-list-items/${itemId}`, {
-        method: "PUT" as any,
-        body: updates,
-      });
+      const updatedItem = await performOptimisticUpdate(
+        () => $fetch<ShoppingListItem>(`/api/shopping-list-items/${itemId}`, {
+          method: "PUT" as any,
+          body: updates,
+        }),
+        () => {
+          if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
+            for (let listIndex = 0; listIndex < shoppingLists.value.length; listIndex++) {
+              const list = shoppingLists.value[listIndex];
+              if (list) {
+                const itemIndex = list.items?.findIndex((i: any) => i.id === itemId);
+                if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
+                  const updatedItems = [...list.items];
+                  updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates } as any;
+                  shoppingLists.value[listIndex] = { ...list, items: updatedItems as any } as any;
+                  break;
+                }
+              }
+            }
+          }
+        },
+        () => {
+          if (shoppingLists.value) {
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
+          }
+        },
+      );
 
-      // Write back confirmed item
+      // Reconciliation
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
         for (let listIndex = 0; listIndex < shoppingLists.value.length; listIndex++) {
           const list = shoppingLists.value[listIndex];
@@ -133,7 +161,7 @@ export function useShoppingLists() {
             if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
               const confirmedItems = [...list.items];
               confirmedItems[itemIndex] = updatedItem as any;
-              shoppingLists.value[listIndex] = { ...list, items: confirmedItems as any };
+              shoppingLists.value[listIndex] = { ...list, items: confirmedItems as any } as any;
               break;
             }
           }
@@ -143,9 +171,6 @@ export function useShoppingLists() {
       return updatedItem;
     }
     catch (err) {
-      if (shoppingLists.value) {
-        shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
-      }
       const message = getErrorMessage(err, "Failed to update item");
       showError("Error", message);
       throw err;
@@ -157,34 +182,43 @@ export function useShoppingLists() {
     const tempId = crypto.randomUUID();
     const newItem: any = {
       id: tempId,
-      name: itemData.name || "",
-      checked: itemData.checked || false,
-      order: itemData.order || 0,
-      notes: itemData.notes || null,
-      quantity: itemData.quantity || 1,
-      unit: itemData.unit || null,
-      label: itemData.label || null,
-      food: itemData.food || null,
+      name: itemData.name ?? "",
+      checked: itemData.checked ?? false,
+      order: itemData.order ?? 0,
+      notes: itemData.notes ?? null,
+      quantity: itemData.quantity ?? 1,
+      unit: itemData.unit ?? null,
+      label: itemData.label ?? null,
+      food: itemData.food ?? null,
+      source: "native",
       shoppingListId: listId,
     };
 
-    if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
-      if (listIndex !== -1) {
-        const list = shoppingLists.value[listIndex];
-        if (list) {
-          const updatedItems = [...(list.items || []), newItem];
-          const newCount = list._count ? { ...list._count, items: (list._count.items || 0) + 1 } : { items: 1 };
-          shoppingLists.value[listIndex] = { ...list, items: updatedItems as any, _count: newCount as any };
-        }
-      }
-    }
-
     try {
-      const createdItem = await $fetch<ShoppingListItem>(`/api/shopping-lists/${listId}/items`, {
-        method: "POST" as any,
-        body: itemData,
-      });
+      const createdItem = await performOptimisticUpdate(
+        () => $fetch<ShoppingListItem>(`/api/shopping-lists/${listId}/items`, {
+          method: "POST" as any,
+          body: itemData,
+        }),
+        () => {
+          if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
+            const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+            if (listIndex !== -1) {
+              const list = shoppingLists.value[listIndex];
+              if (list) {
+                const updatedItems = [...(list.items || []), newItem];
+                const newCount = list._count ? { ...list._count, items: (list._count.items || 0) + 1 } : { items: 1 };
+                shoppingLists.value[listIndex] = { ...list, items: updatedItems, _count: newCount } as any;
+              }
+            }
+          }
+        },
+        () => {
+          if (shoppingLists.value) {
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
+          }
+        },
+      );
 
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
         const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
@@ -195,7 +229,7 @@ export function useShoppingLists() {
             if (tempIndex !== -1) {
               const updatedItems = [...list.items];
               updatedItems[tempIndex] = createdItem as any;
-              shoppingLists.value[listIndex] = { ...list, items: updatedItems as any };
+              shoppingLists.value[listIndex] = { ...list, items: updatedItems as any } as any;
             }
           }
         }
@@ -204,9 +238,6 @@ export function useShoppingLists() {
       return createdItem;
     }
     catch (err) {
-      if (shoppingLists.value) {
-        shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
-      }
       const message = getErrorMessage(err, "Failed to add item");
       showError("Error", message);
       throw err;
@@ -216,23 +247,30 @@ export function useShoppingLists() {
   const deleteShoppingList = async (listId: string) => {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
 
-    if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
-      if (listIndex !== -1) {
-        shoppingLists.value.splice(listIndex, 1);
-      }
-    }
-
     try {
-      await $fetch(`/api/shopping-lists/${listId}`, {
-        method: "DELETE" as any,
-      });
-      return true;
+      return await performOptimisticUpdate(
+        async () => {
+          await $fetch(`/api/shopping-lists/${listId}`, {
+            method: "DELETE" as any,
+          });
+          return true;
+        },
+        () => {
+          if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
+            const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+            if (listIndex !== -1) {
+              shoppingLists.value.splice(listIndex, 1);
+            }
+          }
+        },
+        () => {
+          if (shoppingLists.value) {
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
+          }
+        },
+      );
     }
     catch (err) {
-      if (shoppingLists.value) {
-        shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
-      }
       const message = getErrorMessage(err, "Failed to delete shopping list");
       showError("Error", message);
       throw err;
@@ -282,23 +320,28 @@ export function useShoppingLists() {
         return list;
       });
 
-      if (shoppingLists.value) {
-        shoppingLists.value.splice(0, shoppingLists.value.length, ...updatedLists as any);
-      }
-
       const newOrder = updatedLists
         .sort((a, b) => (a.order || 0) - (b.order || 0))
         .map(list => list.id);
 
-      await $fetch("/api/shopping-lists/reorder", {
-        method: "PUT" as any,
-        body: { listIds: newOrder },
-      });
+      await performOptimisticUpdate(
+        () => $fetch("/api/shopping-lists/reorder", {
+          method: "PUT" as any,
+          body: { listIds: newOrder },
+        }),
+        () => {
+          if (shoppingLists.value) {
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...updatedLists as any);
+          }
+        },
+        () => {
+          if (shoppingLists.value) {
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
+          }
+        },
+      );
     }
     catch (err) {
-      if (shoppingLists.value) {
-        shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
-      }
       const message = getErrorMessage(err, "Failed to reorder shopping list");
       showError("Error", message);
       throw err;
@@ -355,23 +398,28 @@ export function useShoppingLists() {
         return item;
       });
 
-      if (shoppingLists.value && shoppingLists.value[listIndex]) {
-        shoppingLists.value[listIndex] = { ...list, items: updatedItems as any } as any;
-      }
-
       const newOrder = updatedItems
         .sort((a, b) => (a.order || 0) - (b.order || 0))
         .map(item => item.id);
 
-      await $fetch("/api/shopping-list-items/reorder", {
-        method: "PUT" as any,
-        body: { itemIds: newOrder },
-      });
+      await performOptimisticUpdate(
+        () => $fetch("/api/shopping-list-items/reorder", {
+          method: "PUT" as any,
+          body: { itemIds: newOrder },
+        }),
+        () => {
+          if (shoppingLists.value && shoppingLists.value[listIndex]) {
+            shoppingLists.value[listIndex] = { ...list, items: updatedItems as any } as any;
+          }
+        },
+        () => {
+          if (shoppingLists.value) {
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
+          }
+        },
+      );
     }
     catch (err) {
-      if (shoppingLists.value) {
-        shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
-      }
       const message = getErrorMessage(err, "Failed to reorder item");
       showError("Error", message);
       throw err;
@@ -381,31 +429,36 @@ export function useShoppingLists() {
   const deleteCompletedItems = async (listId: string, completedItemIds?: string[]) => {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
 
-    if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
-      if (listIndex !== -1) {
-        const list = shoppingLists.value[listIndex];
-        if (list) {
-          const itemsToDelete = completedItemIds || (list.items as any[])?.filter(item => item.checked).map(item => item.id) || [];
-          if (itemsToDelete.length > 0) {
-            const updatedItems = (list.items as any[])?.filter(item => !itemsToDelete.includes(item.id)) || [];
-            const newCount = list._count ? { ...list._count, items: Math.max(0, (list._count.items || 0) - itemsToDelete.length) } : { items: updatedItems.length };
-            shoppingLists.value[listIndex] = { ...list, items: updatedItems as any, _count: newCount as any } as any;
-          }
-        }
-      }
-    }
-
     try {
-      await $fetch(`/api/shopping-lists/${listId}/items/clear-completed`, {
-        method: "POST" as any,
-        body: { action: "delete" },
-      });
+      await performOptimisticUpdate(
+        () => $fetch(`/api/shopping-lists/${listId}/items/clear-completed`, {
+          method: "POST" as any,
+          body: { action: "delete" },
+        }),
+        () => {
+          if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
+            const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+            if (listIndex !== -1) {
+              const list = shoppingLists.value[listIndex];
+              if (list) {
+                const itemsToDelete = completedItemIds || (list.items as any[])?.filter(item => item.checked).map(item => item.id) || [];
+                if (itemsToDelete.length > 0) {
+                  const updatedItems = (list.items as any[])?.filter(item => !itemsToDelete.includes(item.id)) || [];
+                  const newCount = list._count ? { ...list._count, items: Math.max(0, (list._count.items || 0) - itemsToDelete.length) } : { items: updatedItems.length };
+                  shoppingLists.value[listIndex] = { ...list, items: updatedItems as any, _count: newCount as any } as any;
+                }
+              }
+            }
+          }
+        },
+        () => {
+          if (shoppingLists.value) {
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
+          }
+        },
+      );
     }
     catch (err) {
-      if (shoppingLists.value) {
-        shoppingLists.value.splice(0, shoppingLists.value.length, ...previousLists);
-      }
       const message = getErrorMessage(err, "Failed to clear completed items");
       showError("Error", message);
       throw err;

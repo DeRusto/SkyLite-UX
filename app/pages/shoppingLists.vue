@@ -50,7 +50,7 @@ const selectedListId = ref<string>("");
 const editingList = ref<ShoppingList | null>(null);
 const editingItem = ref<ShoppingListItem | null>(null);
 
-const { showError, showWarning } = useAlertToast();
+const { showError, showWarning, showSuccess } = useAlertToast();
 
 function normalizeIntegrationItem(item: RawIntegrationItem): ShoppingListItem {
   return {
@@ -158,18 +158,17 @@ async function handleListSave(listData: CreateShoppingListInput) {
   try {
     if (editingList.value?.id) {
       await updateShoppingList(editingList.value.id, listData);
+      showSuccess("List Updated", "Shopping list updated successfully");
     }
     else {
       await createShoppingList(listData);
+      showSuccess("List Created", "Shopping list created successfully");
     }
-  }
-  catch {
-    showError("Failed to save list");
-    return;
-  }
-  finally {
     listDialog.value = false;
     editingList.value = null;
+  }
+  catch {
+    // Error handled by composable toast
   }
 }
 
@@ -178,14 +177,12 @@ async function handleListDelete() {
     return;
   try {
     await deleteShoppingList(editingList.value.id);
-  }
-  catch {
-    showError("Failed to delete list");
-    return;
-  }
-  finally {
+    showSuccess("List Deleted", "Shopping list deleted successfully");
     listDialog.value = false;
     editingList.value = null;
+  }
+  catch {
+    // Error handled by composable toast
   }
 }
 
@@ -215,6 +212,7 @@ async function handleItemSave(itemData: CreateShoppingListItemInput) {
       else {
         await updateShoppingListItem(editingItem.value.id, itemData);
       }
+      showSuccess("Item Updated", "Item updated successfully");
     }
     else {
       if (isIntegrationList && targetList.integrationId) {
@@ -223,15 +221,13 @@ async function handleItemSave(itemData: CreateShoppingListItemInput) {
       else {
         await addItemToList(targetList.id, itemData);
       }
+      showSuccess("Item Added", "Item added to list");
     }
+    itemDialog.value = false;
+    editingItem.value = null;
   }
   catch {
     // Error handled by composable toast
-    return;
-  }
-  finally {
-    itemDialog.value = false;
-    editingItem.value = null;
   }
 }
 
@@ -268,6 +264,7 @@ async function handleDeleteList(listId: string) {
     const list = allShoppingLists.value.find(l => l.id === listId);
     if (list?.source === "native" || !list?.source) {
       await deleteShoppingList(listId);
+      showSuccess("List Deleted", "Shopping list deleted successfully");
     }
     else {
       showWarning("Warning", "Deleting lists in integrations is not yet supported.");
@@ -328,6 +325,7 @@ async function handleClearCompleted(listId: string) {
     else {
       await deleteCompletedItems(listId);
     }
+    showSuccess("Items Cleared", "Completed items removed");
   }
   catch {
     // Handled by composable

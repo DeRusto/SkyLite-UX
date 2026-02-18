@@ -45,7 +45,7 @@ export function useIntegrations() {
   const createIntegration = async (integration: Omit<Integration, "id">) => {
     try {
       const response = await $fetch<Integration>("/api/integrations", {
-        method: "POST" as any,
+        method: "POST",
         body: integration,
       });
 
@@ -62,7 +62,7 @@ export function useIntegrations() {
       if (response.enabled) {
         try {
           await $fetch("/api/sync/register", {
-            method: "POST" as any,
+            method: "POST",
             body: response,
           });
           consola.debug("Use Integrations: Integration registered with sync manager:", response.name);
@@ -89,7 +89,7 @@ export function useIntegrations() {
   const updateIntegration = async (id: string, updates: Partial<Integration>) => {
     try {
       const response = await $fetch<Integration>(`/api/integrations/${id}`, {
-        method: "PUT" as any,
+        method: "PUT",
         body: updates,
       });
 
@@ -104,7 +104,7 @@ export function useIntegrations() {
 
         try {
           await $fetch("/api/sync/register", {
-            method: "POST" as any,
+            method: "POST",
             body: response,
           });
           consola.debug("Use Integrations: Integration re-registered with sync manager:", response.name);
@@ -130,7 +130,7 @@ export function useIntegrations() {
   const deleteIntegration = async (id: string) => {
     try {
       await $fetch(`/api/integrations/${id}`, {
-        method: "DELETE" as any,
+        method: "DELETE",
       });
 
       integrationServices.delete(id);
