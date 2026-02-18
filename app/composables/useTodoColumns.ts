@@ -2,11 +2,15 @@ import { consola } from "consola";
 
 import type { TodoColumn } from "~/types/database";
 
+import { useAlertToast } from "~/composables/useAlertToast";
+import { getErrorMessage } from "~/utils/error";
+
 export function useTodoColumns() {
   const loading = ref(false);
   const error = ref<string | null>(null);
 
   const { data: todoColumns } = useNuxtData<TodoColumn[]>("todo-columns");
+  const { showError } = useAlertToast();
 
   const currentTodoColumns = computed(() => todoColumns.value || []);
 
@@ -17,7 +21,7 @@ export function useTodoColumns() {
       consola.debug("Use Todo Columns: Todo columns refreshed successfully");
     }
     catch (err) {
-      error.value = err instanceof Error ? err.message : "Failed to fetch todo columns";
+      error.value = getErrorMessage(err, "Failed to fetch todo columns");
       consola.error("Use Todo Columns: Failed to fetch todo columns:", err);
       throw err;
     }
@@ -31,69 +35,108 @@ export function useTodoColumns() {
     userId?: string;
     isDefault?: boolean;
   }) => {
-    loading.value = true;
+    const previousColumns = todoColumns.value ? [...todoColumns.value] : [];
+    const newColumn: any = {
+      ...columnData,
+      id: `temp-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isDefault: columnData.isDefault || false,
+      order: (todoColumns.value?.length || 0) + 1,
+      userId: columnData.userId || null,
+      user: null,
+      _count: { todos: 0 },
+    };
+
+    if (todoColumns.value && Array.isArray(todoColumns.value)) {
+      todoColumns.value.push(newColumn);
+    }
+
     try {
-      const newColumn = await $fetch("/api/todo-columns", {
-        method: "POST",
+      const createdColumn = await $fetch<TodoColumn>("/api/todo-columns", {
+        method: "POST" as any,
         body: columnData,
       });
 
-      await refreshNuxtData("todo-columns");
+      if (todoColumns.value && Array.isArray(todoColumns.value)) {
+        const tempIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === newColumn.id);
+        if (tempIndex !== -1) {
+          todoColumns.value[tempIndex] = createdColumn;
+        }
+      }
 
       error.value = null;
-      return newColumn;
+      return createdColumn;
     }
     catch (err) {
-      error.value = err instanceof Error ? err.message : "Failed to create todo column";
-      consola.error("Use Todo Columns: Failed to create todo column:", err);
+      if (todoColumns.value) {
+        todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
+      }
+      error.value = getErrorMessage(err, "Failed to create todo column");
+      showError("Error", error.value);
       throw err;
-    }
-    finally {
-      loading.value = false;
     }
   };
 
   const updateTodoColumn = async (columnId: string, updates: { name?: string }) => {
+    const previousColumns = todoColumns.value ? [...todoColumns.value] : [];
+
+    if (todoColumns.value && Array.isArray(todoColumns.value)) {
+      const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
+      if (columnIndex !== -1) {
+        todoColumns.value[columnIndex] = { ...todoColumns.value[columnIndex], ...updates } as any;
+      }
+    }
+
     try {
       const updatedColumn = await $fetch<TodoColumn>(`/api/todo-columns/${columnId}`, {
-        method: "PUT",
+        method: "PUT" as any,
         body: updates,
       });
-
-      await refreshNuxtData("todo-columns");
 
       error.value = null;
       return updatedColumn;
     }
     catch (err) {
-      error.value = err instanceof Error ? err.message : "Failed to update todo column";
-      consola.error("Use Todo Columns: Failed to update todo column:", err);
+      if (todoColumns.value) {
+        todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
+      }
+      error.value = getErrorMessage(err, "Failed to update todo column");
+      showError("Error", error.value);
       throw err;
     }
   };
 
   const deleteTodoColumn = async (columnId: string) => {
-    try {
-      const response = await fetch(`/api/todo-columns/${columnId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to delete todo column");
-      }
+    const previousColumns = todoColumns.value ? [...todoColumns.value] : [];
 
-      await refreshNuxtData("todo-columns");
+    if (todoColumns.value && Array.isArray(todoColumns.value)) {
+      const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
+      if (columnIndex !== -1) {
+        todoColumns.value.splice(columnIndex, 1);
+      }
+    }
+
+    try {
+      await $fetch(`/api/todo-columns/${columnId}`, {
+        method: "DELETE" as any,
+      });
 
       error.value = null;
       return true;
     }
     catch (err) {
-      error.value = err instanceof Error ? err.message : "Failed to delete todo column";
-      consola.error("Use Todo Columns: Failed to delete todo column:", err);
+      if (todoColumns.value) {
+        todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
+      }
+      error.value = getErrorMessage(err, "Failed to delete todo column");
+      showError("Error", error.value);
       throw err;
     }
   };
 
   const reorderTodoColumns = async (fromIndex: number, toIndex: number) => {
+    const previousColumns = todoColumns.value ? [...todoColumns.value] : [];
     if (fromIndex === toIndex)
       return;
 
@@ -103,6 +146,10 @@ export function useTodoColumns() {
       columns.splice(toIndex, 0, movedColumn);
     }
 
+    if (todoColumns.value) {
+      todoColumns.value.splice(0, todoColumns.value.length, ...columns.map((c, i) => ({ ...c, order: i } as any)));
+    }
+
     const reorders = columns.map((column, index) => ({
       id: column.id,
       order: index,
@@ -110,17 +157,18 @@ export function useTodoColumns() {
 
     try {
       await $fetch("/api/todo-columns/reorder", {
-        method: "PUT",
+        method: "PUT" as any,
         body: { reorders },
       });
-
-      await refreshNuxtData("todo-columns");
 
       error.value = null;
     }
     catch (err) {
-      error.value = err instanceof Error ? err.message : "Failed to reorder todo columns";
-      consola.error("Use Todo Columns: Failed to reorder todo columns:", err);
+      if (todoColumns.value) {
+        todoColumns.value.splice(0, todoColumns.value.length, ...previousColumns);
+      }
+      error.value = getErrorMessage(err, "Failed to reorder todo columns");
+      showError("Error", error.value);
       throw err;
     }
   };

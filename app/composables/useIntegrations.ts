@@ -4,6 +4,7 @@ import type { Integration } from "~/types/database";
 
 import { integrationServices } from "~/plugins/02.appInit";
 import { createIntegrationService } from "~/types/integrations";
+import { getErrorMessage } from "~/utils/error";
 
 export function useIntegrations() {
   const { data: cachedIntegrations } = useNuxtData<Integration[]>("integrations");
@@ -44,7 +45,7 @@ export function useIntegrations() {
   const createIntegration = async (integration: Omit<Integration, "id">) => {
     try {
       const response = await $fetch<Integration>("/api/integrations", {
-        method: "POST",
+        method: "POST" as any,
         body: integration,
       });
 
@@ -61,7 +62,7 @@ export function useIntegrations() {
       if (response.enabled) {
         try {
           await $fetch("/api/sync/register", {
-            method: "POST",
+            method: "POST" as any,
             body: response,
           });
           consola.debug("Use Integrations: Integration registered with sync manager:", response.name);
@@ -79,9 +80,7 @@ export function useIntegrations() {
       return response;
     }
     catch (err: unknown) {
-      // Extract proper error message from FetchError (server response) or fallback to generic message
-      const fetchError = err as { data?: { message?: string }; statusMessage?: string; message?: string };
-      const errorMessage = fetchError.data?.message || fetchError.statusMessage || fetchError.message || "Failed to create integration";
+      const errorMessage = getErrorMessage(err, "Failed to create integration");
       consola.error("Use Integrations: Error creating integration:", err);
       throw new Error(errorMessage);
     }
@@ -90,7 +89,7 @@ export function useIntegrations() {
   const updateIntegration = async (id: string, updates: Partial<Integration>) => {
     try {
       const response = await $fetch<Integration>(`/api/integrations/${id}`, {
-        method: "PUT",
+        method: "PUT" as any,
         body: updates,
       });
 
@@ -105,7 +104,7 @@ export function useIntegrations() {
 
         try {
           await $fetch("/api/sync/register", {
-            method: "POST",
+            method: "POST" as any,
             body: response,
           });
           consola.debug("Use Integrations: Integration re-registered with sync manager:", response.name);
@@ -122,9 +121,7 @@ export function useIntegrations() {
       return response;
     }
     catch (err: unknown) {
-      // Extract proper error message from FetchError (server response) or fallback to generic message
-      const fetchError = err as { data?: { message?: string }; statusMessage?: string; message?: string };
-      const errorMessage = fetchError.data?.message || fetchError.statusMessage || fetchError.message || "Failed to update integration";
+      const errorMessage = getErrorMessage(err, "Failed to update integration");
       consola.error("Use Integrations: Error updating integration:", err);
       throw new Error(errorMessage);
     }
@@ -133,7 +130,7 @@ export function useIntegrations() {
   const deleteIntegration = async (id: string) => {
     try {
       await $fetch(`/api/integrations/${id}`, {
-        method: "DELETE",
+        method: "DELETE" as any,
       });
 
       integrationServices.delete(id);
@@ -143,9 +140,7 @@ export function useIntegrations() {
       consola.debug("Use Integrations: Integration deleted successfully:", id);
     }
     catch (err: unknown) {
-      // Extract proper error message from FetchError (server response) or fallback to generic message
-      const fetchError = err as { data?: { message?: string }; statusMessage?: string; message?: string };
-      const errorMessage = fetchError.data?.message || fetchError.statusMessage || fetchError.message || "Failed to delete integration";
+      const errorMessage = getErrorMessage(err, "Failed to delete integration");
       consola.error("Use Integrations: Error deleting integration:", err);
       throw new Error(errorMessage);
     }

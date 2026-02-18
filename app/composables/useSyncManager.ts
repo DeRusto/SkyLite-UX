@@ -157,12 +157,18 @@ export function useSyncManager() {
     }
   };
 
+  const updateIntegrationCache = (integrationType: string, integrationId: string, data: any) => {
+    const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
+    nuxtApp.payload.data[cacheKey] = data;
+    consola.debug(`Use Sync Manager: Updated cache for ${integrationType} integration ${integrationId}`);
+  };
+
   const triggerImmediateSync = async (integrationType: string, integrationId: string) => {
     try {
       consola.debug(`Use Sync Manager: Triggering immediate sync for ${integrationType} integration ${integrationId}`);
 
       const response = await $fetch("/api/sync/trigger", {
-        method: "POST",
+        method: "POST" as any,
         body: {
           integrationId,
           integrationType,
@@ -200,6 +206,7 @@ export function useSyncManager() {
     getConnectionHealth,
     checkIntegrationCache,
     purgeIntegrationCache,
+    updateIntegrationCache,
     triggerImmediateSync,
   };
 }
