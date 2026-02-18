@@ -1,6 +1,7 @@
 import { consola } from "consola";
 
-import type { Integration } from "~/types/database";
+import type { CalendarEvent } from "~/types/calendar";
+import type { Integration, ShoppingListWithItemsAndCount, TodoWithUser } from "~/types/database";
 import type { IntegrationSyncData, SyncConnectionStatus, SyncStatus } from "~/types/sync";
 
 export function getIntegrationCacheKey(integrationType: string, integrationId: string): string {
@@ -157,7 +158,11 @@ export function useSyncManager() {
     }
   };
 
-  const updateIntegrationCache = (integrationType: string, integrationId: string, data: any) => {
+  const updateIntegrationCache = (
+    integrationType: string,
+    integrationId: string,
+    data: CalendarEvent[] | ShoppingListWithItemsAndCount[] | TodoWithUser[],
+  ) => {
     const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
     nuxtApp.payload.data[cacheKey] = data;
     consola.debug(`Use Sync Manager: Updated cache for ${integrationType} integration ${integrationId}`);

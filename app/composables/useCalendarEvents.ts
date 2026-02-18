@@ -17,7 +17,7 @@ export function useCalendarEvents() {
   const { data: events } = useNuxtData<CalendarEvent[]>("calendar-events");
   const { integrations } = useIntegrations();
   const { users } = useUsers();
-  const { getEventUserColors } = useCalendar();
+  const { getEventUserColors, allEvents } = useCalendar();
   const { showSuccess, showError, showWarning } = useAlertToast();
 
   const currentEvents = computed(() => events.value || []);
@@ -42,8 +42,28 @@ export function useCalendarEvents() {
   };
 
   function getIntegrationEventId(event: CalendarEvent, integration: Integration) {
-    const prefix = integration.service === "google-calendar" ? "google" : integration.service;
-    return event.id.replace(`${prefix}-${integration.id}-`, "");
+    const expectedPrefix = integration.service === "google-calendar" ? "google" : integration.service;
+    const prefixString = `${expectedPrefix}-${integration.id}-`;
+    if (event.id.startsWith(prefixString)) {
+      return event.id.slice(prefixString.length);
+    }
+    consola.warn(`getIntegrationEventId: ID "${event.id}" does not start with expected prefix "${prefixString}" for integration ${integration.id} (${integration.service})`);
+    return event.id;
+  }
+
+  async function performOptimisticUpdate<T>(
+    request: () => Promise<T>,
+    apply: () => any,
+    rollback: () => void,
+  ): Promise<T> {
+    apply();
+    try {
+      return await request();
+    }
+    catch (err) {
+      rollback();
+      throw err;
+    }
   }
 
   const addEvent = async (event: CalendarEvent) => {
@@ -101,13 +121,8 @@ export function useCalendarEvents() {
         updatedAt: new Date(),
       };
 
-      if (events.value && Array.isArray(events.value)) {
-        events.value.push(newEvent);
-      }
-
-      try {
-        const eventColor = getEventUserColors(event);
-        const createdEvent = await $fetch<CalendarEvent>("/api/calendar-events", {
+      const createdEvent = await performOptimisticUpdate(
+        () => $fetch<CalendarEvent>("/api/calendar-events", {
           method: "POST" as any,
           body: {
             title: event.title,
@@ -115,29 +130,33 @@ export function useCalendarEvents() {
             start: event.start,
             end: event.end,
             allDay: event.allDay,
-            color: eventColor,
+            color: getEventUserColors(event),
             location: event.location,
             ical_event: event.ical_event,
             users: event.users,
           },
-        });
-
-        if (events.value && Array.isArray(events.value)) {
-          const tempIndex = events.value.findIndex((e: CalendarEvent) => e.id === newEvent.id);
-          if (tempIndex !== -1) {
-            events.value[tempIndex] = createdEvent;
+        }),
+        () => {
+          if (events.value && Array.isArray(events.value)) {
+            events.value.push(newEvent);
           }
-        }
+        },
+        () => {
+          if (events.value) {
+            events.value.splice(0, events.value.length, ...previousEvents);
+          }
+        },
+      );
 
-        showSuccess("Event Created", "Local event created successfully");
-        return createdEvent;
-      }
-      catch (error) {
-        if (events.value) {
-          events.value.splice(0, events.value.length, ...previousEvents);
+      if (events.value && Array.isArray(events.value)) {
+        const tempIndex = events.value.findIndex((e: CalendarEvent) => e.id === newEvent.id);
+        if (tempIndex !== -1) {
+          events.value[tempIndex] = createdEvent;
         }
-        throw error;
       }
+
+      showSuccess("Event Created", "Local event created successfully");
+      return createdEvent;
     }
     catch (err) {
       const message = getErrorMessage(err, "Failed to create the event");
@@ -181,16 +200,8 @@ export function useCalendarEvents() {
       // Local event optimistic update
       const previousEvents = events.value ? [...events.value] : [];
 
-      if (events.value && Array.isArray(events.value)) {
-        const eventIndex = events.value.findIndex((e: CalendarEvent) => e.id === event.id);
-        if (eventIndex !== -1) {
-          events.value[eventIndex] = { ...events.value[eventIndex], ...event };
-        }
-      }
-
-      try {
-        const eventColor = getEventUserColors(event);
-        const updatedEvent = await $fetch<CalendarEvent>(`/api/calendar-events/${event.id}`, {
+      const updatedEvent = await performOptimisticUpdate(
+        () => $fetch<CalendarEvent>(`/api/calendar-events/${event.id}`, {
           method: "PUT" as any,
           body: {
             title: event.title,
@@ -198,22 +209,29 @@ export function useCalendarEvents() {
             start: event.start,
             end: event.end,
             allDay: event.allDay,
-            color: eventColor,
+            color: getEventUserColors(event),
             location: event.location,
             ical_event: event.ical_event,
             users: event.users,
           },
-        });
+        }),
+        () => {
+          if (events.value && Array.isArray(events.value)) {
+            const eventIndex = events.value.findIndex((e: CalendarEvent) => e.id === event.id);
+            if (eventIndex !== -1) {
+              events.value[eventIndex] = { ...events.value[eventIndex], ...event };
+            }
+          }
+        },
+        () => {
+          if (events.value) {
+            events.value.splice(0, events.value.length, ...previousEvents);
+          }
+        },
+      );
 
-        showSuccess("Event Updated", "Local event updated successfully");
-        return updatedEvent;
-      }
-      catch (error) {
-        if (events.value) {
-          events.value.splice(0, events.value.length, ...previousEvents);
-        }
-        throw error;
-      }
+      showSuccess("Event Updated", "Local event updated successfully");
+      return updatedEvent;
     }
     catch (err) {
       const message = getErrorMessage(err, "Failed to update the event");
@@ -224,7 +242,6 @@ export function useCalendarEvents() {
 
   const deleteEvent = async (eventId: string) => {
     try {
-      const { allEvents } = useCalendar();
       const event = allEvents.value.find(e => e.id === eventId) as CalendarEvent | undefined;
 
       if (!event) {
@@ -243,15 +260,12 @@ export function useCalendarEvents() {
         if (config?.capabilities.includes("delete_events")) {
           const integrationEventId = getIntegrationEventId(event, integration);
 
-          const params = new URLSearchParams({
-            integrationId: integration.id,
-          });
-          if (event.calendarId) {
-            params.set("calendarId", event.calendarId);
-          }
-
-          await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}?${params.toString()}`, {
+          await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
             method: "DELETE" as any,
+            query: {
+              integrationId: integration.id,
+              calendarId: event.calendarId,
+            },
           });
 
           await refreshNuxtData("calendar-events");
@@ -267,23 +281,25 @@ export function useCalendarEvents() {
       // Local event optimistic update
       const previousEvents = events.value ? [...events.value] : [];
 
-      if (events.value && Array.isArray(events.value)) {
-        events.value.splice(0, events.value.length, ...events.value.filter((e: CalendarEvent) => e.id !== eventId));
-      }
-
-      try {
-        await $fetch(`/api/calendar-events/${eventId}`, {
+      await performOptimisticUpdate(
+        // @ts-expect-error - Excessive stack depth in Nuxt route types
+        () => $fetch(`/api/calendar-events/${eventId}`, {
           method: "DELETE" as any,
-        });
-        showSuccess("Event Deleted", "Local event deleted successfully");
-        return true;
-      }
-      catch (error) {
-        if (events.value) {
-          events.value.splice(0, events.value.length, ...previousEvents);
-        }
-        throw error;
-      }
+        }),
+        () => {
+          if (events.value && Array.isArray(events.value)) {
+            events.value.splice(0, events.value.length, ...events.value.filter((e: CalendarEvent) => e.id !== eventId));
+          }
+        },
+        () => {
+          if (events.value) {
+            events.value.splice(0, events.value.length, ...previousEvents);
+          }
+        },
+      );
+
+      showSuccess("Event Deleted", "Local event deleted successfully");
+      return true;
     }
     catch (err) {
       const message = getErrorMessage(err, "Failed to delete the event");

@@ -1,8 +1,7 @@
 import type { GoogleCalendarSettings } from "~~/server/integrations/google-calendar/types";
 
 import { GoogleCalendarServerService } from "~~/server/integrations/google-calendar/client";
-import consola from "consola";
-import { createError, defineEventHandler } from "h3";
+import { consola } from "consola";
 
 import type { AvailableCalendar } from "~/types/calendar";
 

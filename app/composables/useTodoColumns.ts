@@ -35,10 +35,10 @@ export function useTodoColumns() {
     userId?: string;
     isDefault?: boolean;
   }) => {
-    const previousColumns = todoColumns.value ? [...todoColumns.value] : [];
+    const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
     const newColumn: any = {
       ...columnData,
-      id: `temp-${Date.now()}`,
+      id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       isDefault: columnData.isDefault || false,
@@ -79,7 +79,7 @@ export function useTodoColumns() {
   };
 
   const updateTodoColumn = async (columnId: string, updates: { name?: string }) => {
-    const previousColumns = todoColumns.value ? [...todoColumns.value] : [];
+    const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
 
     if (todoColumns.value && Array.isArray(todoColumns.value)) {
       const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
@@ -108,7 +108,7 @@ export function useTodoColumns() {
   };
 
   const deleteTodoColumn = async (columnId: string) => {
-    const previousColumns = todoColumns.value ? [...todoColumns.value] : [];
+    const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
 
     if (todoColumns.value && Array.isArray(todoColumns.value)) {
       const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
@@ -136,7 +136,7 @@ export function useTodoColumns() {
   };
 
   const reorderTodoColumns = async (fromIndex: number, toIndex: number) => {
-    const previousColumns = todoColumns.value ? [...todoColumns.value] : [];
+    const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
     if (fromIndex === toIndex)
       return;
 

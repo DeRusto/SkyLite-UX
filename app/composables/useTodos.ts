@@ -33,9 +33,10 @@ export function useTodos() {
   };
 
   const createTodo = async (todoData: CreateTodoInput) => {
-    const previousTodos = todos.value ? [...todos.value] : [];
+    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
+    const tempId = crypto.randomUUID();
     const newTodo: any = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       title: todoData.title,
       description: todoData.description || null,
       priority: todoData.priority || "MEDIUM",
@@ -44,8 +45,8 @@ export function useTodos() {
       order: todoData.order || 0,
       todoColumnId: todoData.todoColumnId || null,
       todoColumn: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     if (todos.value && Array.isArray(todos.value)) {
@@ -59,7 +60,7 @@ export function useTodos() {
       });
 
       if (todos.value && Array.isArray(todos.value)) {
-        const tempIndex = todos.value.findIndex((t: Todo) => t.id === newTodo.id);
+        const tempIndex = todos.value.findIndex((t: Todo) => t.id === tempId);
         if (tempIndex !== -1) {
           todos.value[tempIndex] = createdTodo;
         }
@@ -78,7 +79,7 @@ export function useTodos() {
   };
 
   const updateTodo = async (id: string, updates: UpdateTodoInput) => {
-    const previousTodos = todos.value ? [...todos.value] : [];
+    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
 
     if (todos.value && Array.isArray(todos.value)) {
       const todoIndex = todos.value.findIndex((t: Todo) => t.id === id);
@@ -92,6 +93,13 @@ export function useTodos() {
         method: "PUT" as any,
         body: updates,
       });
+
+      if (todos.value && Array.isArray(todos.value)) {
+        const todoIndex = todos.value.findIndex((t: Todo) => t.id === id);
+        if (todoIndex !== -1) {
+          todos.value[todoIndex] = updatedTodo;
+        }
+      }
 
       return updatedTodo;
     }
@@ -110,7 +118,7 @@ export function useTodos() {
   };
 
   const deleteTodo = async (id: string) => {
-    const previousTodos = todos.value ? [...todos.value] : [];
+    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
 
     if (todos.value && Array.isArray(todos.value)) {
       const updatedTodos = todos.value.filter((t: Todo) => t.id !== id);
@@ -134,7 +142,7 @@ export function useTodos() {
   };
 
   const reorderTodo = async (todoId: string, direction: "up" | "down", todoColumnId: string | null) => {
-    const previousTodos = todos.value ? [...todos.value] : [];
+    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
     try {
       const currentTodo = currentTodos.value.find(t => t.id === todoId);
       if (!currentTodo)
@@ -192,8 +200,8 @@ export function useTodos() {
     }
   };
 
-  const clearCompleted = async (columnId: string, _completedTodos?: TodoWithOrder[]) => {
-    const previousTodos = todos.value ? [...todos.value] : [];
+  const clearCompleted = async (columnId: string) => {
+    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
 
     if (todos.value && Array.isArray(todos.value)) {
       const updatedTodos = todos.value.filter((t: Todo) => !(t.todoColumnId === columnId && t.completed));

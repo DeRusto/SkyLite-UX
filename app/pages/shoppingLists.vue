@@ -50,7 +50,7 @@ const selectedListId = ref<string>("");
 const editingList = ref<ShoppingList | null>(null);
 const editingItem = ref<ShoppingListItem | null>(null);
 
-const { showWarning } = useAlertToast();
+const { showError, showWarning } = useAlertToast();
 
 function normalizeIntegrationItem(item: RawIntegrationItem): ShoppingListItem {
   return {
@@ -155,56 +155,84 @@ function openEditItem(item: ShoppingListItem) {
 }
 
 async function handleListSave(listData: CreateShoppingListInput) {
-  if (editingList.value?.id) {
-    await updateShoppingList(editingList.value.id, listData);
+  try {
+    if (editingList.value?.id) {
+      await updateShoppingList(editingList.value.id, listData);
+    }
+    else {
+      await createShoppingList(listData);
+    }
   }
-  else {
-    await createShoppingList(listData);
+  catch {
+    showError("Failed to save list");
+    return;
   }
-  listDialog.value = false;
-  editingList.value = null;
+  finally {
+    listDialog.value = false;
+    editingList.value = null;
+  }
 }
 
 async function handleListDelete() {
   if (!editingList.value?.id)
     return;
-  await deleteShoppingList(editingList.value.id);
-  listDialog.value = false;
-  editingList.value = null;
+  try {
+    await deleteShoppingList(editingList.value.id);
+  }
+  catch {
+    showError("Failed to delete list");
+    return;
+  }
+  finally {
+    listDialog.value = false;
+    editingList.value = null;
+  }
 }
 
 async function handleItemSave(itemData: CreateShoppingListItemInput) {
-  let targetList: ShoppingList | undefined;
-  if (editingItem.value?.id) {
-    targetList = allShoppingLists.value.find(list =>
-      list.items?.some((item: ShoppingListItem) => item.id === editingItem.value!.id),
-    );
-  }
-  else {
-    targetList = allShoppingLists.value.find(list => list.id === selectedListId.value);
-  }
-
-  const isIntegrationList = targetList?.source === "integration";
-
-  if (editingItem.value?.id) {
-    if (isIntegrationList && targetList?.integrationId) {
-      await updateIntegrationItem(targetList.integrationId, editingItem.value.id, itemData);
+  try {
+    let targetList: ShoppingList | undefined;
+    if (editingItem.value?.id) {
+      targetList = allShoppingLists.value.find(list =>
+        list.items?.some((item: ShoppingListItem) => item.id === editingItem.value!.id),
+      );
     }
     else {
-      await updateShoppingListItem(editingItem.value.id, itemData);
+      targetList = allShoppingLists.value.find(list => list.id === selectedListId.value);
     }
-  }
-  else {
-    if (isIntegrationList && targetList?.integrationId) {
-      await addItemToIntegrationList(targetList.integrationId, selectedListId.value, itemData);
+
+    if (!targetList) {
+      showError("Target list not found");
+      return;
+    }
+
+    const isIntegrationList = targetList.source === "integration";
+
+    if (editingItem.value?.id) {
+      if (isIntegrationList && targetList.integrationId) {
+        await updateIntegrationItem(targetList.integrationId, editingItem.value.id, itemData);
+      }
+      else {
+        await updateShoppingListItem(editingItem.value.id, itemData);
+      }
     }
     else {
-      await addItemToList(targetList!.id, itemData);
+      if (isIntegrationList && targetList.integrationId) {
+        await addItemToIntegrationList(targetList.integrationId, targetList.id, itemData);
+      }
+      else {
+        await addItemToList(targetList.id, itemData);
+      }
     }
   }
-
-  itemDialog.value = false;
-  editingItem.value = null;
+  catch {
+    // Error handled by composable toast
+    return;
+  }
+  finally {
+    itemDialog.value = false;
+    editingItem.value = null;
+  }
 }
 
 async function handleItemDelete(_itemId: string) {
@@ -214,67 +242,95 @@ async function handleItemDelete(_itemId: string) {
 }
 
 async function handleToggleItem(itemId: string, checked: boolean) {
-  const targetList = allShoppingLists.value.find(list =>
-    list.items?.some((item: ShoppingListItem) => item.id === itemId),
-  );
-  const isIntegrationList = targetList?.source === "integration";
+  try {
+    const targetList = allShoppingLists.value.find(list =>
+      list.items?.some((item: ShoppingListItem) => item.id === itemId),
+    );
+    if (!targetList)
+      return;
 
-  if (isIntegrationList && targetList?.integrationId) {
-    await toggleIntegrationItem(targetList.integrationId, itemId, checked);
+    const isIntegrationList = targetList.source === "integration";
+
+    if (isIntegrationList && targetList.integrationId) {
+      await toggleIntegrationItem(targetList.integrationId, itemId, checked);
+    }
+    else {
+      await updateShoppingListItem(itemId, { checked });
+    }
   }
-  else {
-    await updateShoppingListItem(itemId, { checked });
+  catch {
+    // Handled by composable
   }
 }
 
 async function handleDeleteList(listId: string) {
-  const list = allShoppingLists.value.find(l => l.id === listId);
-  if (list?.source === "native" || !list?.source) {
-    await deleteShoppingList(listId);
+  try {
+    const list = allShoppingLists.value.find(l => l.id === listId);
+    if (list?.source === "native" || !list?.source) {
+      await deleteShoppingList(listId);
+    }
+    else {
+      showWarning("Warning", "Deleting lists in integrations is not yet supported.");
+    }
   }
-  else {
-    showWarning("Warning", "Deleting lists in integrations is not yet supported.");
+  catch {
+    // Handled by composable
   }
 }
 
 async function handleReorderItem(itemId: string, direction: "up" | "down") {
-  const list = findItemList(itemId);
-  if (!list)
-    return;
+  try {
+    const list = findItemList(itemId);
+    if (!list)
+      return;
 
-  if (list.source === "integration") {
-    showWarning("Reorder Not Supported", "Reordering items in integration lists is not currently supported.");
+    if (list.source === "integration") {
+      showWarning("Reorder Not Supported", "Reordering items in integration lists is not currently supported.");
+    }
+    else {
+      await reorderItem(itemId, direction);
+    }
   }
-  else {
-    await reorderItem(itemId, direction);
+  catch {
+    // Handled by composable
   }
 }
 
 async function handleReorderList(listId: string, direction: "up" | "down") {
-  const list = allShoppingLists.value.find(l => l.id === listId);
-  if (!list)
-    return;
+  try {
+    const list = allShoppingLists.value.find(l => l.id === listId);
+    if (!list)
+      return;
 
-  if (list.source === "integration") {
-    showWarning("Reorder Not Supported", "Reordering integration lists is not currently supported.");
+    if (list.source === "integration") {
+      showWarning("Reorder Not Supported", "Reordering integration lists is not currently supported.");
+    }
+    else {
+      await reorderShoppingList(listId, direction);
+    }
   }
-  else {
-    await reorderShoppingList(listId, direction);
+  catch {
+    // Handled by composable
   }
 }
 
 async function handleClearCompleted(listId: string) {
-  const list = allShoppingLists.value.find(l => l.id === listId);
-  if (!list)
-    return;
-
-  if (list.source === "integration") {
-    if (!list.integrationId)
+  try {
+    const list = allShoppingLists.value.find(l => l.id === listId);
+    if (!list)
       return;
-    await clearIntegrationCompletedItems(list.integrationId, listId);
+
+    if (list.source === "integration") {
+      if (!list.integrationId)
+        return;
+      await clearIntegrationCompletedItems(list.integrationId, listId);
+    }
+    else {
+      await deleteCompletedItems(listId);
+    }
   }
-  else {
-    await deleteCompletedItems(listId);
+  catch {
+    // Handled by composable
   }
 }
 

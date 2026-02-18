@@ -96,69 +96,104 @@ function openEditTodo(item: BaseListItem) {
 }
 
 async function handleTodoSave(todoData: TodoListItem) {
-  if (editingTodo.value?.id) {
-    await updateTodo(editingTodo.value.id, {
-      title: todoData.name,
-      description: todoData.description,
-      priority: todoData.priority,
-      dueDate: todoData.dueDate,
-      completed: todoData.checked,
-      order: todoData.order,
-      todoColumnId: todoData.todoColumnId,
-    });
+  try {
+    if (editingTodo.value?.id) {
+      await updateTodo(editingTodo.value.id, {
+        title: todoData.name,
+        description: todoData.description,
+        priority: todoData.priority,
+        dueDate: todoData.dueDate,
+        completed: todoData.checked,
+        order: todoData.order,
+        todoColumnId: todoData.todoColumnId,
+      });
+    }
+    else {
+      await createTodo({
+        title: todoData.name,
+        description: todoData.description,
+        priority: todoData.priority,
+        dueDate: todoData.dueDate,
+        completed: todoData.checked,
+        order: todoData.order,
+        todoColumnId: todoData.todoColumnId,
+      });
+    }
+    todoItemDialog.value = false;
+    editingTodo.value = null;
   }
-  else {
-    await createTodo({
-      title: todoData.name,
-      description: todoData.description,
-      priority: todoData.priority,
-      dueDate: todoData.dueDate,
-      completed: todoData.checked,
-      order: todoData.order,
-      todoColumnId: todoData.todoColumnId,
-    });
+  catch {
+    // Handled by composable
   }
-  todoItemDialog.value = false;
-  editingTodo.value = null;
 }
 
 async function handleTodoDelete(todoId: string) {
-  await deleteTodo(todoId);
+  try {
+    await deleteTodo(todoId);
+  }
+  catch {
+    // Handled by composable
+  }
 }
 
 async function handleColumnSave(columnData: { name: string }) {
-  if (editingColumn.value?.id) {
-    await updateTodoColumn(editingColumn.value.id, columnData);
+  try {
+    if (editingColumn.value?.id) {
+      await updateTodoColumn(editingColumn.value.id, columnData);
+    }
+    else {
+      await createTodoColumn(columnData);
+    }
+    todoColumnDialog.value = false;
+    editingColumn.value = null;
   }
-  else {
-    await createTodoColumn(columnData);
+  catch {
+    // Handled by composable
   }
-  todoColumnDialog.value = false;
-  editingColumn.value = null;
 }
 
 async function handleColumnDelete(columnId: string) {
-  await deleteTodoColumn(columnId);
+  try {
+    await deleteTodoColumn(columnId);
+  }
+  catch {
+    // Handled by composable
+  }
 }
 
 async function handleReorderColumn(columnIndex: number, direction: "left" | "right") {
-  const targetIndex = direction === "left" ? columnIndex - 1 : columnIndex + 1;
-  if (targetIndex < 0 || targetIndex >= (todoColumns.value?.length || 0))
-    return;
-  await reorderTodoColumns(columnIndex, targetIndex);
+  try {
+    const targetIndex = direction === "left" ? columnIndex - 1 : columnIndex + 1;
+    if (targetIndex < 0 || targetIndex >= (todoColumns.value?.length || 0))
+      return;
+    await reorderTodoColumns(columnIndex, targetIndex);
+  }
+  catch {
+    // Handled by composable
+  }
 }
 
 async function handleReorderTodo(itemId: string, direction: "up" | "down") {
-  if (!todos.value)
-    return;
-  const item = todos.value.find(t => t.id === itemId);
-  if (!item)
-    return;
-  await reorderTodo(itemId, direction, item.todoColumnId ?? null);
+  try {
+    if (!todos.value)
+      return;
+    const item = todos.value.find(t => t.id === itemId);
+    if (!item)
+      return;
+    await reorderTodo(itemId, direction, item.todoColumnId ?? null);
+  }
+  catch {
+    // Handled by composable
+  }
 }
 
 async function handleClearCompleted(columnId: string) {
-  await clearCompleted(columnId);
+  try {
+    await clearCompleted(columnId);
+  }
+  catch {
+    // Handled by composable
+  }
 }
 
 function openEditColumn(column: TodoListWithIntegration) {
@@ -167,7 +202,12 @@ function openEditColumn(column: TodoListWithIntegration) {
 }
 
 async function handleToggleTodo(itemId: string, completed: boolean) {
-  await toggleTodo(itemId, completed);
+  try {
+    await toggleTodo(itemId, completed);
+  }
+  catch {
+    // Handled by composable
+  }
 }
 </script>
 

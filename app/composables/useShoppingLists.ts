@@ -32,9 +32,9 @@ export function useShoppingLists() {
   };
 
   const createShoppingList = async (listData: CreateShoppingListInput) => {
-    const previousLists = shoppingLists.value ? [...shoppingLists.value] : [];
+    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
     const newList: any = {
-      id: `temp-${Date.now()}`,
+      id: crypto.randomUUID(),
       name: listData.name,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -54,7 +54,7 @@ export function useShoppingLists() {
       });
 
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-        const tempIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === newList.id);
+        const tempIndex = shoppingLists.value.findIndex((l: any) => l.id === newList.id);
         if (tempIndex !== -1) {
           shoppingLists.value[tempIndex] = createdList;
         }
@@ -73,10 +73,10 @@ export function useShoppingLists() {
   };
 
   const updateShoppingList = async (listId: string, updates: { name?: string }) => {
-    const previousLists = shoppingLists.value ? [...shoppingLists.value] : [];
+    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
 
     if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+      const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
       if (listIndex !== -1) {
         shoppingLists.value[listIndex] = { ...shoppingLists.value[listIndex], ...updates } as any;
       }
@@ -124,6 +124,22 @@ export function useShoppingLists() {
         body: updates,
       });
 
+      // Write back confirmed item
+      if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
+        for (let listIndex = 0; listIndex < shoppingLists.value.length; listIndex++) {
+          const list = shoppingLists.value[listIndex];
+          if (list) {
+            const itemIndex = list.items?.findIndex((i: any) => i.id === itemId);
+            if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
+              const confirmedItems = [...list.items];
+              confirmedItems[itemIndex] = updatedItem as any;
+              shoppingLists.value[listIndex] = { ...list, items: confirmedItems as any };
+              break;
+            }
+          }
+        }
+      }
+
       return updatedItem;
     }
     catch (err) {
@@ -138,25 +154,28 @@ export function useShoppingLists() {
 
   const addItemToList = async (listId: string, itemData: CreateShoppingListItemInput) => {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const tempId = crypto.randomUUID();
     const newItem: any = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       name: itemData.name || "",
-      checked: false,
-      order: 0,
+      checked: itemData.checked || false,
+      order: itemData.order || 0,
       notes: itemData.notes || null,
       quantity: itemData.quantity || 1,
       unit: itemData.unit || null,
+      label: itemData.label || null,
+      food: itemData.food || null,
       shoppingListId: listId,
     };
 
     if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+      const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
       if (listIndex !== -1) {
         const list = shoppingLists.value[listIndex];
         if (list) {
           const updatedItems = [...(list.items || []), newItem];
           const newCount = list._count ? { ...list._count, items: (list._count.items || 0) + 1 } : { items: 1 };
-          shoppingLists.value[listIndex] = { ...list, items: updatedItems as any, _count: newCount } as any;
+          shoppingLists.value[listIndex] = { ...list, items: updatedItems as any, _count: newCount as any };
         }
       }
     }
@@ -168,15 +187,15 @@ export function useShoppingLists() {
       });
 
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-        const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+        const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
         if (listIndex !== -1) {
           const list = shoppingLists.value[listIndex];
           if (list && list.items) {
-            const tempIndex = list.items.findIndex((i: any) => i.id === newItem.id);
-            if (tempIndex !== -1 && tempIndex !== undefined) {
+            const tempIndex = list.items.findIndex((i: any) => i.id === tempId);
+            if (tempIndex !== -1) {
               const updatedItems = [...list.items];
               updatedItems[tempIndex] = createdItem as any;
-              shoppingLists.value[listIndex] = { ...list, items: updatedItems as any } as any;
+              shoppingLists.value[listIndex] = { ...list, items: updatedItems as any };
             }
           }
         }
@@ -195,10 +214,10 @@ export function useShoppingLists() {
   };
 
   const deleteShoppingList = async (listId: string) => {
-    const previousLists = shoppingLists.value ? [...shoppingLists.value] : [];
+    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
 
     if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+      const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
       if (listIndex !== -1) {
         shoppingLists.value.splice(listIndex, 1);
       }
@@ -225,7 +244,7 @@ export function useShoppingLists() {
   };
 
   const reorderShoppingList = async (listId: string, direction: "up" | "down") => {
-    const previousLists = shoppingLists.value ? [...shoppingLists.value] : [];
+    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
     try {
       const sortedLists = [...currentShoppingLists.value].sort((a, b) => (a.order || 0) - (b.order || 0));
       const currentIndex = sortedLists.findIndex(list => list.id === listId);
@@ -363,15 +382,15 @@ export function useShoppingLists() {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
 
     if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-      const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+      const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
       if (listIndex !== -1) {
         const list = shoppingLists.value[listIndex];
         if (list) {
-          const itemsToDelete = completedItemIds || list.items?.filter(item => item.checked).map(item => item.id) || [];
+          const itemsToDelete = completedItemIds || (list.items as any[])?.filter(item => item.checked).map(item => item.id) || [];
           if (itemsToDelete.length > 0) {
-            const updatedItems = list.items?.filter(item => !itemsToDelete.includes(item.id)) || [];
+            const updatedItems = (list.items as any[])?.filter(item => !itemsToDelete.includes(item.id)) || [];
             const newCount = list._count ? { ...list._count, items: Math.max(0, (list._count.items || 0) - itemsToDelete.length) } : { items: updatedItems.length };
-            shoppingLists.value[listIndex] = { ...list, items: updatedItems as any, _count: newCount } as any;
+            shoppingLists.value[listIndex] = { ...list, items: updatedItems as any, _count: newCount as any } as any;
           }
         }
       }

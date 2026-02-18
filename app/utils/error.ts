@@ -1,4 +1,13 @@
 /**
+ * Shape of an error returned by Nuxt/Fetch.
+ */
+export type FetchErrorShape = {
+  data?: { message?: string };
+  statusMessage?: string;
+  message?: string;
+};
+
+/**
  * Utility to extract a human-readable error message from an API error.
  * Handles Nuxt $fetch errors, standard Errors, and fallback messages.
  */
@@ -7,7 +16,7 @@ export function getErrorMessage(err: unknown, fallback = "An unexpected error oc
     return fallback;
 
   // Handle Nuxt/Fetch errors which often have a 'data' property with a message
-  const fetchError = err as { data?: { message?: string }; statusMessage?: string; message?: string };
+  const fetchError = err as FetchErrorShape;
 
   if (fetchError.data?.message) {
     return fetchError.data.message;

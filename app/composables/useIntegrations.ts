@@ -82,7 +82,7 @@ export function useIntegrations() {
     catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Failed to create integration");
       consola.error("Use Integrations: Error creating integration:", err);
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: err });
     }
   };
 
@@ -123,7 +123,7 @@ export function useIntegrations() {
     catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Failed to update integration");
       consola.error("Use Integrations: Error updating integration:", err);
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: err });
     }
   };
 
@@ -142,7 +142,7 @@ export function useIntegrations() {
     catch (err: unknown) {
       const errorMessage = getErrorMessage(err, "Failed to delete integration");
       consola.error("Use Integrations: Error deleting integration:", err);
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: err });
     }
   };
 

@@ -102,8 +102,9 @@ export function useShoppingIntegrations() {
     const integrationLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
     const previousLists = integrationLists ? JSON.parse(JSON.stringify(integrationLists)) : [];
 
+    const tempId = crypto.randomUUID();
     const newItem: any = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       name: itemData.name || itemData.notes || "Unknown",
       checked: false,
       order: 0,
@@ -128,7 +129,7 @@ export function useShoppingIntegrations() {
           }
           const updatedLists = [...integrationLists];
           updatedLists[listIndex] = updatedList;
-          updateIntegrationCache("shopping", integrationId, updatedLists);
+          updateIntegrationCache("shopping", integrationId, updatedLists as any);
         }
       }
     }
@@ -147,14 +148,14 @@ export function useShoppingIntegrations() {
         if (listIndex !== -1) {
           const list = currentLists[listIndex];
           if (list && list.items) {
-            const tempIndex = list.items.findIndex((i: any) => i.id === newItem.id);
-            if (tempIndex !== -1 && tempIndex !== undefined) {
+            const tempIndex = list.items.findIndex((i: any) => i.id === tempId);
+            if (tempIndex !== -1) {
               const updatedItems = [...list.items];
               updatedItems[tempIndex] = item;
               const updatedList = { ...list, items: updatedItems };
               const updatedLists = [...currentLists];
               updatedLists[listIndex] = updatedList;
-              updateIntegrationCache("shopping", integrationId, updatedLists);
+              updateIntegrationCache("shopping", integrationId, updatedLists as any);
             }
           }
         }
@@ -197,7 +198,7 @@ export function useShoppingIntegrations() {
       });
 
       if (itemFound) {
-        updateIntegrationCache("shopping", integrationId, updatedLists);
+        updateIntegrationCache("shopping", integrationId, updatedLists as any);
       }
     }
 
@@ -230,46 +231,41 @@ export function useShoppingIntegrations() {
     const integrationLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
     const previousLists = integrationLists ? JSON.parse(JSON.stringify(integrationLists)) : [];
 
+    let itemsToDelete: string[] = [];
+    if (completedItemIds && completedItemIds.length > 0) {
+      itemsToDelete = completedItemIds;
+    }
+    else if (integrationLists && Array.isArray(integrationLists)) {
+      const targetList = integrationLists.find(l => l.id === listId);
+      if (targetList && targetList.items) {
+        itemsToDelete = targetList.items.filter(i => i.checked).map(i => i.id);
+      }
+    }
+
+    if (itemsToDelete.length === 0) {
+      consola.warn(`Use Shopping Integrations: No completed items to clear from list ${listId}`);
+      return;
+    }
+
+    // Optimistic update
     if (integrationLists && Array.isArray(integrationLists)) {
       const listIndex = integrationLists.findIndex(l => l.id === listId);
       if (listIndex !== -1) {
         const list = integrationLists[listIndex];
         if (list) {
-          const idsToDelete = completedItemIds || list.items?.filter(i => i.checked).map(i => i.id) || [];
-          if (idsToDelete.length > 0) {
-            const updatedItems = list.items?.filter(i => !idsToDelete.includes(i.id)) || [];
-            const updatedList = { ...list, items: updatedItems };
-            if (updatedList._count) {
-              updatedList._count = { ...updatedList._count, items: Math.max(0, (updatedList._count.items || 0) - idsToDelete.length) };
-            }
-            const updatedLists = [...integrationLists];
-            updatedLists[listIndex] = updatedList;
-            updateIntegrationCache("shopping", integrationId, updatedLists);
+          const updatedItems = list.items?.filter(i => !itemsToDelete.includes(i.id)) || [];
+          const updatedList = { ...list, items: updatedItems };
+          if (updatedList._count) {
+            updatedList._count = { ...updatedList._count, items: Math.max(0, (updatedList._count.items || 0) - itemsToDelete.length) };
           }
+          const updatedLists = [...integrationLists];
+          updatedLists[listIndex] = updatedList;
+          updateIntegrationCache("shopping", integrationId, updatedLists as any);
         }
       }
     }
 
     try {
-      const lists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
-      const targetList = lists?.find(list => list.id === listId);
-
-      let itemsToDelete: string[] = [];
-
-      if (completedItemIds && completedItemIds.length > 0) {
-        itemsToDelete = completedItemIds;
-      }
-      else if (targetList && targetList.items) {
-        itemsToDelete = targetList.items
-          .filter(item => item.checked)
-          .map(item => item.id);
-      }
-
-      if (itemsToDelete.length === 0) {
-        consola.warn(`Use Shopping Integrations: No completed items to clear from list ${listId}`);
-        return;
-      }
-
       await (service as unknown as { deleteShoppingListItems?: (ids: string[]) => Promise<void> }).deleteShoppingListItems?.(itemsToDelete);
     }
     catch (err) {
