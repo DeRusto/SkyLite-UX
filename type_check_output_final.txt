@@ -1,4 +1,0 @@
-
-> skylite-ux@2026.1.0 type-check /app
-> vue-tsc --noEmit -p tsconfig.json --composite false
-

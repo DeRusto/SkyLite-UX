@@ -164,11 +164,13 @@ async function handleListSave(listData: CreateShoppingListInput) {
       await createShoppingList(listData);
       showSuccess("List Created", "Shopping list created successfully");
     }
-    listDialog.value = false;
-    editingList.value = null;
   }
   catch {
-    // Error handled by composable toast
+    return;
+  }
+  finally {
+    listDialog.value = false;
+    editingList.value = null;
   }
 }
 
@@ -178,11 +180,13 @@ async function handleListDelete() {
   try {
     await deleteShoppingList(editingList.value.id);
     showSuccess("List Deleted", "Shopping list deleted successfully");
-    listDialog.value = false;
-    editingList.value = null;
   }
   catch {
-    // Error handled by composable toast
+    return;
+  }
+  finally {
+    listDialog.value = false;
+    editingList.value = null;
   }
 }
 
@@ -223,11 +227,13 @@ async function handleItemSave(itemData: CreateShoppingListItemInput) {
       }
       showSuccess("Item Added", "Item added to list");
     }
-    itemDialog.value = false;
-    editingItem.value = null;
   }
   catch {
-    // Error handled by composable toast
+    return;
+  }
+  finally {
+    itemDialog.value = false;
+    editingItem.value = null;
   }
 }
 
@@ -463,15 +469,15 @@ function getFilteredFieldsForItem(item: ShoppingListItem, integrationType: strin
         }"
         :show-add="(list) => {
           const shoppingList = list as ShoppingListWithIntegration;
-          return shoppingList.source === 'native' || (shoppingList.integrationId ? hasCapability(shoppingList.integrationId!, 'add_items') : false);
+          return shoppingList.source === 'native' || (shoppingList.integrationId ? hasCapability(shoppingList.integrationId, 'add_items') : false);
         }"
         :show-edit-item="(list) => {
           const shoppingList = list as ShoppingListWithIntegration;
-          return shoppingList.source === 'native' || (shoppingList.integrationId ? hasCapability(shoppingList.integrationId!, 'edit_items') : false);
+          return shoppingList.source === 'native' || (shoppingList.integrationId ? hasCapability(shoppingList.integrationId, 'edit_items') : false);
         }"
         :show-completed="(list) => {
           const shoppingList = list as ShoppingListWithIntegration;
-          return shoppingList.source === 'native' || (shoppingList.integrationId ? hasCapability(shoppingList.integrationId!, 'clear_items') : false);
+          return shoppingList.source === 'native' || (shoppingList.integrationId ? hasCapability(shoppingList.integrationId, 'clear_items') : false);
         }"
         show-integration-icons
         @create="openCreateList"

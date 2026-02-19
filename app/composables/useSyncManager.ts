@@ -2,6 +2,11 @@ import { consola } from "consola";
 
 import type { IntegrationSyncData, SyncConnectionStatus, SyncStatus } from "~/types/sync";
 
+type IntegrationMinimal = {
+  id: string;
+  type: string;
+};
+
 export function getIntegrationCacheKey(integrationType: string, integrationId: string): string {
   switch (integrationType) {
     case "calendar":
@@ -85,13 +90,13 @@ export function useSyncManager() {
     return status;
   };
 
-  const getSyncDataByType = (integrationType: string, integrationsList?: any[]) => {
+  const getSyncDataByType = (integrationType: string, integrationsList?: IntegrationMinimal[]) => {
     const data = getAllSyncData();
     const integrations = integrationsList || [];
 
     return integrations
-      .filter((integration: any) => integration.type === integrationType)
-      .map((integration: any) => ({
+      .filter((integration: IntegrationMinimal) => integration.type === integrationType)
+      .map((integration: IntegrationMinimal) => ({
         integration,
         syncData: data[integration.id],
         cachedData: getCachedIntegrationData(integrationType, integration.id),
@@ -99,15 +104,15 @@ export function useSyncManager() {
       .filter(item => item.syncData);
   };
 
-  const getShoppingSyncData = (integrationsList?: any[]) => {
+  const getShoppingSyncData = (integrationsList?: IntegrationMinimal[]) => {
     return getSyncDataByType("shopping", integrationsList);
   };
 
-  const getCalendarSyncData = (integrationsList?: any[]) => {
+  const getCalendarSyncData = (integrationsList?: IntegrationMinimal[]) => {
     return getSyncDataByType("calendar", integrationsList);
   };
 
-  const getTodoSyncData = (integrationsList?: any[]) => {
+  const getTodoSyncData = (integrationsList?: IntegrationMinimal[]) => {
     return getSyncDataByType("todo", integrationsList);
   };
 

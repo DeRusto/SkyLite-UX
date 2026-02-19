@@ -1,3 +1,0 @@
-
-> skylite-ux@2026.1.0 lint /app
-> eslint . --fix

@@ -1,318 +1,209 @@
 <script setup lang="ts">
 import { consola } from "consola";
 
-import type { BaseListItem, Todo, TodoColumn, TodoList, TodoListItem } from "~/types/database";
-import type { TodoListWithIntegration } from "~/types/ui";
+import type { Todo, TodoColumn } from "~/types/database";
 
-import GlobalFloatingActionButton from "~/components/global/globalFloatingActionButton.vue";
-import GlobalList from "~/components/global/globalList.vue";
-import TodoColumnDialog from "~/components/todos/todoColumnDialog.vue";
-import TodoItemDialog from "~/components/todos/todoItemDialog.vue";
-import { useAlertToast } from "~/composables/useAlertToast";
-import { useStableDate } from "~/composables/useStableDate";
-import { useTodoColumns } from "~/composables/useTodoColumns";
-import { useTodos } from "~/composables/useTodos";
-import { getErrorMessage } from "~/utils/error";
+const props = defineProps<{
+  columns: TodoColumn[];
+  todos: Todo[];
+  loading: boolean;
+}>();
 
-const { showSuccess } = useAlertToast();
-const { parseStableDate } = useStableDate();
+const emit = defineEmits<{
+  (e: "addColumn"): void;
+  (e: "editColumn", column: TodoColumn): void;
+  (e: "reorderColumn", columnId: string, direction: "up" | "down"): void;
+  (e: "addTodo", columnId: string): void;
+  (e: "editTodo", todo: Todo): void;
+  (e: "toggleTodo", todoId: string, completed: boolean): void;
+  (e: "reorderTodo", todoId: string, direction: "up" | "down"): void;
+  (e: "moveTodo", todoId: string, newColumnId: string): void;
+}>();
 
-const { data: todoColumns } = useNuxtData<TodoColumn[]>("todo-columns");
-const { data: todos } = useNuxtData<Todo[]>("todos");
-const { updateTodo, createTodo, deleteTodo, toggleTodo, reorderTodo, clearCompleted, loading: todosLoading } = useTodos();
-const { updateTodoColumn, createTodoColumn, deleteTodoColumn, reorderTodoColumns, loading: columnsLoading } = useTodoColumns();
-
-const mutableTodoColumns = computed(() => todoColumns.value?.map(col => ({
-  ...col,
-  user: col.user === null
-    ? undefined
-    : {
-        id: col.user.id,
-        name: col.user.name,
-        avatar: col.user.avatar,
-      },
-})) || []);
-
-const todoItemDialog = ref(false);
-const todoColumnDialog = ref(false);
-const editingTodo = ref<TodoListItem | null>(null);
-const editingColumn = ref<TodoList | null>(null);
-const reorderingTodos = ref(new Set<string>());
-const reorderingColumns = ref(new Set<string>());
-
-const editingTodoTyped = computed<TodoListItem | undefined>(() =>
-  editingTodo.value as TodoListItem | undefined,
-);
-
-const todoLists = computed<TodoListWithIntegration[]>(() => {
-  if (!todoColumns.value || !todos.value)
-    return [];
-
-  return todoColumns.value.map(column => ({
-    id: column.id,
-    name: column.name,
-    order: column.order,
-    createdAt: parseStableDate(column.createdAt),
-    updatedAt: parseStableDate(column.updatedAt),
-    isDefault: column.isDefault,
-    source: "native" as const,
-    items: todos.value!
-      .filter(todo => todo.todoColumnId === column.id)
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(todo => ({
-        id: todo.id,
-        name: todo.title,
-        checked: todo.completed,
-        order: todo.order,
-        notes: todo.description,
-        shoppingListId: todo.todoColumnId || "",
-        priority: todo.priority,
-        dueDate: todo.dueDate,
-        description: todo.description ?? "",
-        todoColumnId: todo.todoColumnId || "",
-      })),
-    _count: column._count ? { items: column._count.todos } : undefined,
-  }));
-});
-
-function openCreateTodo(todoColumnId?: string) {
-  editingTodo.value = { todoColumnId: todoColumnId ?? "" } as TodoListItem;
-  todoItemDialog.value = true;
+function onDragStart(event: DragEvent, todo: Todo) {
+  if (event.dataTransfer) {
+    event.dataTransfer.setData("application/json", JSON.stringify(todo));
+    event.dataTransfer.effectAllowed = "move";
+  }
 }
 
-function openEditTodo(item: BaseListItem) {
-  if (!todos.value)
-    return;
-  const todo = todos.value.find(t => t.id === item.id);
-  if (!todo)
-    return;
-
-  editingTodo.value = {
-    id: todo.id,
-    name: todo.title,
-    description: todo.description ?? "",
-    priority: todo.priority,
-    dueDate: todo.dueDate ? parseStableDate(todo.dueDate) : null,
-    todoColumnId: todo.todoColumnId ?? "",
-    checked: todo.completed,
-    order: todo.order,
-    shoppingListId: todo.todoColumnId || "",
-    notes: todo.description,
-  };
-  todoItemDialog.value = true;
-}
-
-async function handleTodoSave(todoData: TodoListItem) {
-  try {
-    if (editingTodo.value?.id) {
-      await updateTodo(editingTodo.value.id, {
-        title: todoData.name,
-        description: todoData.description,
-        priority: todoData.priority,
-        dueDate: todoData.dueDate,
-        completed: todoData.checked,
-        order: todoData.order,
-        todoColumnId: todoData.todoColumnId,
-      });
+function onDrop(event: DragEvent, columnId: string) {
+  event.preventDefault();
+  const data = event.dataTransfer?.getData("application/json");
+  if (data) {
+    try {
+      const todo = JSON.parse(data) as Todo;
+      if (todo.todoColumnId !== columnId) {
+        emit("moveTodo", todo.id, columnId);
+      }
     }
-    else {
-      await createTodo({
-        title: todoData.name,
-        description: todoData.description,
-        priority: todoData.priority,
-        dueDate: todoData.dueDate,
-        completed: todoData.checked,
-        order: todoData.order,
-        todoColumnId: todoData.todoColumnId,
-      });
+    catch (err) {
+      consola.error("Failed to parse dropped todo", err);
     }
-
-    const wasEdit = Boolean(editingTodo.value?.id);
-    todoItemDialog.value = false;
-    editingTodo.value = null;
-    showSuccess("Todo Saved", wasEdit ? "Todo updated successfully" : "Todo created successfully");
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to save todo:", getErrorMessage(err));
   }
 }
 
-async function handleTodoDelete(todoId: string) {
-  try {
-    await deleteTodo(todoId);
-    consola.debug("Todo Lists: Todo deleted successfully");
-    showSuccess("Todo Deleted", "Todo has been removed successfully");
-    todoItemDialog.value = false;
-    editingTodo.value = null;
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to delete todo:", getErrorMessage(err));
-  }
-}
-
-async function handleColumnSave(columnData: { name: string }) {
-  try {
-    if (editingColumn.value?.id) {
-      await updateTodoColumn(editingColumn.value.id, columnData);
-    }
-    else {
-      await createTodoColumn(columnData);
-    }
-
-    const wasEdit = Boolean(editingColumn.value?.id);
-    todoColumnDialog.value = false;
-    editingColumn.value = null;
-    showSuccess("Column Saved", wasEdit ? "Column updated successfully" : "Column created successfully");
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to save todo column:", getErrorMessage(err));
-  }
-}
-
-async function handleColumnDelete(columnId: string) {
-  try {
-    await deleteTodoColumn(columnId);
-    consola.debug("Todo Lists: Todo column deleted successfully");
-    showSuccess("Column Deleted", "Column has been removed successfully");
-    todoColumnDialog.value = false;
-    editingColumn.value = null;
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to delete todo column:", getErrorMessage(err));
-  }
-}
-
-async function handleReorderColumn(columnIndex: number, direction: "left" | "right") {
-  if (!todoColumns.value)
-    return;
-
-  const column = todoColumns.value[columnIndex];
-  if (!column)
-    return;
-
-  if (reorderingColumns.value.has(column.id))
-    return;
-
-  const targetIndex = direction === "left" ? columnIndex - 1 : columnIndex + 1;
-
-  if (targetIndex < 0 || targetIndex >= todoColumns.value.length)
-    return;
-
-  reorderingColumns.value.add(column.id);
-
-  try {
-    await reorderTodoColumns(columnIndex, targetIndex);
-    consola.debug("Todo Lists: Column reordered successfully");
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to reorder column:", getErrorMessage(err));
-  }
-  finally {
-    reorderingColumns.value.delete(column.id);
-  }
-}
-
-async function handleReorderTodo(itemId: string, direction: "up" | "down") {
-  if (reorderingTodos.value.has(itemId))
-    return;
-  reorderingTodos.value.add(itemId);
-
-  try {
-    if (!todos.value)
-      throw new Error("Todos not loaded");
-    const item = todos.value.find(t => t.id === itemId);
-    if (!item)
-      throw new Error("Todo not found");
-
-    await reorderTodo(itemId, direction, item.todoColumnId ?? null);
-    consola.debug("Todo Lists: Todo reordered successfully");
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to reorder todo:", getErrorMessage(err));
-  }
-  finally {
-    reorderingTodos.value.delete(itemId);
-  }
-}
-
-async function handleClearCompleted(columnId: string) {
-  try {
-    await clearCompleted(columnId);
-    consola.debug("Todo Lists: Completed todos cleared successfully");
-    showSuccess("Completed Cleared", "Completed todos have been removed");
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to clear completed todos:", getErrorMessage(err));
-  }
-}
-
-function openEditColumn(column: TodoListWithIntegration) {
-  editingColumn.value = { ...column };
-  todoColumnDialog.value = true;
-}
-
-async function handleToggleTodo(itemId: string, completed: boolean) {
-  try {
-    await toggleTodo(itemId, completed);
-    consola.debug("Todo Lists: Todo toggled successfully");
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to toggle todo:", getErrorMessage(err));
-  }
-}
+const getColumnTodos = (columnId: string) => {
+  return props.todos.filter(todo => todo.todoColumnId === columnId);
+};
 </script>
 
 <template>
-  <div class="flex h-full w-full flex-col">
-    <div class="flex-1 overflow-y-auto p-4">
-      <GlobalList
-        :lists="todoLists"
-        :loading="columnsLoading || todosLoading"
-        empty-state-icon="i-lucide-list-todo"
-        empty-state-title="No todo lists found"
-        empty-state-description="Create your first todo column to get started"
-        show-reorder
-        :show-edit="(list) => 'isDefault' in list ? !list.isDefault : true"
-        show-add
-        show-edit-item
-        show-completed
-        show-progress
-        show-integration-icons
-        @create="todoColumnDialog = true; editingColumn = null"
-        @edit="openEditColumn($event as TodoListWithIntegration)"
-        @add-item="openCreateTodo($event)"
-        @edit-item="openEditTodo($event)"
-        @toggle-item="handleToggleTodo"
-        @reorder-item="handleReorderTodo"
-        @reorder-list="(listId, direction) => handleReorderColumn(todoLists.findIndex(l => l.id === listId), direction === 'up' ? 'left' : 'right')"
-        @clear-completed="handleClearCompleted"
-      />
+  <div class="flex-1 overflow-x-auto overflow-y-hidden">
+    <div class="flex h-full min-w-max p-4 gap-4 items-start">
+      <div
+        v-for="column in columns"
+        :key="column.id"
+        class="w-80 h-full flex flex-col bg-slate-50 dark:bg-slate-900 rounded-xl border border-default shadow-sm group/column"
+        @dragover.prevent
+        @drop="onDrop($event, column.id)"
+      >
+        <div class="p-3 flex items-center justify-between border-b border-default bg-white/50 dark:bg-black/50 rounded-t-xl shrink-0">
+          <div class="flex items-center gap-2 overflow-hidden">
+            <h3 class="font-bold text-sm text-slate-700 dark:text-slate-300 truncate">
+              {{ column.name }}
+            </h3>
+            <span class="px-2 py-0.5 rounded-full bg-slate-200/50 dark:bg-slate-800/50 text-[10px] font-bold text-slate-500 shrink-0">
+              {{ getColumnTodos(column.id).length }}
+            </span>
+          </div>
+          <div class="flex items-center gap-1 opacity-0 group-hover/column:opacity-100 transition-opacity">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-arrow-left"
+              size="xs"
+              class="hidden sm:flex"
+              :disabled="loading"
+              @click="emit('reorderColumn', column.id, 'up')"
+            />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-arrow-right"
+              size="xs"
+              class="hidden sm:flex"
+              :disabled="loading"
+              @click="emit('reorderColumn', column.id, 'down')"
+            />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-pencil"
+              size="xs"
+              @click="emit('editColumn', column)"
+            />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-plus"
+              size="xs"
+              @click="emit('addTodo', column.id)"
+            />
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-0">
+          <div
+            v-for="todo in getColumnTodos(column.id)"
+            :key="todo.id"
+            draggable="true"
+            class="bg-white dark:bg-slate-800 p-3 rounded-lg border border-default shadow-sm hover:shadow-md hover:border-primary-500/50 transition-all cursor-grab active:cursor-grabbing group/todo"
+            @dragstart="onDragStart($event, todo)"
+          >
+            <div class="flex items-start gap-3">
+              <UCheckbox
+                :model-value="todo.completed"
+                class="mt-0.5"
+                @update:model-value="(val) => emit('toggleTodo', todo.id, !!val)"
+              />
+              <div
+                class="flex-1 min-w-0"
+                @click="emit('editTodo', todo)"
+              >
+                <div
+                  class="text-sm font-medium leading-tight mb-1 truncate"
+                  :class="{ 'line-through text-slate-400': todo.completed }"
+                >
+                  {{ todo.title }}
+                </div>
+                <div
+                  v-if="todo.description"
+                  class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed"
+                >
+                  {{ todo.description }}
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-2 flex items-center justify-end gap-1 opacity-0 group-hover/todo:opacity-100 transition-opacity h-6">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-arrow-up"
+                size="xs"
+                :disabled="loading"
+                @click.stop="emit('reorderTodo', todo.id, 'up')"
+              />
+              <UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-arrow-down"
+                size="xs"
+                :disabled="loading"
+                @click.stop="emit('reorderTodo', todo.id, 'down')"
+              />
+              <UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-pencil"
+                size="xs"
+                @click.stop="emit('editTodo', todo)"
+              />
+            </div>
+          </div>
+
+          <button
+            class="w-full py-2 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-400 hover:text-primary-500 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/20 transition-all flex items-center justify-center gap-1 group"
+            @click="emit('addTodo', column.id)"
+          >
+            <UIcon
+              name="i-lucide-plus"
+              class="w-3.5 h-3.5"
+            />
+            Add Task
+          </button>
+        </div>
+      </div>
+
+      <button
+        class="w-80 h-full flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-slate-400 hover:text-primary-500 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/20 transition-all gap-2 group"
+        @click="emit('addColumn')"
+      >
+        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary-100 dark:group-hover:bg-primary-900 transition-colors">
+          <UIcon
+            name="i-lucide-plus"
+            class="w-6 h-6"
+          />
+        </div>
+        <span class="font-bold text-sm">Add New Column</span>
+      </button>
     </div>
-
-    <GlobalFloatingActionButton
-      icon="i-lucide-plus"
-      label="Add new todo column"
-      color="primary"
-      size="lg"
-      position="bottom-right"
-      @click="todoColumnDialog = true; editingColumn = null"
-    />
-
-    <TodoItemDialog
-      :is-open="todoItemDialog"
-      :todo-columns="mutableTodoColumns"
-      :todo="editingTodoTyped || null"
-      @close="todoItemDialog = false; editingTodo = null"
-      @save="handleTodoSave"
-      @delete="handleTodoDelete"
-    />
-
-    <TodoColumnDialog
-      :is-open="todoColumnDialog"
-      :column="editingColumn ?? undefined"
-      @close="todoColumnDialog = false; editingColumn = null"
-      @save="handleColumnSave"
-      @delete="handleColumnDelete"
-    />
   </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+</style>

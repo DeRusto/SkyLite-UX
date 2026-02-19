@@ -1,9 +1,0 @@
-
-> skylite-ux@2026.1.0 type-check /app
-> vue-tsc --noEmit -p tsconfig.json --composite false
-
-app/app.vue(25,18): error TS2339: Property 'app' does not exist on type 'CreateComponentPublicInstanceWithMixins<ToResolvedProps<{}, {}>, { GlobalAppLoading: DefineComponent<__VLS_Props, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, ... 12 more ..., any>; GlobalDock: DefineComponent<...>; dock: false; isLoading: Readonly<...>; loadingMessage: Readonly<...>; }, ... 23 more...'.
-app/app.vue(25,22): error TS2339: Property 'layout' does not exist on type 'CreateComponentPublicInstanceWithMixins<ToResolvedProps<{}, {}>, { GlobalAppLoading: DefineComponent<__VLS_Props, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, ... 12 more ..., any>; GlobalDock: DefineComponent<...>; dock: false; isLoading: Readonly<...>; loadingMessage: Readonly<...>; }, ... 23 more...'.
-app/app.vue(26,20): error TS2339: Property 'app' does not exist on type 'CreateComponentPublicInstanceWithMixins<ToResolvedProps<{}, {}>, { GlobalAppLoading: DefineComponent<__VLS_Props, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, ... 12 more ..., any>; GlobalDock: DefineComponent<...>; dock: false; isLoading: Readonly<...>; loadingMessage: Readonly<...>; }, ... 23 more...'.
-app/app.vue(26,24): error TS2339: Property 'container' does not exist on type 'CreateComponentPublicInstanceWithMixins<ToResolvedProps<{}, {}>, { GlobalAppLoading: DefineComponent<__VLS_Props, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, ... 12 more ..., any>; GlobalDock: DefineComponent<...>; dock: false; isLoading: Readonly<...>; loadingMessage: Readonly<...>; }, ... 23 more...'.
- ELIFECYCLE  Command failed with exit code 2.

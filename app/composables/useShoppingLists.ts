@@ -35,7 +35,7 @@ export function useShoppingLists() {
   const createShoppingList = async (listData: CreateShoppingListInput) => {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
     const tempId = crypto.randomUUID();
-    const newList: any = {
+    const newList: ShoppingListWithOrder = {
       id: tempId,
       name: listData.name,
       createdAt: new Date(),
@@ -48,7 +48,7 @@ export function useShoppingLists() {
     try {
       const createdList = await performOptimisticUpdate(
         () => $fetch<ShoppingListWithOrder>("/api/shopping-lists", {
-          method: "POST" as any,
+          method: "POST",
           body: listData,
         }),
         () => {
@@ -64,7 +64,7 @@ export function useShoppingLists() {
       );
 
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-        const tempIndex = shoppingLists.value.findIndex((l: any) => l.id === tempId);
+        const tempIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === tempId);
         if (tempIndex !== -1) {
           shoppingLists.value[tempIndex] = createdList;
         }
@@ -85,12 +85,12 @@ export function useShoppingLists() {
     try {
       const updatedListFromResponse = await performOptimisticUpdate(
         () => $fetch<ShoppingListWithOrder>(`/api/shopping-lists/${listId}`, {
-          method: "PUT" as any,
+          method: "PUT",
           body: updates,
         }),
         () => {
           if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-            const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
             if (listIndex !== -1) {
               shoppingLists.value[listIndex] = { ...shoppingLists.value[listIndex], ...updates } as any;
             }
@@ -105,7 +105,7 @@ export function useShoppingLists() {
 
       // Reconciliation
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-        const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+        const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
         if (listIndex !== -1) {
           shoppingLists.value[listIndex] = updatedListFromResponse;
         }
@@ -126,7 +126,7 @@ export function useShoppingLists() {
     try {
       const updatedItem = await performOptimisticUpdate(
         () => $fetch<ShoppingListItem>(`/api/shopping-list-items/${itemId}`, {
-          method: "PUT" as any,
+          method: "PUT",
           body: updates,
         }),
         () => {
@@ -134,11 +134,11 @@ export function useShoppingLists() {
             for (let listIndex = 0; listIndex < shoppingLists.value.length; listIndex++) {
               const list = shoppingLists.value[listIndex];
               if (list) {
-                const itemIndex = list.items?.findIndex((i: any) => i.id === itemId);
+                const itemIndex = (list.items as any[])?.findIndex((i: any) => i.id === itemId);
                 if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
-                  const updatedItems = [...list.items];
-                  updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates } as any;
-                  shoppingLists.value[listIndex] = { ...list, items: updatedItems as any } as any;
+                  const updatedItems = [...list.items] as any[];
+                  updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates };
+                  shoppingLists.value[listIndex] = { ...list, items: updatedItems } as any;
                   break;
                 }
               }
@@ -157,11 +157,11 @@ export function useShoppingLists() {
         for (let listIndex = 0; listIndex < shoppingLists.value.length; listIndex++) {
           const list = shoppingLists.value[listIndex];
           if (list) {
-            const itemIndex = list.items?.findIndex((i: any) => i.id === itemId);
+            const itemIndex = (list.items as any[])?.findIndex((i: any) => i.id === itemId);
             if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
-              const confirmedItems = [...list.items];
-              confirmedItems[itemIndex] = updatedItem as any;
-              shoppingLists.value[listIndex] = { ...list, items: confirmedItems as any } as any;
+              const confirmedItems = [...list.items] as any[];
+              confirmedItems[itemIndex] = updatedItem;
+              shoppingLists.value[listIndex] = { ...list, items: confirmedItems } as any;
               break;
             }
           }
@@ -180,7 +180,7 @@ export function useShoppingLists() {
   const addItemToList = async (listId: string, itemData: CreateShoppingListItemInput) => {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
     const tempId = crypto.randomUUID();
-    const newItem: any = {
+    const newItem: ShoppingListItem = {
       id: tempId,
       name: itemData.name ?? "",
       checked: itemData.checked ?? false,
@@ -191,22 +191,21 @@ export function useShoppingLists() {
       label: itemData.label ?? null,
       food: itemData.food ?? null,
       source: "native",
-      shoppingListId: listId,
     };
 
     try {
       const createdItem = await performOptimisticUpdate(
         () => $fetch<ShoppingListItem>(`/api/shopping-lists/${listId}/items`, {
-          method: "POST" as any,
+          method: "POST",
           body: itemData,
         }),
         () => {
           if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-            const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
             if (listIndex !== -1) {
               const list = shoppingLists.value[listIndex];
               if (list) {
-                const updatedItems = [...(list.items || []), newItem];
+                const updatedItems = [...(list.items || []), newItem] as any[];
                 const newCount = list._count ? { ...list._count, items: (list._count.items || 0) + 1 } : { items: 1 };
                 shoppingLists.value[listIndex] = { ...list, items: updatedItems, _count: newCount } as any;
               }
@@ -221,15 +220,15 @@ export function useShoppingLists() {
       );
 
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-        const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+        const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
         if (listIndex !== -1) {
           const list = shoppingLists.value[listIndex];
           if (list && list.items) {
-            const tempIndex = list.items.findIndex((i: any) => i.id === tempId);
+            const tempIndex = (list.items as any[]).findIndex((i: any) => i.id === tempId);
             if (tempIndex !== -1) {
-              const updatedItems = [...list.items];
-              updatedItems[tempIndex] = createdItem as any;
-              shoppingLists.value[listIndex] = { ...list, items: updatedItems as any } as any;
+              const updatedItems = [...list.items] as any[];
+              updatedItems[tempIndex] = createdItem;
+              shoppingLists.value[listIndex] = { ...list, items: updatedItems } as any;
             }
           }
         }
@@ -257,7 +256,7 @@ export function useShoppingLists() {
         },
         () => {
           if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-            const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
             if (listIndex !== -1) {
               shoppingLists.value.splice(listIndex, 1);
             }
@@ -326,12 +325,12 @@ export function useShoppingLists() {
 
       await performOptimisticUpdate(
         () => $fetch("/api/shopping-lists/reorder", {
-          method: "PUT" as any,
+          method: "PUT",
           body: { listIds: newOrder },
         }),
         () => {
           if (shoppingLists.value) {
-            shoppingLists.value.splice(0, shoppingLists.value.length, ...updatedLists as any);
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...updatedLists);
           }
         },
         () => {
@@ -352,7 +351,7 @@ export function useShoppingLists() {
     const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
     try {
       const listIndex = currentShoppingLists.value.findIndex(list =>
-        list.items?.some(item => item.id === itemId),
+        (list.items as any[])?.some(item => item.id === itemId),
       );
 
       if (listIndex === -1)
@@ -362,8 +361,8 @@ export function useShoppingLists() {
       if (!list?.items)
         return;
 
-      const sortedItems = [...list.items].sort((a, b) => (a.order || 0) - (b.order || 0));
-      const currentIndex = sortedItems.findIndex(item => item.id === itemId);
+      const sortedItems = [...list.items].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      const currentIndex = sortedItems.findIndex((item: any) => item.id === itemId);
 
       if (currentIndex === -1)
         return;
@@ -379,8 +378,8 @@ export function useShoppingLists() {
         return;
       }
 
-      const currentItem = sortedItems[currentIndex];
-      const targetItem = sortedItems[targetIndex];
+      const currentItem = sortedItems[currentIndex] as any;
+      const targetItem = sortedItems[targetIndex] as any;
 
       if (!currentItem || !targetItem)
         return;
@@ -388,7 +387,7 @@ export function useShoppingLists() {
       const currentOrder = currentItem.order || 0;
       const targetOrder = targetItem.order || 0;
 
-      const updatedItems = list.items.map((item) => {
+      const updatedItems = (list.items as any[]).map((item) => {
         if (item.id === currentItem.id) {
           return { ...item, order: targetOrder };
         }
@@ -398,18 +397,18 @@ export function useShoppingLists() {
         return item;
       });
 
-      const newOrder = updatedItems
+      const newOrder = [...updatedItems]
         .sort((a, b) => (a.order || 0) - (b.order || 0))
         .map(item => item.id);
 
       await performOptimisticUpdate(
         () => $fetch("/api/shopping-list-items/reorder", {
-          method: "PUT" as any,
+          method: "PUT",
           body: { itemIds: newOrder },
         }),
         () => {
           if (shoppingLists.value && shoppingLists.value[listIndex]) {
-            shoppingLists.value[listIndex] = { ...list, items: updatedItems as any } as any;
+            shoppingLists.value[listIndex] = { ...list, items: updatedItems } as any;
           }
         },
         () => {
@@ -432,20 +431,21 @@ export function useShoppingLists() {
     try {
       await performOptimisticUpdate(
         () => $fetch(`/api/shopping-lists/${listId}/items/clear-completed`, {
-          method: "POST" as any,
-          body: { action: "delete" },
+          method: "POST",
+          body: { action: "delete", completedItemIds },
         }),
         () => {
           if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-            const listIndex = shoppingLists.value.findIndex((l: any) => l.id === listId);
+            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
             if (listIndex !== -1) {
               const list = shoppingLists.value[listIndex];
               if (list) {
-                const itemsToDelete = completedItemIds || (list.items as any[])?.filter(item => item.checked).map(item => item.id) || [];
+                const items = list.items as any[];
+                const itemsToDelete = completedItemIds || items.filter(item => item.checked).map(item => item.id) || [];
                 if (itemsToDelete.length > 0) {
-                  const updatedItems = (list.items as any[])?.filter(item => !itemsToDelete.includes(item.id)) || [];
+                  const updatedItems = items.filter(item => !itemsToDelete.includes(item.id)) || [];
                   const newCount = list._count ? { ...list._count, items: Math.max(0, (list._count.items || 0) - itemsToDelete.length) } : { items: updatedItems.length };
-                  shoppingLists.value[listIndex] = { ...list, items: updatedItems as any, _count: newCount as any } as any;
+                  shoppingLists.value[listIndex] = { ...list, items: updatedItems, _count: newCount } as any;
                 }
               }
             }

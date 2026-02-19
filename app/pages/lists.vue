@@ -6,6 +6,18 @@ const tabs = [
   { key: "shopping", label: "Shopping", icon: "i-lucide-shopping-cart" },
   { key: "todo", label: "To-Do", icon: "i-lucide-list-todo" },
 ];
+
+const {
+  todos,
+  loading: todosLoading,
+} = useTodos();
+
+const {
+  todoColumns,
+  loading: columnsLoading,
+} = useTodoColumns();
+
+const isLoadingTodos = computed(() => todosLoading.value || columnsLoading.value);
 </script>
 
 <template>
@@ -38,8 +50,22 @@ const tabs = [
       <!-- Tab Content -->
       <div class="flex-1 overflow-hidden">
         <KeepAlive>
-          <ShoppingListsContent v-if="activeTab === 'shopping'" />
-          <TodoListsContent v-else-if="activeTab === 'todo'" />
+          <div
+            v-if="activeTab === 'shopping'"
+            class="h-full overflow-hidden"
+          >
+            <ShoppingListsContent />
+          </div>
+          <div
+            v-else-if="activeTab === 'todo'"
+            class="h-full overflow-hidden"
+          >
+            <TodoListsContent
+              :columns="(todoColumns as any)"
+              :todos="(todos as any)"
+              :loading="isLoadingTodos"
+            />
+          </div>
         </KeepAlive>
       </div>
     </div>

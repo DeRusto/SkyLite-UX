@@ -7,8 +7,8 @@ import { getErrorMessage } from "~/utils/error";
 import { performOptimisticUpdate } from "~/utils/optimistic";
 
 export function useTodoColumns() {
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const loading = useState<boolean>("todo-columns-loading", () => false);
+  const error = useState<string | null>("todo-columns-error", () => null);
 
   const { data: todoColumns } = useNuxtData<TodoColumn[]>("todo-columns");
   const { showError } = useAlertToast();
@@ -36,9 +36,9 @@ export function useTodoColumns() {
     userId?: string;
     isDefault?: boolean;
   }) => {
-    const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
+    const previousColumns = structuredClone(todoColumns.value ?? []);
     const tempId = crypto.randomUUID();
-    const newColumn: any = {
+    const newColumn: TodoColumn = {
       id: tempId,
       name: columnData.name,
       createdAt: new Date().toISOString(),
@@ -53,7 +53,7 @@ export function useTodoColumns() {
     try {
       const createdColumn = await performOptimisticUpdate(
         () => $fetch<TodoColumn>("/api/todo-columns", {
-          method: "POST" as any,
+          method: "POST",
           body: columnData,
         }),
         () => {
@@ -69,7 +69,7 @@ export function useTodoColumns() {
       );
 
       if (todoColumns.value && Array.isArray(todoColumns.value)) {
-        const tempIndex = todoColumns.value.findIndex((c: any) => c.id === tempId);
+        const tempIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === tempId);
         if (tempIndex !== -1) {
           todoColumns.value[tempIndex] = createdColumn;
         }
@@ -86,14 +86,14 @@ export function useTodoColumns() {
   };
 
   const updateTodoColumn = async (columnId: string, updates: { name?: string }) => {
-    const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
+    const previousColumns = structuredClone(todoColumns.value ?? []);
 
     try {
       const updatedColumnFromResponse = await performOptimisticUpdate(
         () => $fetch<TodoColumn>(`/api/todo-columns/${columnId}`, {
-          method: "PUT" as any,
+          method: "PUT",
           body: updates,
-        } as any),
+        }),
         () => {
           if (todoColumns.value && Array.isArray(todoColumns.value)) {
             const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
@@ -128,19 +128,19 @@ export function useTodoColumns() {
   };
 
   const deleteTodoColumn = async (columnId: string) => {
-    const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
+    const previousColumns = structuredClone(todoColumns.value ?? []);
 
     try {
       return await performOptimisticUpdate(
         async () => {
           await $fetch(`/api/todo-columns/${columnId}`, {
             method: "DELETE" as any,
-          } as any);
+          });
           return true;
         },
         () => {
           if (todoColumns.value && Array.isArray(todoColumns.value)) {
-            const columnIndex = todoColumns.value.findIndex((c: any) => c.id === columnId);
+            const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
             if (columnIndex !== -1) {
               todoColumns.value.splice(columnIndex, 1);
             }
@@ -161,7 +161,7 @@ export function useTodoColumns() {
   };
 
   const reorderTodoColumns = async (fromIndex: number, toIndex: number) => {
-    const previousColumns = todoColumns.value ? JSON.parse(JSON.stringify(todoColumns.value)) : [];
+    const previousColumns = structuredClone(todoColumns.value ?? []);
     if (fromIndex === toIndex)
       return;
 
@@ -184,12 +184,12 @@ export function useTodoColumns() {
     try {
       await performOptimisticUpdate(
         () => $fetch("/api/todo-columns/reorder", {
-          method: "PUT" as any,
+          method: "PUT",
           body: { reorders },
-        } as any),
+        }),
         () => {
           if (todoColumns.value) {
-            todoColumns.value.splice(0, todoColumns.value.length, ...updatedColumns as any);
+            todoColumns.value.splice(0, todoColumns.value.length, ...updatedColumns);
           }
         },
         () => {

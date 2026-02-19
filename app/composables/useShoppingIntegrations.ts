@@ -4,6 +4,7 @@ import type { CreateShoppingListItemInput, Integration, ShoppingList, ShoppingLi
 import type { IntegrationService } from "~/types/integrations";
 
 import { getErrorMessage } from "~/utils/error";
+import { performOptimisticUpdate } from "~/utils/optimistic";
 
 import { useAlertToast } from "./useAlertToast";
 import { useIntegrations } from "./useIntegrations";
@@ -103,7 +104,7 @@ export function useShoppingIntegrations() {
     const previousLists = integrationLists ? JSON.parse(JSON.stringify(integrationLists)) : [];
 
     const tempId = crypto.randomUUID();
-    const newItem: any = {
+    const newItem: ShoppingListItem = {
       id: tempId,
       name: itemData.name ?? itemData.notes ?? "Unknown",
       checked: itemData.checked ?? false,
@@ -117,38 +118,44 @@ export function useShoppingIntegrations() {
       integrationId,
     };
 
-    if (integrationLists && Array.isArray(integrationLists)) {
-      const listIndex = integrationLists.findIndex((l: ShoppingList) => l.id === listId);
-      if (listIndex !== -1) {
-        const list = integrationLists[listIndex];
-        if (list) {
-          const updatedItems = [...(list.items || []), newItem];
-          const updatedList = { ...list, items: updatedItems };
-          if (updatedList._count) {
-            updatedList._count = { ...updatedList._count, items: (updatedList._count.items || 0) + 1 };
-          }
-          const updatedLists = [...integrationLists];
-          updatedLists[listIndex] = updatedList;
-          updateIntegrationCache("shopping", integrationId, updatedLists);
-        }
-      }
-    }
-
     try {
-      const item = await (service as unknown as { addItemToList?: (listId: string, itemData: CreateShoppingListItemInput) => Promise<ShoppingListItem> }).addItemToList?.(listId, itemData);
+      const item = await performOptimisticUpdate(
+        () => (service as unknown as { addItemToList?: (listId: string, itemData: CreateShoppingListItemInput) => Promise<ShoppingListItem> }).addItemToList?.(listId, itemData) as Promise<ShoppingListItem>,
+        () => {
+          if (integrationLists && Array.isArray(integrationLists)) {
+            const listIndex = integrationLists.findIndex((l: ShoppingList) => l.id === listId);
+            if (listIndex !== -1) {
+              const list = integrationLists[listIndex];
+              if (list) {
+                const updatedItems = [...(list.items || []), newItem];
+                const updatedList = { ...list, items: updatedItems };
+                if (updatedList._count) {
+                  updatedList._count = { ...updatedList._count, items: (updatedList._count.items || 0) + 1 };
+                }
+                const updatedLists = [...integrationLists];
+                updatedLists[listIndex] = updatedList;
+                updateIntegrationCache("shopping", integrationId, updatedLists);
+              }
+            }
+          }
+        },
+        () => {
+          updateIntegrationCache("shopping", integrationId, previousLists);
+        },
+      );
 
       if (!item) {
         throw new Error("Failed to add item to list");
       }
 
-      // Update temp item with real item
+      // Reconciliation: Update temp item with real item
       const currentLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
       if (currentLists && Array.isArray(currentLists)) {
         const listIndex = currentLists.findIndex((l: ShoppingList) => l.id === listId);
         if (listIndex !== -1) {
           const list = currentLists[listIndex];
           if (list && list.items) {
-            const tempIndex = list.items.findIndex((i: any) => i.id === tempId);
+            const tempIndex = list.items.findIndex(i => i.id === tempId);
             if (tempIndex !== -1) {
               const updatedItems = [...list.items];
               updatedItems[tempIndex] = item;
@@ -164,7 +171,6 @@ export function useShoppingIntegrations() {
       return item;
     }
     catch (err) {
-      updateIntegrationCache("shopping", integrationId, previousLists);
       const message = getErrorMessage(err, "Failed to add item to integration list");
       showError("Error", message);
       throw err;
@@ -184,26 +190,32 @@ export function useShoppingIntegrations() {
     const integrationLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
     const previousLists = integrationLists ? JSON.parse(JSON.stringify(integrationLists)) : [];
 
-    if (integrationLists && Array.isArray(integrationLists)) {
-      let itemFound = false;
-      const updatedLists = integrationLists.map((list: ShoppingList) => {
-        const itemIndex = list.items?.findIndex((i: ShoppingListItem) => i.id === itemId);
-        if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
-          itemFound = true;
-          const updatedItems = [...list.items];
-          updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates } as any;
-          return { ...list, items: updatedItems };
-        }
-        return list;
-      });
-
-      if (itemFound) {
-        updateIntegrationCache("shopping", integrationId, updatedLists);
-      }
-    }
-
     try {
-      const updatedItem = await (service as unknown as { updateShoppingListItem?: (itemId: string, updates: UpdateShoppingListItemInput) => Promise<ShoppingListItem> }).updateShoppingListItem?.(itemId, updates);
+      const updatedItem = await performOptimisticUpdate(
+        () => (service as unknown as { updateShoppingListItem?: (itemId: string, updates: UpdateShoppingListItemInput) => Promise<ShoppingListItem> }).updateShoppingListItem?.(itemId, updates) as Promise<ShoppingListItem>,
+        () => {
+          if (integrationLists && Array.isArray(integrationLists)) {
+            let itemFound = false;
+            const updatedLists = integrationLists.map((list: ShoppingList) => {
+              const itemIndex = list.items?.findIndex((i: ShoppingListItem) => i.id === itemId);
+              if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
+                itemFound = true;
+                const updatedItems = [...list.items];
+                updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates } as any;
+                return { ...list, items: updatedItems } as any;
+              }
+              return list;
+            });
+
+            if (itemFound) {
+              updateIntegrationCache("shopping", integrationId, updatedLists);
+            }
+          }
+        },
+        () => {
+          updateIntegrationCache("shopping", integrationId, previousLists);
+        },
+      );
 
       if (!updatedItem) {
         throw new Error("Service does not support updating shopping list items");
@@ -232,7 +244,6 @@ export function useShoppingIntegrations() {
       return updatedItem;
     }
     catch (err) {
-      updateIntegrationCache("shopping", integrationId, previousLists);
       const message = getErrorMessage(err, "Failed to update integration item");
       showError("Error", message);
       throw err;
@@ -268,33 +279,39 @@ export function useShoppingIntegrations() {
       return;
     }
 
-    // Optimistic update
-    if (integrationLists && Array.isArray(integrationLists)) {
-      const listIndex = integrationLists.findIndex(l => l.id === listId);
-      if (listIndex !== -1) {
-        const list = integrationLists[listIndex];
-        if (list) {
-          const updatedItems = list.items?.filter(i => !itemsToDelete.includes(i.id)) || [];
-          const updatedList = { ...list, items: updatedItems };
-          if (updatedList._count) {
-            updatedList._count = { ...updatedList._count, items: Math.max(0, (updatedList._count.items || 0) - itemsToDelete.length) };
-          }
-          const updatedLists = [...integrationLists];
-          updatedLists[listIndex] = updatedList;
-          updateIntegrationCache("shopping", integrationId, updatedLists);
-        }
-      }
-    }
-
     try {
-      const serviceObj = service as unknown as { deleteShoppingListItems?: (ids: string[]) => Promise<void> };
-      if (typeof serviceObj.deleteShoppingListItems !== "function") {
-        throw new TypeError(`Integration service ${integrationId} does not implement deleteShoppingListItems. Cannot clear items: ${itemsToDelete.join(", ")}`);
-      }
-      await serviceObj.deleteShoppingListItems(itemsToDelete);
+      await performOptimisticUpdate(
+        async () => {
+          const serviceObj = service as unknown as { deleteShoppingListItems?: (ids: string[]) => Promise<void> };
+          if (typeof serviceObj.deleteShoppingListItems !== "function") {
+            throw new TypeError(`Integration service ${integrationId} does not implement deleteShoppingListItems. Cannot clear items: ${itemsToDelete.join(", ")}`);
+          }
+          await serviceObj.deleteShoppingListItems(itemsToDelete);
+        },
+        () => {
+          if (integrationLists && Array.isArray(integrationLists)) {
+            const listIndex = integrationLists.findIndex(l => l.id === listId);
+            if (listIndex !== -1) {
+              const list = integrationLists[listIndex];
+              if (list) {
+                const updatedItems = list.items?.filter(i => !itemsToDelete.includes(i.id)) || [];
+                const updatedList = { ...list, items: updatedItems };
+                if (updatedList._count) {
+                  updatedList._count = { ...updatedList._count, items: Math.max(0, (updatedList._count.items || 0) - itemsToDelete.length) };
+                }
+                const updatedLists = [...integrationLists];
+                updatedLists[listIndex] = updatedList;
+                updateIntegrationCache("shopping", integrationId, updatedLists);
+              }
+            }
+          }
+        },
+        () => {
+          updateIntegrationCache("shopping", integrationId, previousLists);
+        },
+      );
     }
     catch (err) {
-      updateIntegrationCache("shopping", integrationId, previousLists);
       const message = getErrorMessage(err, "Failed to clear completed items");
       showError("Error", message);
       throw err;

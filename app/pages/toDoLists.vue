@@ -1,280 +1,226 @@
 <script setup lang="ts">
-import type { BaseListItem, Todo, TodoColumn, TodoList, TodoListItem } from "~/types/database";
-import type { TodoListWithIntegration } from "~/types/ui";
+import { consola } from "consola";
 
-import GlobalFloatingActionButton from "~/components/global/globalFloatingActionButton.vue";
-import GlobalList from "~/components/global/globalList.vue";
-import TodoColumnDialog from "~/components/todos/todoColumnDialog.vue";
-import TodoItemDialog from "~/components/todos/todoItemDialog.vue";
+import type { Todo, TodoColumn } from "~/types/database";
+
 import { useAlertToast } from "~/composables/useAlertToast";
-import { useStableDate } from "~/composables/useStableDate";
-import { useTodoColumns } from "~/composables/useTodoColumns";
-import { useTodos } from "~/composables/useTodos";
+
+const {
+  todos,
+  loading: todosLoading,
+  createTodo,
+  updateTodo,
+  deleteTodo,
+  reorderTodo,
+} = useTodos();
+
+const {
+  todoColumns,
+  loading: columnsLoading,
+  createTodoColumn,
+  updateTodoColumn,
+  deleteTodoColumn,
+  reorderTodoColumns,
+} = useTodoColumns();
 
 const { showSuccess } = useAlertToast();
-const { parseStableDate } = useStableDate();
 
-const { data: todoColumns } = useNuxtData<TodoColumn[]>("todo-columns");
-const { data: todos } = useNuxtData<Todo[]>("todos");
-const { updateTodo, createTodo, deleteTodo, toggleTodo, reorderTodo, clearCompleted, loading: todosLoading } = useTodos();
-const { updateTodoColumn, createTodoColumn, deleteTodoColumn, reorderTodoColumns, loading: columnsLoading } = useTodoColumns();
+const isReordering = ref(false);
+const columnDialog = ref(false);
+const todoDialog = ref(false);
+const editingColumn = ref<TodoColumn | null>(null);
+const editingTodo = ref<Todo | null>(null);
+const selectedColumnId = ref<string>("");
 
-const mutableTodoColumns = computed(() => todoColumns.value?.map(col => ({
-  ...col,
-  user: col.user === null
-    ? undefined
-    : {
-        id: col.user.id,
-        name: col.user.name,
-        avatar: col.user.avatar,
-      },
-})) || []);
+const isLoading = computed(() => todosLoading.value || columnsLoading.value);
 
-const todoItemDialog = ref(false);
-const todoColumnDialog = ref(false);
-const editingTodo = ref<TodoListItem | null>(null);
-const editingColumn = ref<TodoList | null>(null);
-
-const editingTodoTyped = computed<TodoListItem | undefined>(() =>
-  editingTodo.value as TodoListItem | undefined,
-);
-
-const todoLists = computed<TodoListWithIntegration[]>(() => {
-  if (!todoColumns.value || !todos.value)
-    return [];
-
-  return todoColumns.value.map(column => ({
-    id: column.id,
-    name: column.name,
-    order: column.order,
-    createdAt: parseStableDate(column.createdAt),
-    updatedAt: parseStableDate(column.updatedAt),
-    isDefault: column.isDefault,
-    source: "native" as const,
-    items: todos.value!
-      .filter(todo => todo.todoColumnId === column.id)
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(todo => ({
-        id: todo.id,
-        name: todo.title,
-        checked: todo.completed,
-        order: todo.order,
-        notes: todo.description,
-        shoppingListId: todo.todoColumnId || "",
-        priority: todo.priority,
-        dueDate: todo.dueDate,
-        description: todo.description ?? "",
-        todoColumnId: todo.todoColumnId || "",
-      })),
-    _count: column._count ? { items: column._count.todos } : undefined,
-  }));
-});
-
-function openCreateTodo(todoColumnId?: string) {
-  editingTodo.value = { todoColumnId: todoColumnId ?? "" } as TodoListItem;
-  todoItemDialog.value = true;
+function openCreateColumn() {
+  editingColumn.value = null;
+  columnDialog.value = true;
 }
 
-function openEditTodo(item: BaseListItem) {
-  if (!todos.value)
-    return;
-  const todo = todos.value.find(t => t.id === item.id);
-  if (!todo)
-    return;
-
-  editingTodo.value = {
-    id: todo.id,
-    name: todo.title,
-    description: todo.description ?? "",
-    priority: todo.priority,
-    dueDate: todo.dueDate ? parseStableDate(todo.dueDate) : null,
-    todoColumnId: todo.todoColumnId ?? "",
-    checked: todo.completed,
-    order: todo.order,
-    shoppingListId: todo.todoColumnId || "",
-    notes: todo.description,
-  };
-  todoItemDialog.value = true;
+function openEditColumn(column: TodoColumn) {
+  editingColumn.value = { ...column };
+  columnDialog.value = true;
 }
 
-async function handleTodoSave(todoData: TodoListItem) {
+function openCreateTodo(columnId: string) {
+  selectedColumnId.value = columnId;
+  editingTodo.value = null;
+  todoDialog.value = true;
+}
+
+function openEditTodo(todo: Todo) {
+  editingTodo.value = { ...todo };
+  todoDialog.value = true;
+}
+
+async function handleColumnSave(data: { name: string; order?: number }) {
   try {
-    if (editingTodo.value?.id) {
-      await updateTodo(editingTodo.value.id, {
-        title: todoData.name,
-        description: todoData.description,
-        priority: todoData.priority,
-        dueDate: todoData.dueDate,
-        completed: todoData.checked,
-        order: todoData.order,
-        todoColumnId: todoData.todoColumnId,
-      });
-      showSuccess("Todo Updated", "Todo updated successfully");
+    if (editingColumn.value) {
+      await updateTodoColumn(editingColumn.value.id, data);
+      showSuccess("Column Updated", "The column has been updated.");
     }
     else {
-      await createTodo({
-        title: todoData.name,
-        description: todoData.description,
-        priority: todoData.priority,
-        dueDate: todoData.dueDate,
-        completed: todoData.checked,
-        order: todoData.order,
-        todoColumnId: todoData.todoColumnId,
-      });
-      showSuccess("Todo Created", "Todo created successfully");
+      await createTodoColumn(data);
+      showSuccess("Column Created", "The column has been created.");
     }
-    todoItemDialog.value = false;
-    editingTodo.value = null;
   }
-  catch {
-    // Handled by composable
+  catch (err) {
+    consola.error("Failed to save column", err);
   }
-}
-
-async function handleTodoDelete(todoId: string) {
-  try {
-    await deleteTodo(todoId);
-    showSuccess("Todo Deleted", "Todo deleted successfully");
-  }
-  catch {
-    // Handled by composable
-  }
-}
-
-async function handleColumnSave(columnData: { name: string }) {
-  try {
-    if (editingColumn.value?.id) {
-      await updateTodoColumn(editingColumn.value.id, columnData);
-      showSuccess("Column Updated", "Todo column updated successfully");
-    }
-    else {
-      await createTodoColumn(columnData);
-      showSuccess("Column Created", "Todo column created successfully");
-    }
-    todoColumnDialog.value = false;
+  finally {
+    columnDialog.value = false;
     editingColumn.value = null;
   }
-  catch {
-    // Handled by composable
+}
+
+async function handleColumnDelete(id: string) {
+  try {
+    await deleteTodoColumn(id);
+    showSuccess("Column Deleted", "The column has been deleted.");
+    columnDialog.value = false;
+    editingColumn.value = null;
+  }
+  catch (err) {
+    consola.error("Failed to delete column", err);
   }
 }
 
-async function handleColumnDelete(columnId: string) {
+async function handleTodoSave(data: { name: string; notes?: string; columnId?: string }) {
   try {
-    await deleteTodoColumn(columnId);
-    showSuccess("Column Deleted", "Todo column deleted successfully");
+    const todoData = {
+      title: data.name,
+      description: data.notes,
+      todoColumnId: data.columnId || selectedColumnId.value,
+    };
+
+    if (editingTodo.value) {
+      await updateTodo(editingTodo.value.id, todoData);
+      showSuccess("Todo Updated", "The task has been updated.");
+    }
+    else {
+      await createTodo(todoData as any);
+      showSuccess("Todo Created", "The task has been created.");
+    }
   }
-  catch {
-    // Handled by composable
+  catch (err) {
+    consola.error("Failed to save todo", err);
+  }
+  finally {
+    todoDialog.value = false;
+    editingTodo.value = null;
+    selectedColumnId.value = "";
   }
 }
 
-async function handleReorderColumn(columnIndex: number, direction: "left" | "right") {
+async function handleTodoDelete(id: string) {
   try {
-    const targetIndex = direction === "left" ? columnIndex - 1 : columnIndex + 1;
-    if (targetIndex < 0 || targetIndex >= (todoColumns.value?.length || 0))
+    await deleteTodo(id);
+    showSuccess("Todo Deleted", "The task has been deleted.");
+    todoDialog.value = false;
+    editingTodo.value = null;
+  }
+  catch (err) {
+    consola.error("Failed to delete todo", err);
+  }
+}
+
+async function handleTodoToggle(todoId: string, completed: boolean) {
+  try {
+    await updateTodo(todoId, { completed });
+  }
+  catch (err) {
+    consola.error("Failed to toggle todo", err);
+  }
+}
+
+async function handleColumnReorder(columnId: string, direction: "up" | "down") {
+  if (isReordering.value)
+    return;
+  isReordering.value = true;
+  try {
+    const columnsArr = todoColumns.value;
+    const currentIdx = columnsArr.findIndex(c => c.id === columnId);
+    if (currentIdx === -1)
       return;
-    await reorderTodoColumns(columnIndex, targetIndex);
-  }
-  catch {
-    // Handled by composable
-  }
-}
-
-async function handleReorderTodo(itemId: string, direction: "up" | "down") {
-  try {
-    if (!todos.value)
+    const targetIdx = direction === "up" ? currentIdx - 1 : currentIdx + 1;
+    if (targetIdx < 0 || targetIdx >= columnsArr.length)
       return;
-    const item = todos.value.find(t => t.id === itemId);
-    if (!item)
+    await reorderTodoColumns(currentIdx, targetIdx);
+  }
+  catch (err) {
+    consola.error("Failed to reorder column", err);
+  }
+  finally {
+    isReordering.value = false;
+  }
+}
+
+async function handleTodoReorder(todoId: string, direction: "up" | "down") {
+  if (isReordering.value)
+    return;
+  isReordering.value = true;
+  try {
+    const todo = todos.value.find(t => t.id === todoId);
+    if (!todo)
       return;
-    await reorderTodo(itemId, direction, item.todoColumnId ?? null);
+    await reorderTodo(todoId, direction, todo.todoColumnId);
   }
-  catch {
-    // Handled by composable
+  catch (err) {
+    consola.error("Failed to reorder todo", err);
+  }
+  finally {
+    isReordering.value = false;
   }
 }
 
-async function handleClearCompleted(columnId: string) {
+async function handleTodoMove(todoId: string, newColumnId: string) {
   try {
-    await clearCompleted(columnId);
-    showSuccess("Items Cleared", "Completed todos removed");
+    await updateTodo(todoId, { todoColumnId: newColumnId });
   }
-  catch {
-    // Handled by composable
-  }
-}
-
-function openEditColumn(column: TodoListWithIntegration) {
-  editingColumn.value = { ...column };
-  todoColumnDialog.value = true;
-}
-
-async function handleToggleTodo(itemId: string, completed: boolean) {
-  try {
-    await toggleTodo(itemId, completed);
-  }
-  catch {
-    // Handled by composable
+  catch (err) {
+    consola.error("Failed to move todo", err);
   }
 }
 </script>
 
 <template>
-  <div class="flex h-[calc(100vh-2rem)] w-full flex-col rounded-lg">
-    <div class="py-5 sm:px-4 sticky top-0 z-40 bg-default border-b border-default">
+  <div class="flex h-[calc(100vh-2rem)] w-full flex-col rounded-lg overflow-hidden">
+    <div class="py-5 sm:px-4 shrink-0 bg-default border-b border-default z-40">
       <GlobalDateHeader />
     </div>
 
-    <div class="flex flex-1 flex-col min-h-0 p-4">
-      <GlobalList
-        :lists="todoLists"
-        :loading="columnsLoading || todosLoading"
-        empty-state-icon="i-lucide-list-todo"
-        empty-state-title="No todo lists found"
-        empty-state-description="Create your first todo column to get started"
-        show-reorder
-        :show-edit="(list) => 'isDefault' in list ? !list.isDefault : true"
-        show-add
-        show-edit-item
-        show-completed
-        show-progress
-        show-integration-icons
-        @create="todoColumnDialog = true; editingColumn = null"
-        @edit="openEditColumn($event as TodoListWithIntegration)"
-        @add-item="openCreateTodo($event)"
-        @edit-item="openEditTodo($event)"
-        @toggle-item="handleToggleTodo"
-        @reorder-item="handleReorderTodo"
-        @reorder-list="(listId, direction) => handleReorderColumn(todoLists.findIndex(l => l.id === listId), direction === 'up' ? 'left' : 'right')"
-        @clear-completed="handleClearCompleted"
-      />
-    </div>
-
-    <GlobalFloatingActionButton
-      icon="i-lucide-plus"
-      label="Add new todo column"
-      color="primary"
-      size="lg"
-      position="bottom-right"
-      @click="todoColumnDialog = true; editingColumn = null"
-    />
-
-    <TodoItemDialog
-      :is-open="todoItemDialog"
-      :todo-columns="mutableTodoColumns"
-      :todo="editingTodoTyped || null"
-      @close="todoItemDialog = false; editingTodo = null"
-      @save="handleTodoSave"
-      @delete="handleTodoDelete"
+    <TodoListsContent
+      :columns="(todoColumns as any)"
+      :todos="(todos as any)"
+      :loading="isLoading"
+      @add-column="openCreateColumn"
+      @edit-column="openEditColumn"
+      @reorder-column="handleColumnReorder"
+      @add-todo="openCreateTodo"
+      @edit-todo="openEditTodo"
+      @toggle-todo="handleTodoToggle"
+      @reorder-todo="handleTodoReorder"
+      @move-todo="handleTodoMove"
     />
 
     <TodoColumnDialog
-      :is-open="todoColumnDialog"
-      :column="editingColumn ?? undefined"
-      @close="todoColumnDialog = false; editingColumn = null"
+      v-model:is-open="columnDialog"
+      :column="(editingColumn as any)"
       @save="handleColumnSave"
       @delete="handleColumnDelete"
+      @close="columnDialog = false; editingColumn = null"
+    />
+
+    <TodoItemDialog
+      v-model:is-open="todoDialog"
+      :todo="(editingTodo as any)"
+      :todo-columns="(todoColumns as any)"
+      :selected-column-id="selectedColumnId"
+      @save="(handleTodoSave as any)"
+      @delete="handleTodoDelete"
+      @close="todoDialog = false; editingTodo = null; selectedColumnId = ''"
     />
   </div>
 </template>

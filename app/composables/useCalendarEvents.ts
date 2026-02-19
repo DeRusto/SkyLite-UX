@@ -75,7 +75,7 @@ export function useCalendarEvents() {
                   calendarEvent: event,
                   calendarId: user.calendarId,
                 },
-              } as any);
+              });
 
               await refreshNuxtData("calendar-events");
               showSuccess("Event Created", `Event added to ${user.name}'s calendar`);
@@ -99,8 +99,8 @@ export function useCalendarEvents() {
       }
 
       // Local event optimistic update
-      const previousEvents = events.value ? [...events.value] : [];
-      const tempId = `temp-${Date.now()}`;
+      const previousEvents = events.value ? JSON.parse(JSON.stringify(events.value)) : [];
+      const tempId = crypto.randomUUID();
       const newEvent = {
         ...event,
         id: tempId,
@@ -172,7 +172,7 @@ export function useCalendarEvents() {
               updates: event,
               calendarId: event.calendarId,
             },
-          } as any);
+          });
 
           await refreshNuxtData("calendar-events");
           showSuccess("Event Updated", "Integration event updated successfully");
@@ -185,7 +185,7 @@ export function useCalendarEvents() {
       }
 
       // Local event optimistic update
-      const previousEvents = events.value ? [...events.value] : [];
+      const previousEvents = events.value ? JSON.parse(JSON.stringify(events.value)) : [];
 
       const updatedEvent = await performOptimisticUpdate(
         () => $fetch<CalendarEvent>(`/api/calendar-events/${event.id}`, {
@@ -201,7 +201,7 @@ export function useCalendarEvents() {
             ical_event: event.ical_event,
             users: event.users,
           },
-        } as any),
+        }),
         () => {
           if (events.value && Array.isArray(events.value)) {
             const eventIndex = events.value.findIndex((e: CalendarEvent) => e.id === event.id);
@@ -216,6 +216,14 @@ export function useCalendarEvents() {
           }
         },
       );
+
+      // Reconciliation
+      if (events.value && Array.isArray(events.value)) {
+        const eventIndex = events.value.findIndex((e: CalendarEvent) => e.id === event.id);
+        if (eventIndex !== -1) {
+          events.value[eventIndex] = updatedEvent;
+        }
+      }
 
       showSuccess("Event Updated", "Local event updated successfully");
       return updatedEvent;
@@ -253,7 +261,7 @@ export function useCalendarEvents() {
               integrationId: integration.id,
               calendarId: event.calendarId,
             },
-          } as any);
+          });
 
           await refreshNuxtData("calendar-events");
           showSuccess("Event Deleted", "Integration event deleted successfully");
@@ -266,13 +274,13 @@ export function useCalendarEvents() {
       }
 
       // Local event optimistic update
-      const previousEvents = events.value ? [...events.value] : [];
+      const previousEvents = events.value ? JSON.parse(JSON.stringify(events.value)) : [];
 
       await performOptimisticUpdate(
         // @ts-expect-error - Excessive stack depth in Nuxt route types
         () => $fetch(`/api/calendar-events/${eventId}`, {
-          method: "DELETE",
-        } as any),
+          method: "DELETE" as any,
+        }),
         () => {
           if (events.value && Array.isArray(events.value)) {
             const index = events.value.findIndex(e => e.id === eventId);

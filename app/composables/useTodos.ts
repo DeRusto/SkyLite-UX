@@ -7,8 +7,8 @@ import { getErrorMessage } from "~/utils/error";
 import { performOptimisticUpdate } from "~/utils/optimistic";
 
 export function useTodos() {
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const loading = useState<boolean>("todos-loading", () => false);
+  const error = useState<string | null>("todos-error", () => null);
 
   const { data: todos } = useNuxtData<TodoWithOrder[]>("todos");
   const { showError } = useAlertToast();
@@ -34,8 +34,9 @@ export function useTodos() {
   };
 
   const createTodo = async (todoData: CreateTodoInput) => {
-    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
+    const previousTodos = structuredClone(todos.value ?? []);
     const tempId = crypto.randomUUID();
+
     const newTodo: TodoWithOrder = {
       id: tempId,
       title: todoData.title,
@@ -45,15 +46,15 @@ export function useTodos() {
       completed: todoData.completed ?? false,
       order: todoData.order ?? 0,
       todoColumnId: todoData.todoColumnId ?? null,
-      todoColumn: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    } as any; // Cast because todoColumn expects full object or null
+      todoColumn: null, // Minimal stub for optimistic item
+      createdAt: new Date().toISOString() as any, // Server returns ISO string, Prisma types say Date
+      updatedAt: new Date().toISOString() as any,
+    } as TodoWithOrder;
 
     try {
       const createdTodo = await performOptimisticUpdate(
         () => $fetch<TodoWithOrder>("/api/todos", {
-          method: "POST" as any,
+          method: "POST",
           body: todoData,
         }),
         () => {
@@ -85,14 +86,14 @@ export function useTodos() {
   };
 
   const updateTodo = async (id: string, updates: UpdateTodoInput) => {
-    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
+    const previousTodos = structuredClone(todos.value ?? []);
 
     try {
       const updatedTodoFromResponse = await performOptimisticUpdate(
         () => $fetch<TodoWithOrder>(`/api/todos/${id}`, {
-          method: "PUT" as any,
+          method: "PUT",
           body: updates,
-        } as any),
+        }),
         () => {
           if (todos.value && Array.isArray(todos.value)) {
             const todoIndex = todos.value.findIndex((t: Todo) => t.id === id);
@@ -130,20 +131,22 @@ export function useTodos() {
   };
 
   const deleteTodo = async (id: string) => {
-    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
+    const previousTodos = structuredClone(todos.value ?? []);
 
     try {
       return await performOptimisticUpdate(
         async () => {
           await $fetch(`/api/todos/${id}`, {
             method: "DELETE" as any,
-          } as any);
+          });
           return true;
         },
         () => {
           if (todos.value && Array.isArray(todos.value)) {
-            const updatedTodos = todos.value.filter((t: Todo) => t.id !== id);
-            todos.value.splice(0, todos.value.length, ...updatedTodos);
+            const index = todos.value.findIndex(t => t.id === id);
+            if (index !== -1) {
+              todos.value.splice(index, 1);
+            }
           }
         },
         () => {
@@ -161,7 +164,7 @@ export function useTodos() {
   };
 
   const reorderTodo = async (todoId: string, direction: "up" | "down", todoColumnId: string | null) => {
-    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
+    const previousTodos = structuredClone(todos.value ?? []);
     try {
       const currentTodo = currentTodos.value.find(t => t.id === todoId);
       if (!currentTodo)
@@ -195,9 +198,9 @@ export function useTodos() {
 
       await performOptimisticUpdate(
         () => $fetch("/api/todos/reorder", {
-          method: "POST" as any,
+          method: "POST",
           body: { todoId, direction, todoColumnId },
-        } as any),
+        }),
         () => {
           if (todos.value && Array.isArray(todos.value)) {
             const currentTodoInCache = todos.value.find(t => t.id === todoId);
@@ -216,7 +219,8 @@ export function useTodos() {
         },
       );
 
-      // Reconciliation
+      // We still need to refresh because reorder on server might affect more than just two items
+      // but we do it after the optimistic update has finished.
       await refreshNuxtData("todos");
     }
     catch (err) {
@@ -227,14 +231,14 @@ export function useTodos() {
   };
 
   const clearCompleted = async (columnId: string) => {
-    const previousTodos = todos.value ? JSON.parse(JSON.stringify(todos.value)) : [];
+    const previousTodos = structuredClone(todos.value ?? []);
 
     try {
       await performOptimisticUpdate(
         () => $fetch(`/api/todo-columns/${columnId}/todos/clear-completed`, {
-          method: "POST" as any,
+          method: "POST",
           body: { action: "delete" },
-        } as any),
+        }),
         () => {
           if (todos.value && Array.isArray(todos.value)) {
             const updatedTodos = todos.value.filter((t: Todo) => !(t.todoColumnId === columnId && t.completed));
