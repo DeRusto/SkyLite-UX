@@ -159,6 +159,12 @@ export type TodoListItem = BaseListItem & {
 
 export type TodoWithOrder = TodoWithUser & { order: number };
 
+export type TodoWithOrderResponse = Omit<TodoWithOrder, "createdAt" | "updatedAt" | "dueDate"> & {
+  createdAt: string;
+  updatedAt: string;
+  dueDate: string | null;
+};
+
 export type UserWithOrder = User & { todoOrder: number };
 
 export type ShoppingListWithOrder = ShoppingListWithItemsAndCount & { order: number };

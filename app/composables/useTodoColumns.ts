@@ -133,8 +133,8 @@ export function useTodoColumns() {
     try {
       return await performOptimisticUpdate(
         async () => {
-          await $fetch(`/api/todo-columns/${columnId}`, {
-            method: "DELETE" as any,
+          await $fetch<void>(`/api/todo-columns/${columnId}`, {
+            method: "DELETE",
           });
           return true;
         },

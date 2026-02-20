@@ -161,13 +161,16 @@ export function useSyncManager() {
     }
   };
 
-  const updateIntegrationCache = <T = unknown[]>(
+  const updateIntegrationCache = <T = unknown>(
     integrationType: string,
     integrationId: string,
     data: T,
   ) => {
     const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
-    nuxtApp.payload.data[cacheKey] = data;
+    nuxtApp.payload.data = {
+      ...nuxtApp.payload.data,
+      [cacheKey]: data,
+    };
     consola.debug(`Use Sync Manager: Updated cache for ${integrationType} integration ${integrationId}`);
   };
 
@@ -204,6 +207,7 @@ export function useSyncManager() {
     getLastHeartbeat,
     isConnected,
     getCachedIntegrationData,
+    getIntegrationCacheKey,
     reconnect,
     getSyncStatus,
     getSyncDataByType,

@@ -17,16 +17,7 @@ import { getFieldsForItem, getIntegrationFields } from "~/integrations/integrati
 import { integrationRegistry } from "~/types/integrations";
 
 const { parseStableDate, getStableDate } = useStableDate();
-const { getCachedIntegrationData } = useSyncManager();
-const nuxtApp = useNuxtApp();
-
-function updateIntegrationCache(integrationType: string, integrationId: string, data: unknown) {
-  const cacheKey = integrationType === "shopping" ? `shopping-lists-${integrationId}` : `${integrationType}-${integrationId}`;
-  nuxtApp.payload.data = {
-    ...nuxtApp.payload.data,
-    [cacheKey]: data,
-  };
-}
+const { getCachedIntegrationData, updateIntegrationCache } = useSyncManager();
 
 function getDateWithFallback(dateString: string | Date | null): Date {
   if (!dateString)

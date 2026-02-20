@@ -1,6 +1,6 @@
 import { consola } from "consola";
 
-import type { CreateTodoInput, Todo, TodoWithOrder, UpdateTodoInput } from "~/types/database";
+import type { CreateTodoInput, TodoWithOrder, TodoWithOrderResponse, UpdateTodoInput } from "~/types/database";
 
 import { useAlertToast } from "~/composables/useAlertToast";
 import { getErrorMessage } from "~/utils/error";
@@ -10,10 +10,10 @@ export function useTodos() {
   const loading = useState<boolean>("todos-loading", () => false);
   const error = useState<string | null>("todos-error", () => null);
 
-  const { data: todos } = useNuxtData<TodoWithOrder[]>("todos");
+  const { data: todos } = useNuxtData<TodoWithOrderResponse[]>("todos");
   const { showError } = useAlertToast();
 
-  const currentTodos = computed(() => todos.value || []);
+  const currentTodos = computed(() => (todos.value || []) as unknown as TodoWithOrder[]);
 
   const fetchTodos = async () => {
     loading.value = true;
@@ -37,23 +37,23 @@ export function useTodos() {
     const previousTodos = structuredClone(todos.value ?? []);
     const tempId = crypto.randomUUID();
 
-    const newTodo: TodoWithOrder = {
+    const newTodo: TodoWithOrderResponse = {
       id: tempId,
       title: todoData.title,
       description: todoData.description ?? null,
       priority: todoData.priority ?? "MEDIUM",
-      dueDate: todoData.dueDate ?? null,
+      dueDate: todoData.dueDate ? (todoData.dueDate instanceof Date ? todoData.dueDate.toISOString() : todoData.dueDate) : null,
       completed: todoData.completed ?? false,
       order: todoData.order ?? 0,
       todoColumnId: todoData.todoColumnId ?? null,
       todoColumn: null, // Minimal stub for optimistic item
-      createdAt: new Date().toISOString() as any, // Server returns ISO string, Prisma types say Date
-      updatedAt: new Date().toISOString() as any,
-    } as TodoWithOrder;
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
     try {
       const createdTodo = await performOptimisticUpdate(
-        () => $fetch<TodoWithOrder>("/api/todos", {
+        () => $fetch<TodoWithOrderResponse>("/api/todos", {
           method: "POST",
           body: todoData,
         }),
@@ -70,7 +70,7 @@ export function useTodos() {
       );
 
       if (todos.value && Array.isArray(todos.value)) {
-        const tempIndex = todos.value.findIndex((t: Todo) => t.id === tempId);
+        const tempIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === tempId);
         if (tempIndex !== -1) {
           todos.value[tempIndex] = createdTodo;
         }
@@ -90,13 +90,13 @@ export function useTodos() {
 
     try {
       const updatedTodoFromResponse = await performOptimisticUpdate(
-        () => $fetch<TodoWithOrder>(`/api/todos/${id}`, {
+        () => $fetch<TodoWithOrderResponse>(`/api/todos/${id}`, {
           method: "PUT",
           body: updates,
         }),
         () => {
           if (todos.value && Array.isArray(todos.value)) {
-            const todoIndex = todos.value.findIndex((t: Todo) => t.id === id);
+            const todoIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === id);
             if (todoIndex !== -1) {
               todos.value[todoIndex] = { ...todos.value[todoIndex], ...updates } as any;
             }
@@ -111,7 +111,7 @@ export function useTodos() {
 
       // Reconciliation
       if (todos.value && Array.isArray(todos.value)) {
-        const todoIndex = todos.value.findIndex((t: Todo) => t.id === id);
+        const todoIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === id);
         if (todoIndex !== -1) {
           todos.value[todoIndex] = updatedTodoFromResponse;
         }
@@ -136,8 +136,8 @@ export function useTodos() {
     try {
       return await performOptimisticUpdate(
         async () => {
-          await $fetch(`/api/todos/${id}`, {
-            method: "DELETE" as any,
+          await $fetch<void>(`/api/todos/${id}`, {
+            method: "DELETE",
           });
           return true;
         },
@@ -165,11 +165,11 @@ export function useTodos() {
 
   const reorderTodo = async (todoId: string, direction: "up" | "down", todoColumnId: string | null) => {
     const previousTodos = structuredClone(todos.value ?? []);
-    try {
-      const currentTodo = currentTodos.value.find(t => t.id === todoId);
-      if (!currentTodo)
-        return;
+    const currentTodo = currentTodos.value.find(t => t.id === todoId);
+    if (!currentTodo)
+      return;
 
+    try {
       const sameSectionTodos = currentTodos.value
         .filter(t =>
           t.todoColumnId === todoColumnId
@@ -218,15 +218,20 @@ export function useTodos() {
           }
         },
       );
-
-      // We still need to refresh because reorder on server might affect more than just two items
-      // but we do it after the optimistic update has finished.
-      await refreshNuxtData("todos");
     }
     catch (err) {
       const message = getErrorMessage(err, "Failed to reorder todo");
       showError("Error", message);
       throw err;
+    }
+
+    // We still need to refresh because reorder on server might affect more than just two items
+    // but we do it after the optimistic update has finished.
+    try {
+      await refreshNuxtData("todos");
+    }
+    catch (err) {
+      consola.error("Use Todos: Failed to refresh todos after reorder:", err);
     }
   };
 
@@ -241,7 +246,7 @@ export function useTodos() {
         }),
         () => {
           if (todos.value && Array.isArray(todos.value)) {
-            const updatedTodos = todos.value.filter((t: Todo) => !(t.todoColumnId === columnId && t.completed));
+            const updatedTodos = todos.value.filter((t: TodoWithOrderResponse) => !(t.todoColumnId === columnId && t.completed));
             todos.value.splice(0, todos.value.length, ...updatedTodos);
           }
         },

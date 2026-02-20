@@ -33,13 +33,13 @@ export function useShoppingLists() {
   };
 
   const createShoppingList = async (listData: CreateShoppingListInput) => {
-    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const previousLists = structuredClone(shoppingLists.value ?? []);
     const tempId = crypto.randomUUID();
     const newList: ShoppingListWithOrder = {
       id: tempId,
       name: listData.name,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString() as any,
+      updatedAt: new Date().toISOString() as any,
       order: listData.order ?? (shoppingLists.value?.length || 0) + 1,
       items: [],
       _count: { items: 0 },
@@ -80,7 +80,7 @@ export function useShoppingLists() {
   };
 
   const updateShoppingList = async (listId: string, updates: { name?: string }) => {
-    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const previousLists = structuredClone(shoppingLists.value ?? []);
 
     try {
       const updatedListFromResponse = await performOptimisticUpdate(
@@ -121,7 +121,7 @@ export function useShoppingLists() {
   };
 
   const updateShoppingListItem = async (itemId: string, updates: UpdateShoppingListItemInput) => {
-    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const previousLists = structuredClone(shoppingLists.value ?? []);
 
     try {
       const updatedItem = await performOptimisticUpdate(
@@ -178,7 +178,7 @@ export function useShoppingLists() {
   };
 
   const addItemToList = async (listId: string, itemData: CreateShoppingListItemInput) => {
-    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const previousLists = structuredClone(shoppingLists.value ?? []);
     const tempId = crypto.randomUUID();
     const newItem: ShoppingListItem = {
       id: tempId,
@@ -244,7 +244,7 @@ export function useShoppingLists() {
   };
 
   const deleteShoppingList = async (listId: string) => {
-    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const previousLists = structuredClone(shoppingLists.value ?? []);
 
     try {
       return await performOptimisticUpdate(
@@ -281,7 +281,7 @@ export function useShoppingLists() {
   };
 
   const reorderShoppingList = async (listId: string, direction: "up" | "down") => {
-    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const previousLists = structuredClone(shoppingLists.value ?? []);
     try {
       const sortedLists = [...currentShoppingLists.value].sort((a, b) => (a.order || 0) - (b.order || 0));
       const currentIndex = sortedLists.findIndex(list => list.id === listId);
@@ -348,7 +348,7 @@ export function useShoppingLists() {
   };
 
   const reorderItem = async (itemId: string, direction: "up" | "down") => {
-    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const previousLists = structuredClone(shoppingLists.value ?? []);
     try {
       const listIndex = currentShoppingLists.value.findIndex(list =>
         (list.items as any[])?.some(item => item.id === itemId),
@@ -426,7 +426,7 @@ export function useShoppingLists() {
   };
 
   const deleteCompletedItems = async (listId: string, completedItemIds?: string[]) => {
-    const previousLists = shoppingLists.value ? JSON.parse(JSON.stringify(shoppingLists.value)) : [];
+    const previousLists = structuredClone(shoppingLists.value ?? []);
 
     try {
       await performOptimisticUpdate(

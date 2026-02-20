@@ -43,13 +43,14 @@ export function useCalendarEvents() {
   };
 
   function getIntegrationEventId(event: CalendarEvent, integration: Integration) {
-    const expectedPrefix = integration.service === "google-calendar" ? "google" : integration.service;
+    const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
+    const expectedPrefix = config?.idPrefix || integration.service;
     const prefixString = `${expectedPrefix}-${integration.id}-`;
     if (event.id.startsWith(prefixString)) {
       return event.id.slice(prefixString.length);
     }
     consola.warn(`getIntegrationEventId: ID "${event.id}" does not start with expected prefix "${prefixString}" for integration ${integration.id} (${integration.service})`);
-    return event.id;
+    return null;
   }
 
   const addEvent = async (event: CalendarEvent) => {
@@ -99,7 +100,7 @@ export function useCalendarEvents() {
       }
 
       // Local event optimistic update
-      const previousEvents = events.value ? JSON.parse(JSON.stringify(events.value)) : [];
+      const previousEvents = structuredClone(events.value ?? []);
       const tempId = crypto.randomUUID();
       const newEvent = {
         ...event,
@@ -164,6 +165,10 @@ export function useCalendarEvents() {
         const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
         if (config?.capabilities.includes("edit_events")) {
           const integrationEventId = getIntegrationEventId(event, integration);
+          if (!integrationEventId) {
+            showError("Update Failed", "Could not determine the integration event ID.");
+            return;
+          }
 
           await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
             method: "PUT",
@@ -185,7 +190,7 @@ export function useCalendarEvents() {
       }
 
       // Local event optimistic update
-      const previousEvents = events.value ? JSON.parse(JSON.stringify(events.value)) : [];
+      const previousEvents = structuredClone(events.value ?? []);
 
       const updatedEvent = await performOptimisticUpdate(
         () => $fetch<CalendarEvent>(`/api/calendar-events/${event.id}`, {
@@ -254,6 +259,10 @@ export function useCalendarEvents() {
         const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
         if (config?.capabilities.includes("delete_events")) {
           const integrationEventId = getIntegrationEventId(event, integration);
+          if (!integrationEventId) {
+            showError("Delete Failed", "Could not determine the integration event ID.");
+            return;
+          }
 
           await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
             method: "DELETE",
@@ -274,7 +283,7 @@ export function useCalendarEvents() {
       }
 
       // Local event optimistic update
-      const previousEvents = events.value ? JSON.parse(JSON.stringify(events.value)) : [];
+      const previousEvents = structuredClone(events.value ?? []);
 
       await performOptimisticUpdate(
         // @ts-expect-error - Excessive stack depth in Nuxt route types

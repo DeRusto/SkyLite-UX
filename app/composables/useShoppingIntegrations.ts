@@ -101,7 +101,7 @@ export function useShoppingIntegrations() {
     }
 
     const integrationLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
-    const previousLists = integrationLists ? JSON.parse(JSON.stringify(integrationLists)) : [];
+    const previousLists = structuredClone(integrationLists ?? []);
 
     const tempId = crypto.randomUUID();
     const newItem: ShoppingListItem = {
@@ -120,7 +120,12 @@ export function useShoppingIntegrations() {
 
     try {
       const item = await performOptimisticUpdate(
-        () => (service as unknown as { addItemToList?: (listId: string, itemData: CreateShoppingListItemInput) => Promise<ShoppingListItem> }).addItemToList?.(listId, itemData) as Promise<ShoppingListItem>,
+        async () => {
+          const fn = (service as unknown as { addItemToList?: (listId: string, itemData: CreateShoppingListItemInput) => Promise<ShoppingListItem> }).addItemToList;
+          if (!fn)
+            throw new Error(`Integration service ${integrationId} does not support adding items`);
+          return fn(listId, itemData);
+        },
         () => {
           if (integrationLists && Array.isArray(integrationLists)) {
             const listIndex = integrationLists.findIndex((l: ShoppingList) => l.id === listId);
@@ -188,11 +193,16 @@ export function useShoppingIntegrations() {
     }
 
     const integrationLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
-    const previousLists = integrationLists ? JSON.parse(JSON.stringify(integrationLists)) : [];
+    const previousLists = structuredClone(integrationLists ?? []);
 
     try {
       const updatedItem = await performOptimisticUpdate(
-        () => (service as unknown as { updateShoppingListItem?: (itemId: string, updates: UpdateShoppingListItemInput) => Promise<ShoppingListItem> }).updateShoppingListItem?.(itemId, updates) as Promise<ShoppingListItem>,
+        async () => {
+          const fn = (service as unknown as { updateShoppingListItem?: (itemId: string, updates: UpdateShoppingListItemInput) => Promise<ShoppingListItem> }).updateShoppingListItem;
+          if (!fn)
+            throw new Error(`Integration service ${integrationId} does not support updating items`);
+          return fn(itemId, updates);
+        },
         () => {
           if (integrationLists && Array.isArray(integrationLists)) {
             let itemFound = false;
@@ -216,10 +226,6 @@ export function useShoppingIntegrations() {
           updateIntegrationCache("shopping", integrationId, previousLists);
         },
       );
-
-      if (!updatedItem) {
-        throw new Error("Service does not support updating shopping list items");
-      }
 
       // Reconciliation
       const currentLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
@@ -261,7 +267,7 @@ export function useShoppingIntegrations() {
     }
 
     const integrationLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
-    const previousLists = integrationLists ? JSON.parse(JSON.stringify(integrationLists)) : [];
+    const previousLists = structuredClone(integrationLists ?? []);
 
     let itemsToDelete: string[] = [];
     if (completedItemIds && completedItemIds.length > 0) {

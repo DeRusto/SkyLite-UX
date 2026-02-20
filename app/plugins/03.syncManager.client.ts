@@ -1,12 +1,11 @@
 import { consola } from "consola";
 
-import type { CalendarEvent } from "~/types/calendar";
-import type { ShoppingListWithItemsAndCount, TodoWithUser } from "~/types/database";
 import type { EventSourceStatus, IntegrationSyncData, SyncConnectionStatus, SyncEvent } from "~/types/sync";
 
-import { getIntegrationCacheKey } from "~/composables/useSyncManager";
+import { useSyncManager } from "~/composables/useSyncManager";
 
 export default defineNuxtPlugin(() => {
+  const { updateIntegrationCache, getIntegrationCacheKey } = useSyncManager();
   const syncData = useState<IntegrationSyncData>("sync-data", () => ({}));
   const connectionStatus = useState<SyncConnectionStatus>("sync-connection-status", () => "disconnected");
   const lastHeartbeat = useState<Date | null>("sync-last-heartbeat", () => null);
@@ -145,15 +144,6 @@ export default defineNuxtPlugin(() => {
       connectionStatus.value = "error";
     }
   });
-
-  function updateIntegrationCache(integrationType: string, integrationId: string, data: CalendarEvent[] | ShoppingListWithItemsAndCount[] | TodoWithUser[]) {
-    const nuxtApp = useNuxtApp();
-    const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
-    nuxtApp.payload.data = {
-      ...nuxtApp.payload.data,
-      [cacheKey]: data,
-    };
-  }
 
   const KNOWN_DATA_TYPES = new Set(["calendar-events", "todos", "todo-columns", "shopping-lists", "users", "integrations"]);
 

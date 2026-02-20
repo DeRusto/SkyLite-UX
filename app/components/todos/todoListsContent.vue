@@ -43,9 +43,9 @@ function onDrop(event: DragEvent, columnId: string) {
   }
 }
 
-const getColumnTodos = (columnId: string) => {
+function getColumnTodos(columnId: string) {
   return props.todos.filter(todo => todo.todoColumnId === columnId);
-};
+}
 </script>
 
 <template>

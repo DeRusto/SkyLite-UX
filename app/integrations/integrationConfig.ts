@@ -63,6 +63,7 @@ export const integrationConfigs: IntegrationConfig[] = [
     files: [],
     dialogFields: [],
     syncInterval: 10,
+    idPrefix: "iCal",
   },
   {
     type: "calendar",
@@ -88,6 +89,7 @@ export const integrationConfigs: IntegrationConfig[] = [
     files: [],
     dialogFields: [],
     syncInterval: 1,
+    idPrefix: "google",
   },
   // ================================================
   // Weather integration configs

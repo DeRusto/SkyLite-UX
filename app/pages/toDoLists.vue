@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { consola } from "consola";
 
-import type { Todo, TodoColumn } from "~/types/database";
+import type { Todo, TodoColumn, TodoListItem } from "~/types/database";
 
 import { useAlertToast } from "~/composables/useAlertToast";
 
@@ -87,12 +87,14 @@ async function handleColumnDelete(id: string) {
   }
 }
 
-async function handleTodoSave(data: { name: string; notes?: string; columnId?: string }) {
+async function handleTodoSave(data: TodoListItem) {
   try {
     const todoData = {
       title: data.name,
-      description: data.notes,
-      todoColumnId: data.columnId || selectedColumnId.value,
+      description: data.description,
+      todoColumnId: data.todoColumnId || selectedColumnId.value,
+      priority: data.priority,
+      dueDate: data.dueDate,
     };
 
     if (editingTodo.value) {
@@ -214,11 +216,10 @@ async function handleTodoMove(todoId: string, newColumnId: string) {
     />
 
     <TodoItemDialog
-      v-model:is-open="todoDialog"
+      :is-open="todoDialog"
       :todo="(editingTodo as any)"
       :todo-columns="(todoColumns as any)"
-      :selected-column-id="selectedColumnId"
-      @save="(handleTodoSave as any)"
+      @save="handleTodoSave"
       @delete="handleTodoDelete"
       @close="todoDialog = false; editingTodo = null; selectedColumnId = ''"
     />
