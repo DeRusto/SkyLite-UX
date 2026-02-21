@@ -35,8 +35,8 @@ export default withNuxt(antfu({
     "docker-compose-example.yaml",
     "docs/**",
     ".playwright-cli/**",
+    "*.md",
   ],
->>>>>>> origin/main
 }, {
   rules: {
     "vue/max-attributes-per-line": ["error", {
