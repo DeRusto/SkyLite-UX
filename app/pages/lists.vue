@@ -63,27 +63,25 @@ const {
 
       <!-- Tab Content -->
       <div class="flex-1 overflow-hidden">
-        <KeepAlive>
-          <ShoppingListsContent
-            v-if="activeTab === 'shopping'"
-            class="h-full overflow-hidden"
-          />
-          <TodoListsContent
-            v-else-if="activeTab === 'todo'"
-            class="h-full overflow-hidden"
-            :columns="todoColumns"
-            :todos="todos"
-            :loading="isLoadingTodos"
-            @add-column="openCreateColumn"
-            @edit-column="openEditColumn"
-            @reorder-column="handleColumnReorder"
-            @add-todo="openCreateTodo"
-            @edit-todo="openEditTodo"
-            @toggle-todo="handleTodoToggle"
-            @reorder-todo="handleTodoReorder"
-            @move-todo="handleTodoMove"
-          />
-        </KeepAlive>
+        <ShoppingListsContent
+          v-show="activeTab === 'shopping'"
+          class="h-full overflow-hidden"
+        />
+        <TodoListsContent
+          v-show="activeTab === 'todo'"
+          class="h-full overflow-hidden"
+          :columns="todoColumns"
+          :todos="todos"
+          :loading="isLoadingTodos"
+          @add-column="openCreateColumn"
+          @edit-column="openEditColumn"
+          @reorder-column="handleColumnReorder"
+          @add-todo="openCreateTodo"
+          @edit-todo="openEditTodo"
+          @toggle-todo="handleTodoToggle"
+          @reorder-todo="handleTodoReorder"
+          @move-todo="handleTodoMove"
+        />
       </div>
     </div>
 
