@@ -258,7 +258,7 @@ function handleDelete() {
             :model-value="calendarId"
             :items="[
               { label: 'None', value: null },
-              ...availableCalendars.map(cal => ({ label: `${cal.integrationName}: ${cal.summary}`, value: cal.id }))
+              ...availableCalendars.map(cal => ({ label: `${cal.integrationName}: ${cal.summary}`, value: cal.id })),
             ]"
             placeholder="Select a calendar"
             class="w-full"

@@ -55,6 +55,7 @@ export type IntegrationConfig = {
   files: string[];
   dialogFields: DialogField[];
   syncInterval: number;
+  idPrefix?: string;
 };
 
 export type ICalSettings = {

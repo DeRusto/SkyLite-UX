@@ -1,9 +1,11 @@
-import { GoogleCalendarServerService } from "~~/server/integrations/google-calendar/client";
-import { defineEventHandler, createError } from "h3";
-import prisma from "~/lib/prisma";
-import consola from "consola";
 import type { GoogleCalendarSettings } from "~~/server/integrations/google-calendar/types";
+
+import { GoogleCalendarServerService } from "~~/server/integrations/google-calendar/client";
+import { consola } from "consola";
+
 import type { AvailableCalendar } from "~/types/calendar";
+
+import prisma from "~/lib/prisma";
 
 export default defineEventHandler(async (_event) => {
   try {
@@ -37,7 +39,8 @@ export default defineEventHandler(async (_event) => {
             color: cal.backgroundColor,
           }));
         }
-      } else if (integration.service === "iCal") {
+      }
+      else if (integration.service === "iCal") {
         // For iCal, the integration itself is the calendar
         return [{
           id: integration.id,
@@ -55,13 +58,15 @@ export default defineEventHandler(async (_event) => {
     results.forEach((result, index) => {
       if (result.status === "fulfilled") {
         allCalendars.push(...result.value);
-      } else {
+      }
+      else {
         consola.error(`Failed to fetch calendars for integration ${integrations[index]?.id}:`, result.reason);
       }
     });
 
     return { calendars: allCalendars };
-  } catch (error) {
+  }
+  catch (error) {
     throw createError({
       statusCode: 500,
       message: `Failed to fetch calendars: ${error}`,

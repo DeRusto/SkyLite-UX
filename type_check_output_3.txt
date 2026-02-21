@@ -1,9 +1,0 @@
-
-> skylite-ux@2026.1.0 type-check /app
-> vue-tsc --noEmit -p tsconfig.json --composite false
-
-server/api/integrations/[id].put.ts(159,13): error TS2304: Cannot find name 'updatedData'.
-server/api/integrations/[id].put.ts(159,55): error TS2304: Cannot find name 'updatedData'.
-server/api/integrations/[id].put.ts(160,13): error TS2304: Cannot find name 'updatedData'.
-server/api/integrations/[id].put.ts(160,57): error TS2304: Cannot find name 'updatedData'.
- ELIFECYCLE  Command failed with exit code 2.

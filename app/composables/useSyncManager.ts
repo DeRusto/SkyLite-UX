@@ -1,7 +1,11 @@
 import { consola } from "consola";
 
-import type { Integration } from "~/types/database";
 import type { IntegrationSyncData, SyncConnectionStatus, SyncStatus } from "~/types/sync";
+
+type IntegrationMinimal = {
+  id: string;
+  type: string;
+};
 
 export function getIntegrationCacheKey(integrationType: string, integrationId: string): string {
   switch (integrationType) {
@@ -86,13 +90,13 @@ export function useSyncManager() {
     return status;
   };
 
-  const getSyncDataByType = (integrationType: string, integrationsList?: Integration[]) => {
+  const getSyncDataByType = (integrationType: string, integrationsList?: IntegrationMinimal[]) => {
     const data = getAllSyncData();
     const integrations = integrationsList || [];
 
     return integrations
-      .filter((integration: Integration) => integration.type === integrationType)
-      .map((integration: Integration) => ({
+      .filter((integration: IntegrationMinimal) => integration.type === integrationType)
+      .map((integration: IntegrationMinimal) => ({
         integration,
         syncData: data[integration.id],
         cachedData: getCachedIntegrationData(integrationType, integration.id),
@@ -100,15 +104,15 @@ export function useSyncManager() {
       .filter(item => item.syncData);
   };
 
-  const getShoppingSyncData = (integrationsList?: Integration[]) => {
+  const getShoppingSyncData = (integrationsList?: IntegrationMinimal[]) => {
     return getSyncDataByType("shopping", integrationsList);
   };
 
-  const getCalendarSyncData = (integrationsList?: Integration[]) => {
+  const getCalendarSyncData = (integrationsList?: IntegrationMinimal[]) => {
     return getSyncDataByType("calendar", integrationsList);
   };
 
-  const getTodoSyncData = (integrationsList?: Integration[]) => {
+  const getTodoSyncData = (integrationsList?: IntegrationMinimal[]) => {
     return getSyncDataByType("todo", integrationsList);
   };
 
@@ -157,12 +161,25 @@ export function useSyncManager() {
     }
   };
 
+  const updateIntegrationCache = <T = unknown>(
+    integrationType: string,
+    integrationId: string,
+    data: T,
+  ) => {
+    const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
+    nuxtApp.payload.data = {
+      ...nuxtApp.payload.data,
+      [cacheKey]: data,
+    };
+    consola.debug(`Use Sync Manager: Updated cache for ${integrationType} integration ${integrationId}`);
+  };
+
   const triggerImmediateSync = async (integrationType: string, integrationId: string) => {
     try {
       consola.debug(`Use Sync Manager: Triggering immediate sync for ${integrationType} integration ${integrationId}`);
 
       const response = await $fetch("/api/sync/trigger", {
-        method: "POST",
+        method: "POST" as any,
         body: {
           integrationId,
           integrationType,
@@ -190,6 +207,7 @@ export function useSyncManager() {
     getLastHeartbeat,
     isConnected,
     getCachedIntegrationData,
+    getIntegrationCacheKey,
     reconnect,
     getSyncStatus,
     getSyncDataByType,
@@ -200,6 +218,7 @@ export function useSyncManager() {
     getConnectionHealth,
     checkIntegrationCache,
     purgeIntegrationCache,
+    updateIntegrationCache,
     triggerImmediateSync,
   };
 }

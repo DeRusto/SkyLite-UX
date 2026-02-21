@@ -1,606 +1,228 @@
 <script setup lang="ts">
 import { consola } from "consola";
 
-import type { BaseListItem, Todo, TodoColumn, TodoList, TodoListItem } from "~/types/database";
-import type { TodoListWithIntegration } from "~/types/ui";
+import type { Todo, TodoColumn } from "~/types/database";
+import type { TodoListProps } from "~/types/todo";
 
-import GlobalFloatingActionButton from "~/components/global/globalFloatingActionButton.vue";
-import GlobalList from "~/components/global/globalList.vue";
-import TodoColumnDialog from "~/components/todos/todoColumnDialog.vue";
-import TodoItemDialog from "~/components/todos/todoItemDialog.vue";
-import { useAlertToast } from "~/composables/useAlertToast";
-import { useStableDate } from "~/composables/useStableDate";
-import { useTodoColumns } from "~/composables/useTodoColumns";
-import { useTodos } from "~/composables/useTodos";
+const props = defineProps<TodoListProps>();
 
-const { showError, showSuccess } = useAlertToast();
-const { parseStableDate } = useStableDate();
+const emit = defineEmits<{
+  (e: "addColumn"): void;
+  (e: "editColumn", column: TodoColumn): void;
+  (e: "reorderColumn", columnId: string, direction: "up" | "down"): void;
+  (e: "addTodo", columnId: string): void;
+  (e: "editTodo", todo: Todo): void;
+  (e: "toggleTodo", todoId: string, completed: boolean): void;
+  (e: "reorderTodo", todoId: string, direction: "up" | "down"): void;
+  (e: "moveTodo", todoId: string, newColumnId: string): void;
+}>();
 
-const { data: todoColumns } = useNuxtData<TodoColumn[]>("todo-columns");
-const { data: todos } = useNuxtData<Todo[]>("todos");
-const { updateTodo, createTodo, deleteTodo, toggleTodo, reorderTodo, clearCompleted, loading: todosLoading } = useTodos();
-const { updateTodoColumn, createTodoColumn, deleteTodoColumn, reorderTodoColumns, loading: columnsLoading } = useTodoColumns();
+const dragOverColumn = ref<string | null>(null);
 
-const mutableTodoColumns = computed(() => todoColumns.value?.map(col => ({
-  ...col,
-  user: col.user === null
-    ? undefined
-    : {
-        id: col.user.id,
-        name: col.user.name,
-        avatar: col.user.avatar,
-      },
-})) || []);
+function onDragStart(event: DragEvent, todo: Todo) {
+  if (event.dataTransfer) {
+    event.dataTransfer.setData("application/json", JSON.stringify(todo));
+    event.dataTransfer.effectAllowed = "move";
+  }
+}
 
-const todoItemDialog = ref(false);
-const todoColumnDialog = ref(false);
-const editingTodo = ref<TodoListItem | null>(null);
-const editingColumn = ref<TodoList | null>(null);
-const reorderingTodos = ref(new Set<string>());
-const reorderingColumns = ref(new Set<string>());
+function onDragEnter(columnId: string) {
+  dragOverColumn.value = columnId;
+}
 
-const editingTodoTyped = computed<TodoListItem | undefined>(() =>
-  editingTodo.value as TodoListItem | undefined,
-);
+function onDragLeave() {
+  dragOverColumn.value = null;
+}
 
-const todoLists = computed<TodoListWithIntegration[]>(() => {
-  if (!todoColumns.value || !todos.value)
-    return [];
+function onDrop(event: DragEvent, columnId: string) {
+  event.preventDefault();
+  dragOverColumn.value = null;
+  const data = event.dataTransfer?.getData("application/json");
+  if (data) {
+    try {
+      const todo = JSON.parse(data) as Todo;
+      if (todo.todoColumnId !== columnId) {
+        emit("moveTodo", todo.id, columnId);
+      }
+    }
+    catch (err) {
+      consola.error("Failed to parse dropped todo", err);
+    }
+  }
+}
 
-  return todoColumns.value.map(column => ({
-    id: column.id,
-    name: column.name,
-    order: column.order,
-    createdAt: parseStableDate(column.createdAt),
-    updatedAt: parseStableDate(column.updatedAt),
-    isDefault: column.isDefault,
-    source: "native" as const,
-    items: todos.value!
-      .filter(todo => todo.todoColumnId === column.id)
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(todo => ({
-        id: todo.id,
-        name: todo.title,
-        checked: todo.completed,
-        order: todo.order,
-        notes: todo.description,
-        shoppingListId: todo.todoColumnId || "",
-        priority: todo.priority,
-        dueDate: todo.dueDate,
-        description: todo.description ?? "",
-        todoColumnId: todo.todoColumnId || "",
-      })),
-    _count: column._count ? { items: column._count.todos } : undefined,
-  }));
+const computedTodosByColumn = computed(() => {
+  const map = new Map<string, Todo[]>();
+  props.columns.forEach((column) => {
+    map.set(column.id, props.todos.filter(todo => todo.todoColumnId === column.id));
+  });
+  return map;
 });
 
-function openCreateTodo(todoColumnId?: string) {
-  editingTodo.value = { todoColumnId: todoColumnId ?? "" } as TodoListItem;
-  todoItemDialog.value = true;
-}
-
-function openEditTodo(item: BaseListItem) {
-  if (!todos.value)
-    return;
-  const todo = todos.value.find(t => t.id === item.id);
-  if (!todo)
-    return;
-
-  editingTodo.value = {
-    id: todo.id,
-    name: todo.title,
-    description: todo.description ?? "",
-    priority: todo.priority,
-    dueDate: todo.dueDate ? parseStableDate(todo.dueDate) : null,
-    todoColumnId: todo.todoColumnId ?? "",
-    checked: todo.completed,
-    order: todo.order,
-    shoppingListId: todo.todoColumnId || "",
-    notes: todo.description,
-  };
-  todoItemDialog.value = true;
-}
-
-async function handleTodoSave(todoData: TodoListItem) {
-  try {
-    if (editingTodo.value?.id) {
-      const { data: cachedTodos } = useNuxtData("todos");
-      const previousTodos = cachedTodos.value ? [...cachedTodos.value] : [];
-
-      if (cachedTodos.value && Array.isArray(cachedTodos.value)) {
-        const todoIndex = cachedTodos.value.findIndex((t: Todo) => t.id === editingTodo.value!.id);
-        if (todoIndex !== -1) {
-          const currentTodo = cachedTodos.value[todoIndex];
-          const updatedTodo = {
-            ...currentTodo,
-            title: todoData.name,
-            description: todoData.description,
-            priority: todoData.priority,
-            dueDate: todoData.dueDate,
-            completed: todoData.checked,
-            order: todoData.order,
-            todoColumnId: todoData.todoColumnId,
-          };
-          const updatedTodos = [...cachedTodos.value];
-          updatedTodos[todoIndex] = updatedTodo;
-          cachedTodos.value = updatedTodos;
-        }
-      }
-
-      try {
-        await updateTodo(editingTodo.value.id, {
-          title: todoData.name,
-          description: todoData.description,
-          priority: todoData.priority,
-          dueDate: todoData.dueDate,
-          completed: todoData.checked,
-          order: todoData.order,
-          todoColumnId: todoData.todoColumnId,
-        });
-        consola.debug("Todo Lists: Todo updated successfully");
-      }
-      catch (error) {
-        if (cachedTodos.value && previousTodos.length > 0) {
-          cachedTodos.value.splice(0, cachedTodos.value.length, ...previousTodos);
-        }
-        throw error;
-      }
-    }
-    else {
-      const { data: cachedTodos } = useNuxtData("todos");
-      const previousTodos = cachedTodos.value ? [...cachedTodos.value] : [];
-      const newTodo: Todo = {
-        id: `temp-${Date.now()}`,
-        title: todoData.name,
-        description: todoData.description,
-        priority: todoData.priority,
-        dueDate: todoData.dueDate,
-        completed: todoData.checked,
-        order: todoData.order,
-        todoColumnId: todoData.todoColumnId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      if (cachedTodos.value && Array.isArray(cachedTodos.value)) {
-        const updatedTodos = [...cachedTodos.value, newTodo];
-        cachedTodos.value = updatedTodos;
-      }
-
-      try {
-        const createdTodo = await createTodo({
-          title: todoData.name,
-          description: todoData.description,
-          priority: todoData.priority,
-          dueDate: todoData.dueDate,
-          completed: todoData.checked,
-          order: todoData.order,
-          todoColumnId: todoData.todoColumnId,
-        });
-        consola.debug("Todo Lists: Todo created successfully");
-
-        if (cachedTodos.value && Array.isArray(cachedTodos.value)) {
-          const tempIndex = cachedTodos.value.findIndex((t: Todo) => t.id === newTodo.id);
-          if (tempIndex !== -1) {
-            const updatedTodos = [...cachedTodos.value];
-            updatedTodos[tempIndex] = createdTodo;
-            cachedTodos.value = updatedTodos;
-          }
-        }
-      }
-      catch (error) {
-        if (cachedTodos.value && previousTodos.length > 0) {
-          cachedTodos.value.splice(0, cachedTodos.value.length, ...previousTodos);
-        }
-        throw error;
-      }
-    }
-
-    const wasEdit = Boolean(editingTodo.value?.id);
-    todoItemDialog.value = false;
-    editingTodo.value = null;
-    showSuccess("Todo Saved", wasEdit ? "Todo updated successfully" : "Todo created successfully");
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to save todo:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Save Todo", errorMessage);
-  }
-}
-
-async function handleTodoDelete(todoId: string) {
-  try {
-    const { data: cachedTodos } = useNuxtData("todos");
-    const previousTodos = cachedTodos.value ? [...cachedTodos.value] : [];
-
-    if (cachedTodos.value && Array.isArray(cachedTodos.value)) {
-      const updatedTodos = cachedTodos.value.filter((t: Todo) => t.id !== todoId);
-      cachedTodos.value = updatedTodos;
-    }
-
-    try {
-      await deleteTodo(todoId);
-      consola.debug("Todo Lists: Todo deleted successfully");
-      showSuccess("Todo Deleted", "Todo has been removed successfully");
-    }
-    catch (err) {
-      if (cachedTodos.value && previousTodos.length > 0) {
-        cachedTodos.value.splice(0, cachedTodos.value.length, ...previousTodos);
-      }
-      throw err;
-    }
-
-    todoItemDialog.value = false;
-    editingTodo.value = null;
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to delete todo:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Delete Todo", errorMessage);
-  }
-}
-
-async function handleColumnSave(columnData: { name: string }) {
-  try {
-    if (editingColumn.value?.id) {
-      const { data: cachedColumns } = useNuxtData("todo-columns");
-      const previousColumns = cachedColumns.value ? [...cachedColumns.value] : [];
-
-      if (cachedColumns.value && Array.isArray(cachedColumns.value)) {
-        const columnIndex = cachedColumns.value.findIndex((c: TodoColumn) => c.id === editingColumn.value!.id);
-        if (columnIndex !== -1) {
-          cachedColumns.value[columnIndex] = { ...cachedColumns.value[columnIndex], ...columnData };
-        }
-      }
-
-      try {
-        await updateTodoColumn(editingColumn.value.id, columnData);
-        consola.debug("Todo Lists: Todo column updated successfully");
-      }
-      catch (error) {
-        if (cachedColumns.value && previousColumns.length > 0) {
-          cachedColumns.value.splice(0, cachedColumns.value.length, ...previousColumns);
-        }
-        throw error;
-      }
-    }
-    else {
-      const { data: cachedColumns } = useNuxtData("todo-columns");
-      const previousColumns = cachedColumns.value ? [...cachedColumns.value] : [];
-      const newColumn = {
-        ...columnData,
-        id: `temp-${Date.now()}`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isDefault: false,
-        order: (cachedColumns.value?.length || 0) + 1,
-        user: null,
-        _count: { todos: 0 },
-      };
-
-      if (cachedColumns.value && Array.isArray(cachedColumns.value)) {
-        cachedColumns.value.push(newColumn);
-      }
-
-      try {
-        const createdColumn = await createTodoColumn(columnData);
-        consola.debug("Todo Lists: Todo column created successfully");
-
-        if (cachedColumns.value && Array.isArray(cachedColumns.value)) {
-          const tempIndex = cachedColumns.value.findIndex((c: TodoColumn) => c.id === newColumn.id);
-          if (tempIndex !== -1) {
-            cachedColumns.value[tempIndex] = createdColumn;
-          }
-        }
-      }
-      catch (error) {
-        if (cachedColumns.value && previousColumns.length > 0) {
-          cachedColumns.value.splice(0, cachedColumns.value.length, ...previousColumns);
-        }
-        throw error;
-      }
-    }
-
-    const wasEdit = Boolean(editingColumn.value?.id);
-    todoColumnDialog.value = false;
-    editingColumn.value = null;
-    showSuccess("Column Saved", wasEdit ? "Column updated successfully" : "Column created successfully");
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to save todo column:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Save Column", errorMessage);
-  }
-}
-
-async function handleColumnDelete(columnId: string) {
-  try {
-    const { data: cachedColumns } = useNuxtData("todo-columns");
-    const previousColumns = cachedColumns.value ? [...cachedColumns.value] : [];
-
-    if (cachedColumns.value && Array.isArray(cachedColumns.value)) {
-      cachedColumns.value.splice(0, cachedColumns.value.length, ...cachedColumns.value.filter((c: TodoColumn) => c.id !== columnId));
-    }
-
-    try {
-      await deleteTodoColumn(columnId);
-      consola.debug("Todo Lists: Todo column deleted successfully");
-      showSuccess("Column Deleted", "Column has been removed successfully");
-    }
-    catch (err) {
-      if (cachedColumns.value && previousColumns.length > 0) {
-        cachedColumns.value.splice(0, cachedColumns.value.length, ...previousColumns);
-      }
-      throw err;
-    }
-
-    todoColumnDialog.value = false;
-    editingColumn.value = null;
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to delete todo column:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Delete Column", errorMessage);
-  }
-}
-
-async function handleReorderColumn(columnIndex: number, direction: "left" | "right") {
-  if (!todoColumns.value)
-    return;
-
-  const column = todoColumns.value[columnIndex];
-  if (!column)
-    return;
-
-  if (reorderingColumns.value.has(column.id))
-    return;
-
-  const targetIndex = direction === "left" ? columnIndex - 1 : columnIndex + 1;
-
-  if (targetIndex < 0 || targetIndex >= todoColumns.value.length)
-    return;
-
-  reorderingColumns.value.add(column.id);
-
-  try {
-    const { data: cachedColumns } = useNuxtData("todo-columns");
-    const previousColumns = cachedColumns.value ? [...cachedColumns.value] : [];
-
-    try {
-      await reorderTodoColumns(columnIndex, targetIndex);
-      consola.debug("Todo Lists: Column reordered successfully");
-
-      if (cachedColumns.value && Array.isArray(cachedColumns.value)) {
-        const columns = [...cachedColumns.value].sort((a, b) => (a.order || 0) - (b.order || 0));
-        const currentIndex = columns.findIndex((c: TodoColumn) => c.id === column.id);
-
-        if (currentIndex !== -1) {
-          if (direction === "left" && currentIndex > 0) {
-            [columns[currentIndex], columns[currentIndex - 1]] = [columns[currentIndex - 1], columns[currentIndex]];
-            columns[currentIndex].order = currentIndex;
-            columns[currentIndex - 1].order = currentIndex - 1;
-          }
-          else if (direction === "right" && currentIndex < columns.length - 1) {
-            [columns[currentIndex], columns[currentIndex + 1]] = [columns[currentIndex + 1], columns[currentIndex]];
-            columns[currentIndex].order = currentIndex;
-            columns[currentIndex + 1].order = currentIndex + 1;
-          }
-
-          cachedColumns.value.splice(0, cachedColumns.value.length, ...columns);
-        }
-      }
-    }
-    catch (error) {
-      if (cachedColumns.value && previousColumns.length > 0) {
-        cachedColumns.value.splice(0, cachedColumns.value.length, ...previousColumns);
-      }
-      throw error;
-    }
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to reorder column:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Reorder Column", errorMessage);
-  }
-  finally {
-    reorderingColumns.value.delete(column.id);
-  }
-}
-
-async function handleReorderTodo(itemId: string, direction: "up" | "down") {
-  if (reorderingTodos.value.has(itemId))
-    return;
-  reorderingTodos.value.add(itemId);
-
-  try {
-    if (!todos.value)
-      throw new Error("Todos not loaded");
-    const item = todos.value.find(t => t.id === itemId);
-    if (!item)
-      throw new Error("Todo not found");
-
-    const { data: cachedTodos } = useNuxtData("todos");
-    const previousTodos = cachedTodos.value ? [...cachedTodos.value] : [];
-
-    try {
-      await reorderTodo(itemId, direction, item.todoColumnId ?? null);
-      consola.debug("Todo Lists: Todo reordered successfully");
-
-      if (cachedTodos.value && Array.isArray(cachedTodos.value)) {
-        const sameColumnTodos = cachedTodos.value
-          .filter((t: Todo) => t.todoColumnId === item.todoColumnId && t.completed === item.completed)
-          .sort((a, b) => (a.order || 0) - (b.order || 0));
-
-        const currentIndex = sameColumnTodos.findIndex((t: Todo) => t.id === itemId);
-
-        if (currentIndex !== -1) {
-          if (direction === "up" && currentIndex > 0) {
-            const todoAbove = sameColumnTodos[currentIndex - 1];
-            const currentTodo = sameColumnTodos[currentIndex];
-
-            const currentTodoIndex = cachedTodos.value.findIndex((t: Todo) => t.id === currentTodo.id);
-            const todoAboveIndex = cachedTodos.value.findIndex((t: Todo) => t.id === todoAbove.id);
-
-            if (currentTodoIndex !== -1 && todoAboveIndex !== -1) {
-              const tempOrder = cachedTodos.value[currentTodoIndex].order;
-              cachedTodos.value[currentTodoIndex].order = cachedTodos.value[todoAboveIndex].order;
-              cachedTodos.value[todoAboveIndex].order = tempOrder;
-            }
-          }
-          else if (direction === "down" && currentIndex < sameColumnTodos.length - 1) {
-            const todoBelow = sameColumnTodos[currentIndex + 1];
-            const currentTodo = sameColumnTodos[currentIndex];
-
-            const currentTodoIndex = cachedTodos.value.findIndex((t: Todo) => t.id === currentTodo.id);
-            const todoBelowIndex = cachedTodos.value.findIndex((t: Todo) => t.id === todoBelow.id);
-
-            if (currentTodoIndex !== -1 && todoBelowIndex !== -1) {
-              const tempOrder = cachedTodos.value[currentTodoIndex].order;
-              cachedTodos.value[currentTodoIndex].order = cachedTodos.value[todoBelowIndex].order;
-              cachedTodos.value[todoBelowIndex].order = tempOrder;
-            }
-          }
-        }
-      }
-    }
-    catch (error) {
-      if (cachedTodos.value && previousTodos.length > 0) {
-        cachedTodos.value.splice(0, cachedTodos.value.length, ...previousTodos);
-      }
-      throw error;
-    }
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to reorder todo:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Reorder Todo", errorMessage);
-  }
-  finally {
-    reorderingTodos.value.delete(itemId);
-  }
-}
-
-async function handleClearCompleted(columnId: string) {
-  try {
-    const { data: cachedTodos } = useNuxtData("todos");
-    const previousTodos = cachedTodos.value ? [...cachedTodos.value] : [];
-    const completedTodos = cachedTodos.value?.filter((t: Todo) => t.todoColumnId === columnId && t.completed) || [];
-
-    if (cachedTodos.value && Array.isArray(cachedTodos.value)) {
-      const updatedTodos = cachedTodos.value.filter((t: Todo) => !(t.todoColumnId === columnId && t.completed));
-      cachedTodos.value = updatedTodos;
-    }
-
-    try {
-      await clearCompleted(columnId, completedTodos);
-      consola.debug("Todo Lists: Completed todos cleared successfully");
-      showSuccess("Completed Cleared", "Completed todos have been removed");
-    }
-    catch (err) {
-      if (cachedTodos.value && previousTodos.length > 0) {
-        cachedTodos.value.splice(0, cachedTodos.value.length, ...previousTodos);
-      }
-      throw err;
-    }
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to clear completed todos:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Clear Completed", errorMessage);
-  }
-}
-
-function openEditColumn(column: TodoListWithIntegration) {
-  editingColumn.value = { ...column };
-  todoColumnDialog.value = true;
-}
-
-async function handleToggleTodo(itemId: string, completed: boolean) {
-  try {
-    const { data: cachedTodos } = useNuxtData("todos");
-    const previousTodos = cachedTodos.value ? [...cachedTodos.value] : [];
-
-    if (cachedTodos.value && Array.isArray(cachedTodos.value)) {
-      const todoIndex = cachedTodos.value.findIndex((t: Todo) => t.id === itemId);
-      if (todoIndex !== -1) {
-        const currentTodo = cachedTodos.value[todoIndex];
-        const updatedTodo = { ...currentTodo, completed };
-        const updatedTodos = [...cachedTodos.value];
-        updatedTodos[todoIndex] = updatedTodo;
-        cachedTodos.value = updatedTodos;
-      }
-    }
-
-    try {
-      await toggleTodo(itemId, completed);
-      consola.debug("Todo Lists: Todo toggled successfully");
-    }
-    catch (err) {
-      if (cachedTodos.value && previousTodos.length > 0) {
-        cachedTodos.value.splice(0, cachedTodos.value.length, ...previousTodos);
-      }
-      throw err;
-    }
-  }
-  catch (err) {
-    consola.error("Todo Lists: Failed to toggle todo:", err);
-    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-    showError("Failed to Update Todo", errorMessage);
-  }
+function getColumnTodos(columnId: string) {
+  return computedTodosByColumn.value.get(columnId) || [];
 }
 </script>
 
 <template>
-  <div class="flex h-full w-full flex-col">
-    <div class="flex-1 overflow-y-auto p-4">
-      <GlobalList
-        :lists="todoLists"
-        :loading="columnsLoading || todosLoading"
-        empty-state-icon="i-lucide-list-todo"
-        empty-state-title="No todo lists found"
-        empty-state-description="Create your first todo column to get started"
-        show-reorder
-        :show-edit="(list) => 'isDefault' in list ? !list.isDefault : true"
-        show-add
-        show-edit-item
-        show-completed
-        show-progress
-        show-integration-icons
-        @create="todoColumnDialog = true; editingColumn = null"
-        @edit="openEditColumn($event as TodoListWithIntegration)"
-        @add-item="openCreateTodo($event)"
-        @edit-item="openEditTodo($event)"
-        @toggle-item="handleToggleTodo"
-        @reorder-item="handleReorderTodo"
-        @reorder-list="(listId, direction) => handleReorderColumn(todoLists.findIndex(l => l.id === listId), direction === 'up' ? 'left' : 'right')"
-        @clear-completed="handleClearCompleted"
-      />
+  <div class="flex-1 overflow-x-auto overflow-y-hidden">
+    <div class="flex h-full min-w-max p-4 gap-4 items-start">
+      <div
+        v-for="column in columns"
+        :key="column.id"
+        class="w-80 h-full flex flex-col bg-slate-50 dark:bg-slate-900 rounded-xl border border-default shadow-sm group/column transition-all duration-200"
+        :class="{ 'ring-2 ring-primary-500 bg-primary-50/10 scale-[1.01]': dragOverColumn === column.id }"
+        @dragover.prevent
+        @dragenter="onDragEnter(column.id)"
+        @dragleave="onDragLeave"
+        @drop="onDrop($event, column.id)"
+      >
+        <div class="p-3 flex items-center justify-between border-b border-default bg-white/50 dark:bg-black/50 rounded-t-xl shrink-0">
+          <div class="flex items-center gap-2 overflow-hidden">
+            <h3 class="font-bold text-sm text-slate-700 dark:text-slate-300 truncate">
+              {{ column.name }}
+            </h3>
+            <span class="px-2 py-0.5 rounded-full bg-slate-200/50 dark:bg-slate-800/50 text-[10px] font-bold text-slate-500 shrink-0">
+              {{ getColumnTodos(column.id).length }}
+            </span>
+          </div>
+          <div class="flex items-center gap-1 opacity-0 group-hover/column:opacity-100 transition-opacity">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-arrow-left"
+              size="xs"
+              class="hidden sm:flex"
+              :disabled="loading"
+              @click="emit('reorderColumn', column.id, 'up')"
+            />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-arrow-right"
+              size="xs"
+              class="hidden sm:flex"
+              :disabled="loading"
+              @click="emit('reorderColumn', column.id, 'down')"
+            />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-pencil"
+              size="xs"
+              @click="emit('editColumn', column)"
+            />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-plus"
+              size="xs"
+              @click="emit('addTodo', column.id)"
+            />
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-0">
+          <div
+            v-for="todo in getColumnTodos(column.id)"
+            :key="todo.id"
+            draggable="true"
+            class="bg-white dark:bg-slate-800 p-3 rounded-lg border border-default shadow-sm hover:shadow-md hover:border-primary-500/50 transition-all cursor-grab active:cursor-grabbing group/todo"
+            @dragstart="onDragStart($event, todo)"
+          >
+            <div class="flex items-start gap-3">
+              <UCheckbox
+                :model-value="todo.completed"
+                class="mt-0.5"
+                @update:model-value="(val) => emit('toggleTodo', todo.id, !!val)"
+              />
+              <div
+                class="flex-1 min-w-0"
+                @click="emit('editTodo', todo)"
+              >
+                <div
+                  class="text-sm font-medium leading-tight mb-1 truncate"
+                  :class="{ 'line-through text-slate-400': todo.completed }"
+                >
+                  {{ todo.title }}
+                </div>
+                <div
+                  v-if="todo.description"
+                  class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed"
+                >
+                  {{ todo.description }}
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-2 flex items-center justify-end gap-1 opacity-0 group-hover/todo:opacity-100 transition-opacity h-6">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-arrow-up"
+                size="xs"
+                :disabled="loading"
+                @click.stop="emit('reorderTodo', todo.id, 'up')"
+              />
+              <UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-arrow-down"
+                size="xs"
+                :disabled="loading"
+                @click.stop="emit('reorderTodo', todo.id, 'down')"
+              />
+              <UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-pencil"
+                size="xs"
+                @click.stop="emit('editTodo', todo)"
+              />
+            </div>
+          </div>
+
+          <button
+            class="w-full py-2 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-400 hover:text-primary-500 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/20 transition-all flex items-center justify-center gap-1 group"
+            @click="emit('addTodo', column.id)"
+          >
+            <UIcon
+              name="i-lucide-plus"
+              class="w-3.5 h-3.5"
+            />
+            Add Task
+          </button>
+        </div>
+      </div>
+
+      <button
+        class="w-80 h-full flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-slate-400 hover:text-primary-500 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/20 transition-all gap-2 group"
+        @click="emit('addColumn')"
+      >
+        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary-100 dark:group-hover:bg-primary-900 transition-colors">
+          <UIcon
+            name="i-lucide-plus"
+            class="w-6 h-6"
+          />
+        </div>
+        <span class="font-bold text-sm">Add New Column</span>
+      </button>
     </div>
-
-    <GlobalFloatingActionButton
-      icon="i-lucide-plus"
-      label="Add new todo column"
-      color="primary"
-      size="lg"
-      position="bottom-right"
-      @click="todoColumnDialog = true; editingColumn = null"
-    />
-
-    <TodoItemDialog
-      :is-open="todoItemDialog"
-      :todo-columns="mutableTodoColumns"
-      :todo="editingTodoTyped || null"
-      @close="todoItemDialog = false; editingTodo = null"
-      @save="handleTodoSave"
-      @delete="handleTodoDelete"
-    />
-
-    <TodoColumnDialog
-      :is-open="todoColumnDialog"
-      :column="editingColumn ?? undefined"
-      @close="todoColumnDialog = false; editingColumn = null"
-      @save="handleColumnSave"
-      @delete="handleColumnDelete"
-    />
   </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+</style>
