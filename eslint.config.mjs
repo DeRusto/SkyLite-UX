@@ -22,6 +22,7 @@ export default withNuxt(antfu({
     "docker-compose-example.yaml",
     "docs/**",
     ".playwright-cli/**",
+    "*.md",
   ],
 }, {
   rules: {
@@ -49,6 +50,7 @@ export default withNuxt(antfu({
         "CLAUDE.md",
         "LICENSE.md",
         "AGENTS.md",
+        /\.md$/i, // Ignore all markdown files
         /docker-compose\.yml$/i,
         /-docker-compose\.yml$/i,
         /clear-completed\.post\.ts$/i,
