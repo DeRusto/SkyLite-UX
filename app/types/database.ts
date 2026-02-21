@@ -50,7 +50,7 @@ export type TodoColumn = Omit<Prisma.TodoColumnGetPayload<{
     };
   };
 }>, "todos" | "createdAt" | "updatedAt"> & {
-  todos?: Prisma.TodoGetPayload<Record<string, never>>[];
+  readonly todos?: readonly Prisma.TodoGetPayload<Record<string, never>>[];
   createdAt: string;
   updatedAt: string;
 };
@@ -60,7 +60,7 @@ export type TodoColumnBasic = Pick<TodoColumn, "id" | "name"> & {
     id: string;
     name: string;
     avatar: string | null;
-  };
+  } | null;
 };
 
 export type BaseListItem = {
@@ -168,6 +168,11 @@ export type TodoWithOrderResponse = Omit<TodoWithOrder, "createdAt" | "updatedAt
 export type UserWithOrder = User & { todoOrder: number };
 
 export type ShoppingListWithOrder = ShoppingListWithItemsAndCount & { order: number };
+
+export type ShoppingListWithOrderResponse = Omit<ShoppingListWithOrder, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type RawIntegrationList = {
   readonly id: string;

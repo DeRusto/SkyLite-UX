@@ -25,7 +25,7 @@ export function useShoppingIntegrations() {
     shoppingIntegrations.forEach((integration) => {
       try {
         const integrationLists = getCachedIntegrationData("shopping", integration.id) as ShoppingList[];
-        if (integrationLists && Array.isArray(integrationLists)) {
+        if (Array.isArray(integrationLists)) {
           const listsWithIntegration = integrationLists.map((list: ShoppingList) => ({
             ...list,
             source: "integration" as const,
@@ -124,7 +124,10 @@ export function useShoppingIntegrations() {
           const fn = (service as unknown as { addItemToList?: (listId: string, itemData: CreateShoppingListItemInput) => Promise<ShoppingListItem> }).addItemToList;
           if (!fn)
             throw new Error(`Integration service ${integrationId} does not support adding items`);
-          return fn(listId, itemData);
+          const result = await fn(listId, itemData);
+          if (!result)
+            throw new Error(`Failed to add item to integration ${integrationId}: empty response`);
+          return result;
         },
         () => {
           if (integrationLists && Array.isArray(integrationLists)) {
@@ -155,7 +158,7 @@ export function useShoppingIntegrations() {
 
       // Reconciliation: Update temp item with real item
       const currentLists = getCachedIntegrationData("shopping", integrationId) as ShoppingList[];
-      if (currentLists && Array.isArray(currentLists)) {
+      if (Array.isArray(currentLists)) {
         const listIndex = currentLists.findIndex((l: ShoppingList) => l.id === listId);
         if (listIndex !== -1) {
           const list = currentLists[listIndex];
@@ -198,17 +201,20 @@ export function useShoppingIntegrations() {
     try {
       const updatedItem = await performOptimisticUpdate(
         async () => {
-          const fn = (service as unknown as { updateShoppingListItem?: (itemId: string, updates: UpdateShoppingListItemInput) => Promise<ShoppingListItem> }).updateShoppingListItem;
+          const fn = (service as any).updateShoppingListItem;
           if (!fn)
             throw new Error(`Integration service ${integrationId} does not support updating items`);
-          return fn(itemId, updates);
+          const result = await fn(itemId, updates);
+          if (!result)
+            throw new Error(`Failed to update item in integration ${integrationId}: empty response`);
+          return result;
         },
         () => {
           if (integrationLists && Array.isArray(integrationLists)) {
             let itemFound = false;
             const updatedLists = integrationLists.map((list: ShoppingList) => {
               const itemIndex = list.items?.findIndex((i: ShoppingListItem) => i.id === itemId);
-              if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
+              if (itemIndex !== -1 && list.items) {
                 itemFound = true;
                 const updatedItems = [...list.items];
                 updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates } as any;
@@ -233,7 +239,7 @@ export function useShoppingIntegrations() {
         let reconciled = false;
         const reconciledLists = currentLists.map((list: ShoppingList) => {
           const itemIndex = list.items?.findIndex((i: ShoppingListItem) => i.id === itemId);
-          if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
+          if (itemIndex !== -1 && list.items) {
             reconciled = true;
             const reconciledItems = [...list.items];
             reconciledItems[itemIndex] = updatedItem;
@@ -288,11 +294,11 @@ export function useShoppingIntegrations() {
     try {
       await performOptimisticUpdate(
         async () => {
-          const serviceObj = service as unknown as { deleteShoppingListItems?: (ids: string[]) => Promise<void> };
-          if (typeof serviceObj.deleteShoppingListItems !== "function") {
+          const fn = (service as any).deleteShoppingListItems;
+          if (typeof fn !== "function") {
             throw new TypeError(`Integration service ${integrationId} does not implement deleteShoppingListItems. Cannot clear items: ${itemsToDelete.join(", ")}`);
           }
-          await serviceObj.deleteShoppingListItems(itemsToDelete);
+          await fn(itemsToDelete);
         },
         () => {
           if (integrationLists && Array.isArray(integrationLists)) {

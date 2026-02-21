@@ -1,6 +1,6 @@
 import { consola } from "consola";
 
-import type { CalendarEvent } from "~/types/calendar";
+import type { CalendarEvent, CalendarEventResponse } from "~/types/calendar";
 import type { Integration } from "~/types/database";
 
 import { useAlertToast } from "~/composables/useAlertToast";
@@ -15,13 +15,17 @@ export function useCalendarEvents() {
   const loading = ref(false);
   const error = ref<string | null>(null);
 
-  const { data: events } = useNuxtData<CalendarEvent[]>("calendar-events");
+  const { data: events } = useNuxtData<CalendarEventResponse[]>("calendar-events");
   const { integrations } = useIntegrations();
   const { users } = useUsers();
   const { getEventUserColors, allEvents } = useCalendar();
   const { showSuccess, showError, showWarning } = useAlertToast();
 
-  const currentEvents = computed(() => events.value || []);
+  const currentEvents = computed(() => (events.value || []).map(event => ({
+    ...event,
+    start: new Date(event.start),
+    end: new Date(event.end),
+  })) as CalendarEvent[]);
   const typedIntegrations = computed(() => (integrations.value ?? []) as Integration[]);
 
   const fetchEvents = async () => {
@@ -55,7 +59,16 @@ export function useCalendarEvents() {
 
   const addEvent = async (event: CalendarEvent) => {
     try {
-      // Check if event is for a single user with a linked calendar
+      /**
+       * Current Implementation Detail:
+       * addEvent only syncs to an external calendar when exactly one user has a linked calendar.
+       * This avoids the complexity of syncing a single event across multiple external services
+       * and managing conflict resolution or multi-way sync states.
+       *
+       * TODO: Support syncing multi-user events across multiple linked calendars.
+       * This requires a strategy for mapping one SkyLite event to multiple external event IDs
+       * and handling updates/deletes consistently across all providers.
+       */
       const selectedUsers = event.users || [];
       if (selectedUsers.length === 1 && selectedUsers[0]) {
         const userId = selectedUsers[0].id;
@@ -102,15 +115,15 @@ export function useCalendarEvents() {
       // Local event optimistic update
       const previousEvents = structuredClone(events.value ?? []);
       const tempId = crypto.randomUUID();
-      const newEvent = {
+      const newEvent: CalendarEventResponse = {
         ...event,
+        start: event.start.toISOString(),
+        end: event.end.toISOString(),
         id: tempId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      } as any; // Temporary cast to match CalendarEventResponse shape for optimistic cache
 
       const createdEvent = await performOptimisticUpdate(
-        () => $fetch<CalendarEvent>("/api/calendar-events", {
+        () => $fetch<CalendarEventResponse>("/api/calendar-events", {
           method: "POST",
           body: {
             title: event.title,
@@ -126,7 +139,7 @@ export function useCalendarEvents() {
         }),
         () => {
           if (events.value && Array.isArray(events.value)) {
-            events.value.push(newEvent as any);
+            events.value.push(newEvent);
           }
         },
         () => {
@@ -137,7 +150,7 @@ export function useCalendarEvents() {
       );
 
       if (events.value && Array.isArray(events.value)) {
-        const tempIndex = events.value.findIndex((e: CalendarEvent) => e.id === tempId);
+        const tempIndex = events.value.findIndex((e: CalendarEventResponse) => e.id === tempId);
         if (tempIndex !== -1) {
           events.value[tempIndex] = createdEvent;
         }
@@ -193,7 +206,7 @@ export function useCalendarEvents() {
       const previousEvents = structuredClone(events.value ?? []);
 
       const updatedEvent = await performOptimisticUpdate(
-        () => $fetch<CalendarEvent>(`/api/calendar-events/${event.id}`, {
+        () => $fetch<CalendarEventResponse>(`/api/calendar-events/${event.id}`, {
           method: "PUT",
           body: {
             title: event.title,
@@ -209,9 +222,14 @@ export function useCalendarEvents() {
         }),
         () => {
           if (events.value && Array.isArray(events.value)) {
-            const eventIndex = events.value.findIndex((e: CalendarEvent) => e.id === event.id);
+            const eventIndex = events.value.findIndex((e: CalendarEventResponse) => e.id === event.id);
             if (eventIndex !== -1) {
-              events.value[eventIndex] = { ...events.value[eventIndex], ...event };
+              events.value[eventIndex] = {
+                ...events.value[eventIndex],
+                ...event,
+                start: event.start.toISOString(),
+                end: event.end.toISOString(),
+              } as any;
             }
           }
         },
@@ -224,7 +242,7 @@ export function useCalendarEvents() {
 
       // Reconciliation
       if (events.value && Array.isArray(events.value)) {
-        const eventIndex = events.value.findIndex((e: CalendarEvent) => e.id === event.id);
+        const eventIndex = events.value.findIndex((e: CalendarEventResponse) => e.id === event.id);
         if (eventIndex !== -1) {
           events.value[eventIndex] = updatedEvent;
         }
@@ -286,13 +304,12 @@ export function useCalendarEvents() {
       const previousEvents = structuredClone(events.value ?? []);
 
       await performOptimisticUpdate(
-        // @ts-expect-error - Excessive stack depth in Nuxt route types
-        () => $fetch(`/api/calendar-events/${eventId}`, {
-          method: "DELETE" as any,
+        () => $fetch<void>(`/api/calendar-events/${eventId}`, {
+          method: "DELETE",
         }),
         () => {
           if (events.value && Array.isArray(events.value)) {
-            const index = events.value.findIndex(e => e.id === eventId);
+            const index = events.value.findIndex((e: CalendarEventResponse) => e.id === eventId);
             if (index !== -1) {
               events.value.splice(index, 1);
             }

@@ -1,19 +1,23 @@
 import { consola } from "consola";
 
-import type { CreateShoppingListInput, CreateShoppingListItemInput, ShoppingListItem, ShoppingListWithOrder, UpdateShoppingListItemInput } from "~/types/database";
+import type { CreateShoppingListInput, CreateShoppingListItemInput, ShoppingListItem, ShoppingListWithOrder, ShoppingListWithOrderResponse, UpdateShoppingListItemInput } from "~/types/database";
 
 import { useAlertToast } from "~/composables/useAlertToast";
 import { getErrorMessage } from "~/utils/error";
 import { performOptimisticUpdate } from "~/utils/optimistic";
 
 export function useShoppingLists() {
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const loading = useState<boolean>("shopping-lists-loading", () => false);
+  const error = useState<string | null>("shopping-lists-error", () => null);
 
-  const { data: shoppingLists } = useNuxtData<ShoppingListWithOrder[]>("native-shopping-lists");
+  const { data: shoppingLists } = useNuxtData<ShoppingListWithOrderResponse[]>("native-shopping-lists");
   const { showError } = useAlertToast();
 
-  const currentShoppingLists = computed(() => shoppingLists.value || []);
+  const currentShoppingLists = computed(() => (shoppingLists.value || []).map(list => ({
+    ...list,
+    createdAt: new Date(list.createdAt),
+    updatedAt: new Date(list.updatedAt),
+  })) as ShoppingListWithOrder[]);
 
   const getShoppingLists = async () => {
     loading.value = true;
@@ -35,11 +39,11 @@ export function useShoppingLists() {
   const createShoppingList = async (listData: CreateShoppingListInput) => {
     const previousLists = structuredClone(shoppingLists.value ?? []);
     const tempId = crypto.randomUUID();
-    const newList: ShoppingListWithOrder = {
+    const newList: ShoppingListWithOrderResponse = {
       id: tempId,
       name: listData.name,
-      createdAt: new Date().toISOString() as any,
-      updatedAt: new Date().toISOString() as any,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       order: listData.order ?? (shoppingLists.value?.length || 0) + 1,
       items: [],
       _count: { items: 0 },
@@ -47,7 +51,7 @@ export function useShoppingLists() {
 
     try {
       const createdList = await performOptimisticUpdate(
-        () => $fetch<ShoppingListWithOrder>("/api/shopping-lists", {
+        () => $fetch<ShoppingListWithOrderResponse>("/api/shopping-lists", {
           method: "POST",
           body: listData,
         }),
@@ -64,7 +68,7 @@ export function useShoppingLists() {
       );
 
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-        const tempIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === tempId);
+        const tempIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrderResponse) => l.id === tempId);
         if (tempIndex !== -1) {
           shoppingLists.value[tempIndex] = createdList;
         }
@@ -84,13 +88,13 @@ export function useShoppingLists() {
 
     try {
       const updatedListFromResponse = await performOptimisticUpdate(
-        () => $fetch<ShoppingListWithOrder>(`/api/shopping-lists/${listId}`, {
+        () => $fetch<ShoppingListWithOrderResponse>(`/api/shopping-lists/${listId}`, {
           method: "PUT",
           body: updates,
         }),
         () => {
           if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrderResponse) => l.id === listId);
             if (listIndex !== -1) {
               shoppingLists.value[listIndex] = { ...shoppingLists.value[listIndex], ...updates } as any;
             }
@@ -105,7 +109,7 @@ export function useShoppingLists() {
 
       // Reconciliation
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-        const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+        const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrderResponse) => l.id === listId);
         if (listIndex !== -1) {
           shoppingLists.value[listIndex] = updatedListFromResponse;
         }
@@ -201,7 +205,7 @@ export function useShoppingLists() {
         }),
         () => {
           if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrderResponse) => l.id === listId);
             if (listIndex !== -1) {
               const list = shoppingLists.value[listIndex];
               if (list) {
@@ -220,7 +224,7 @@ export function useShoppingLists() {
       );
 
       if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-        const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+        const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrderResponse) => l.id === listId);
         if (listIndex !== -1) {
           const list = shoppingLists.value[listIndex];
           if (list && list.items) {
@@ -249,14 +253,14 @@ export function useShoppingLists() {
     try {
       return await performOptimisticUpdate(
         async () => {
-          await $fetch(`/api/shopping-lists/${listId}`, {
-            method: "DELETE" as any,
+          await $fetch<void>(`/api/shopping-lists/${listId}`, {
+            method: "DELETE",
           });
           return true;
         },
         () => {
           if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrderResponse) => l.id === listId);
             if (listIndex !== -1) {
               shoppingLists.value.splice(listIndex, 1);
             }
@@ -324,13 +328,20 @@ export function useShoppingLists() {
         .map(list => list.id);
 
       await performOptimisticUpdate(
+        // @ts-expect-error - Excessive stack depth in Nuxt route types
         () => $fetch("/api/shopping-lists/reorder", {
           method: "PUT",
           body: { listIds: newOrder },
         }),
         () => {
           if (shoppingLists.value) {
-            shoppingLists.value.splice(0, shoppingLists.value.length, ...updatedLists);
+            // Update the cache with correctly typed objects
+            const updatedCache = updatedLists.map(list => ({
+              ...list,
+              createdAt: list.createdAt.toISOString(),
+              updatedAt: list.updatedAt.toISOString(),
+            }));
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...updatedCache as any);
           }
         },
         () => {
@@ -436,7 +447,7 @@ export function useShoppingLists() {
         }),
         () => {
           if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
-            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrder) => l.id === listId);
+            const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrderResponse) => l.id === listId);
             if (listIndex !== -1) {
               const list = shoppingLists.value[listIndex];
               if (list) {

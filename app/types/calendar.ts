@@ -35,3 +35,13 @@ export type PlaceholderEvent = CalendarEvent & {
   isPlaceholder: true;
   position: number;
 };
+
+export type TempCalendarEvent = CalendarEvent & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CalendarEventResponse = Omit<CalendarEvent, "start" | "end"> & {
+  start: string;
+  end: string;
+};

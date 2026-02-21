@@ -10,7 +10,7 @@ import { useStableDate } from "~/composables/useStableDate";
 const props = defineProps<{
   todo: TodoListItem | null;
   isOpen: boolean;
-  todoColumns: TodoColumnBasic[];
+  todoColumns: readonly TodoColumnBasic[];
 }>();
 
 const emit = defineEmits<{

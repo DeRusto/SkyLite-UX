@@ -2,12 +2,9 @@
 import { consola } from "consola";
 
 import type { Todo, TodoColumn } from "~/types/database";
+import type { TodoListProps } from "~/types/todo";
 
-const props = defineProps<{
-  columns: TodoColumn[];
-  todos: Todo[];
-  loading: boolean;
-}>();
+const props = defineProps<TodoListProps>();
 
 const emit = defineEmits<{
   (e: "addColumn"): void;
@@ -20,6 +17,8 @@ const emit = defineEmits<{
   (e: "moveTodo", todoId: string, newColumnId: string): void;
 }>();
 
+const dragOverColumn = ref<string | null>(null);
+
 function onDragStart(event: DragEvent, todo: Todo) {
   if (event.dataTransfer) {
     event.dataTransfer.setData("application/json", JSON.stringify(todo));
@@ -27,8 +26,17 @@ function onDragStart(event: DragEvent, todo: Todo) {
   }
 }
 
+function onDragEnter(columnId: string) {
+  dragOverColumn.value = columnId;
+}
+
+function onDragLeave() {
+  dragOverColumn.value = null;
+}
+
 function onDrop(event: DragEvent, columnId: string) {
   event.preventDefault();
+  dragOverColumn.value = null;
   const data = event.dataTransfer?.getData("application/json");
   if (data) {
     try {
@@ -43,8 +51,16 @@ function onDrop(event: DragEvent, columnId: string) {
   }
 }
 
+const computedTodosByColumn = computed(() => {
+  const map = new Map<string, Todo[]>();
+  props.columns.forEach((column) => {
+    map.set(column.id, props.todos.filter(todo => todo.todoColumnId === column.id));
+  });
+  return map;
+});
+
 function getColumnTodos(columnId: string) {
-  return props.todos.filter(todo => todo.todoColumnId === columnId);
+  return computedTodosByColumn.value.get(columnId) || [];
 }
 </script>
 
@@ -54,8 +70,11 @@ function getColumnTodos(columnId: string) {
       <div
         v-for="column in columns"
         :key="column.id"
-        class="w-80 h-full flex flex-col bg-slate-50 dark:bg-slate-900 rounded-xl border border-default shadow-sm group/column"
+        class="w-80 h-full flex flex-col bg-slate-50 dark:bg-slate-900 rounded-xl border border-default shadow-sm group/column transition-all duration-200"
+        :class="{ 'ring-2 ring-primary-500 bg-primary-50/10 scale-[1.01]': dragOverColumn === column.id }"
         @dragover.prevent
+        @dragenter="onDragEnter(column.id)"
+        @dragleave="onDragLeave"
         @drop="onDrop($event, column.id)"
       >
         <div class="p-3 flex items-center justify-between border-b border-default bg-white/50 dark:bg-black/50 rounded-t-xl shrink-0">

@@ -13,7 +13,12 @@ export function useTodos() {
   const { data: todos } = useNuxtData<TodoWithOrderResponse[]>("todos");
   const { showError } = useAlertToast();
 
-  const currentTodos = computed(() => (todos.value || []) as unknown as TodoWithOrder[]);
+  const currentTodos = computed(() => (todos.value || []).map(todo => ({
+    ...todo,
+    createdAt: new Date(todo.createdAt),
+    updatedAt: new Date(todo.updatedAt),
+    dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
+  })) as TodoWithOrder[]);
 
   const fetchTodos = async () => {
     loading.value = true;
