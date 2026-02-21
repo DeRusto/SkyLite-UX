@@ -46,8 +46,6 @@ export function useCalendarEvents() {
     }
   };
 
-  const createEvent = async (eventData: Omit<CalendarEvent, "id">) => {
-    error.value = null;
   function getIntegrationEventId(event: CalendarEvent, integration: Integration) {
     const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
     const expectedPrefix = config?.idPrefix || integration.service;
