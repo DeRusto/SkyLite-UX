@@ -13,19 +13,6 @@ export default withNuxt(antfu({
     semi: true,
     quotes: "double",
   },
-<<<<<<< HEAD
-  ignores: [
-    ".pnpm-store/**",
-    "**/migrations/*",
-    ".gitignore",
-    ".devcontainer/**",
-    ".github/**",
-    "docker-compose-example.yaml",
-    "docs/**",
-    ".playwright-cli/**",
-    "*.md",
-  ],
-=======
   ignores: [
     ".pnpm-store/**",
     "**/migrations/*",
