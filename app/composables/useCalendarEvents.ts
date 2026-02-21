@@ -46,8 +46,6 @@ export function useCalendarEvents() {
     }
   };
 
-  const createEvent = async (eventData: Omit<CalendarEvent, "id">) => {
-    error.value = null;
   function getIntegrationEventId(event: CalendarEvent, integration: Integration) {
     const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
     const expectedPrefix = config?.idPrefix || integration.service;
@@ -60,6 +58,7 @@ export function useCalendarEvents() {
   }
 
   const addEvent = async (event: CalendarEvent) => {
+    error.value = null;
     try {
       /**
        * Current Implementation Detail:
@@ -169,6 +168,7 @@ export function useCalendarEvents() {
   };
 
   const updateEvent = async (event: CalendarEvent) => {
+    error.value = null;
     try {
       if (event.integrationId) {
         const integration = typedIntegrations.value.find(i => i.id === event.integrationId);
@@ -261,6 +261,7 @@ export function useCalendarEvents() {
   };
 
   const deleteEvent = async (eventId: string) => {
+    error.value = null;
     try {
       const event = allEvents.value.find(e => e.id === eventId) as CalendarEvent | undefined;
 
