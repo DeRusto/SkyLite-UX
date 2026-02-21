@@ -12,8 +12,8 @@ import { getErrorMessage } from "~/utils/error";
 import { performOptimisticUpdate } from "~/utils/optimistic";
 
 export function useCalendarEvents() {
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const loading = useState<boolean>("calendar-events-loading", () => false);
+  const error = useState<string | null>("calendar-events-error", () => null);
 
   const { data: events } = useNuxtData<CalendarEventResponse[]>("calendar-events");
   const { integrations } = useIntegrations();
@@ -46,6 +46,8 @@ export function useCalendarEvents() {
     }
   };
 
+  const createEvent = async (eventData: Omit<CalendarEvent, "id">) => {
+    error.value = null;
   function getIntegrationEventId(event: CalendarEvent, integration: Integration) {
     const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
     const expectedPrefix = config?.idPrefix || integration.service;
