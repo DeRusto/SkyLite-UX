@@ -100,28 +100,44 @@ export default defineEventHandler(async (event) => {
     // If albums are selected, get photos from those albums
     if (selectedAlbums.length > 0) {
       photoIds = new Set<string>();
-      await Promise.all(selectedAlbums.map(async (albumId) => {
-        try {
-          const albumResponse = await fetch(`${baseUrl}/api/albums/${albumId}`, { headers });
-          if (albumResponse.ok) {
-            const albumData = await albumResponse.json() as ImmichAlbumAssets;
-            if (albumData.assets) {
-              for (const asset of albumData.assets) {
-                if (asset.type === "IMAGE") {
-                  photoIds!.add(asset.id);
-                }
+      const albumResults = [];
+      const batchSize = 5;
+
+      for (let i = 0; i < selectedAlbums.length; i += batchSize) {
+        const batch = selectedAlbums.slice(i, i + batchSize);
+        const batchResults = await Promise.all(
+          batch.map(async (albumId) => {
+            try {
+              const response = await fetch(`${baseUrl}/api/albums/${albumId}`, { headers });
+              if (response.ok) {
+                const data = (await response.json()) as ImmichAlbumAssets;
+                return { data, success: true as const };
+              }
+              consola.warn(`Album fetch for ${albumId} returned HTTP ${response.status}`);
+            }
+            catch (err) {
+              consola.warn(`Failed to fetch album ${albumId}:`, err);
+            }
+            return { data: undefined, success: false as const };
+          }),
+        );
+        albumResults.push(...batchResults);
+      }
+
+      for (const result of albumResults) {
+        if (result.success) {
+          if (result.data.assets) {
+            for (const asset of result.data.assets) {
+              if (asset.type === "IMAGE") {
+                photoIds.add(asset.id);
               }
             }
           }
-          else {
-            albumFetchErrors++;
-          }
         }
-        catch (err) {
-          consola.warn(`Failed to fetch album ${albumId}:`, err);
+        else {
           albumFetchErrors++;
         }
-      }));
+      }
     }
 
     // If people are selected, get photos of those people
@@ -129,35 +145,51 @@ export default defineEventHandler(async (event) => {
     let personFetchErrors = 0;
     if (selectedPeople.length > 0) {
       personPhotoIds = new Set<string>();
-      await Promise.all(selectedPeople.map(async (personId) => {
-        try {
-          // Use Immich search/metadata API to find photos of a specific person
-          const searchResponse = await fetch(`${baseUrl}/api/search/metadata`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              personIds: [personId],
-              type: "IMAGE",
-              size: 1000,
-            }),
-          });
-          if (searchResponse.ok) {
-            const searchData = await searchResponse.json() as ImmichSearchResult;
-            if (searchData.assets?.items) {
-              for (const asset of searchData.assets.items) {
-                personPhotoIds!.add(asset.id);
+      const personResults = [];
+      const batchSize = 5;
+
+      for (let i = 0; i < selectedPeople.length; i += batchSize) {
+        const batch = selectedPeople.slice(i, i + batchSize);
+        const batchResults = await Promise.all(
+          batch.map(async (personId) => {
+            try {
+              // Use Immich search/metadata API to find photos of a specific person
+              const response = await fetch(`${baseUrl}/api/search/metadata`, {
+                body: JSON.stringify({
+                  personIds: [personId],
+                  size: 1000,
+                  type: "IMAGE",
+                }),
+                headers,
+                method: "POST",
+              });
+              if (response.ok) {
+                const data = (await response.json()) as ImmichSearchResult;
+                return { data, success: true as const };
               }
+              consola.warn(`Person photo fetch for ${personId} returned HTTP ${response.status}`);
+            }
+            catch (err) {
+              consola.warn(`Failed to fetch photos for person ${personId}:`, err);
+            }
+            return { data: undefined, success: false as const };
+          }),
+        );
+        personResults.push(...batchResults);
+      }
+
+      for (const result of personResults) {
+        if (result.success) {
+          if (result.data.assets?.items) {
+            for (const asset of result.data.assets.items) {
+              personPhotoIds.add(asset.id);
             }
           }
-          else {
-            personFetchErrors++;
-          }
         }
-        catch (err) {
-          consola.warn(`Failed to fetch photos for person ${personId}:`, err);
+        else {
           personFetchErrors++;
         }
-      }));
+      }
     }
 
     // Combine filters: if both albums AND people selected, intersect the sets
@@ -209,7 +241,7 @@ export default defineEventHandler(async (event) => {
     }));
 
     // Check if all fetches failed and provide user-friendly error
-    const totalFetchAttempts = (selectedAlbums.length || 0) + (selectedPeople.length || 0);
+    const totalFetchAttempts = selectedAlbums.length + selectedPeople.length;
     const totalErrors = albumFetchErrors + personFetchErrors;
     const allFetchesFailed = totalFetchAttempts > 0 && totalErrors === totalFetchAttempts;
 

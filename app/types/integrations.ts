@@ -35,6 +35,11 @@ export type TodoIntegrationService = IntegrationService & {
   getTodos: () => Promise<TodoWithUser[]>;
 };
 
+export type MealIntegrationService = IntegrationService & {
+  getRecipes: () => Promise<unknown[]>;
+  getMealPlan: (start: Date, end: Date) => Promise<unknown[]>;
+};
+
 export type UserWithColor = {
   id: string;
   name: string;
@@ -50,6 +55,7 @@ export type IntegrationConfig = {
   files: string[];
   dialogFields: DialogField[];
   syncInterval: number;
+  idPrefix?: string;
 };
 
 export type ICalSettings = {
@@ -88,7 +94,15 @@ export async function createIntegrationService(integration: Integration): Promis
       return null;
     }
 
-    return serviceFactory.factory(integration.id, integration.apiKey || "", integration.baseUrl || "", integration.settings as ICalSettings);
+    return serviceFactory.factory(
+      integration.id,
+      integration.apiKey || "",
+      integration.baseUrl || "",
+      integration.settings as ICalSettings,
+      integration.accessToken,
+      integration.refreshToken,
+      integration.tokenExpiry,
+    );
   }
   catch (error) {
     consola.error(`Failed to create integration service for ${integration.type}:${integration.service}:`, error);
@@ -118,7 +132,17 @@ export type ServerCalendarIntegrationService = {
   deleteEvent?: (eventId: string) => Promise<void>;
 };
 
+export type ServerMealIntegrationService = {
+  getRecipes: () => Promise<unknown[]>;
+  getMealPlan: (start: Date, end: Date) => Promise<unknown[]>;
+  addRecipe?: (recipe: unknown) => Promise<unknown>;
+  addMealPlan?: (mealPlan: unknown) => Promise<unknown>;
+  updateMealPlan?: (mealPlanId: string, updates: unknown) => Promise<unknown>;
+  deleteMealPlan?: (mealPlanId: string) => Promise<void>;
+};
+
 export type ServerTypedIntegrationService
   = | ServerShoppingIntegrationService
     | ServerTodoIntegrationService
-    | ServerCalendarIntegrationService;
+    | ServerCalendarIntegrationService
+    | ServerMealIntegrationService;

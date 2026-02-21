@@ -1,5 +1,5 @@
 import { GoogleCalendarServerService } from "~~/server/integrations/google-calendar/client";
-import { createError, defineEventHandler, getQuery } from "h3";
+import { createError, defineEventHandler, getHeader, getQuery } from "h3";
 
 /**
  * Fetch available Google Calendars for selection
@@ -7,9 +7,14 @@ import { createError, defineEventHandler, getQuery } from "h3";
  */
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
-  const accessToken = query.accessToken as string;
-  const refreshToken = query.refreshToken as string;
-  const tokenExpiry = query.tokenExpiry ? new Date(Number(query.tokenExpiry)) : null;
+
+  // Read tokens from headers for better security
+  const accessToken = getHeader(event, "x-access-token") || (query.accessToken as string);
+  const refreshToken = getHeader(event, "x-refresh-token") || (query.refreshToken as string);
+  const tokenExpiryHeader = getHeader(event, "x-token-expiry");
+  const tokenExpiry = tokenExpiryHeader
+    ? new Date(Number(tokenExpiryHeader))
+    : (query.tokenExpiry ? new Date(Number(query.tokenExpiry)) : null);
 
   if (!accessToken || !refreshToken) {
     throw createError({

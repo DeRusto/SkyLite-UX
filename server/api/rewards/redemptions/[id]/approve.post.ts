@@ -22,15 +22,15 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Verify approving user is a parent
+  // Verify approving user is an adult
   const approvingUser = await prisma.user.findUnique({
     where: { id: body.approvedByUserId },
   });
 
-  if (!approvingUser || approvingUser.role !== "PARENT") {
+  if (!approvingUser || approvingUser.role !== "ADULT") {
     throw createError({
       statusCode: 403,
-      statusMessage: "Only parents can approve redemptions",
+      statusMessage: "Only adults can approve redemptions",
     });
   }
 

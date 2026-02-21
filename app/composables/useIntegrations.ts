@@ -4,6 +4,7 @@ import type { Integration } from "~/types/database";
 
 import { integrationServices } from "~/plugins/02.appInit";
 import { createIntegrationService } from "~/types/integrations";
+import { getErrorMessage } from "~/utils/error";
 
 export function useIntegrations() {
   const { data: cachedIntegrations } = useNuxtData<Integration[]>("integrations");
@@ -79,11 +80,9 @@ export function useIntegrations() {
       return response;
     }
     catch (err: unknown) {
-      // Extract proper error message from FetchError (server response) or fallback to generic message
-      const fetchError = err as { data?: { message?: string }; statusMessage?: string; message?: string };
-      const errorMessage = fetchError.data?.message || fetchError.statusMessage || fetchError.message || "Failed to create integration";
+      const errorMessage = getErrorMessage(err, "Failed to create integration");
       consola.error("Use Integrations: Error creating integration:", err);
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: err });
     }
   };
 
@@ -122,11 +121,9 @@ export function useIntegrations() {
       return response;
     }
     catch (err: unknown) {
-      // Extract proper error message from FetchError (server response) or fallback to generic message
-      const fetchError = err as { data?: { message?: string }; statusMessage?: string; message?: string };
-      const errorMessage = fetchError.data?.message || fetchError.statusMessage || fetchError.message || "Failed to update integration";
+      const errorMessage = getErrorMessage(err, "Failed to update integration");
       consola.error("Use Integrations: Error updating integration:", err);
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: err });
     }
   };
 
@@ -143,11 +140,9 @@ export function useIntegrations() {
       consola.debug("Use Integrations: Integration deleted successfully:", id);
     }
     catch (err: unknown) {
-      // Extract proper error message from FetchError (server response) or fallback to generic message
-      const fetchError = err as { data?: { message?: string }; statusMessage?: string; message?: string };
-      const errorMessage = fetchError.data?.message || fetchError.statusMessage || fetchError.message || "Failed to delete integration";
+      const errorMessage = getErrorMessage(err, "Failed to delete integration");
       consola.error("Use Integrations: Error deleting integration:", err);
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: err });
     }
   };
 

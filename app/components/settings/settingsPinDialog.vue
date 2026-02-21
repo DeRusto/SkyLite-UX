@@ -2,6 +2,7 @@
 const props = defineProps<{
   isOpen: boolean;
   title?: string;
+  userId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -42,9 +43,12 @@ async function handleVerify() {
   error.value = "";
 
   try {
-    const result = await $fetch<{ valid: boolean }>("/api/household/verifyPin", {
+    const endpoint = props.userId ? "/api/users/verifyPin" : "/api/household/verifyPin";
+    const body = props.userId ? { userId: props.userId, pin: pin.value } : { pin: pin.value };
+
+    const result = await $fetch<{ valid: boolean }>(endpoint, {
       method: "POST",
-      body: { pin: pin.value },
+      body,
     });
 
     if (result.valid) {
@@ -65,7 +69,7 @@ async function handleVerify() {
   }
   catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Verification failed";
-    if (errorMessage.includes("No parent PIN")) {
+    if (errorMessage.includes("No adult PIN")) {
       // No PIN set - allow access
       emit("verified");
       emit("close");
@@ -87,59 +91,30 @@ function handleKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <UModal
-    :open="isOpen"
-    @update:open="$emit('close')"
+  <GlobalDialog
+    :is-open="isOpen"
+    :title="title || 'Adult Verification Required'"
+    :is-submitting="isVerifying"
+    save-label="Verify"
+    @close="$emit('close')"
+    @save="handleVerify"
   >
-    <template #content>
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-highlighted">
-            {{ title || "Parent Verification Required" }}
-          </h3>
-          <UButton
-            variant="ghost"
-            size="sm"
-            icon="i-lucide-x"
-            aria-label="Close"
-            @click="$emit('close')"
-          />
-        </div>
+    <div class="space-y-4">
+      <p class="text-muted mb-4">
+        Enter the adult PIN to access this section.
+      </p>
 
-        <p class="text-muted mb-4">
-          Enter the parent PIN to access this section.
-        </p>
-
-        <div class="space-y-4">
-          <UFormField label="PIN" :error="error">
-            <UInput
-              ref="pinInput"
-              v-model="pin"
-              type="password"
-              placeholder="Enter PIN"
-              :disabled="isVerifying"
-              autocomplete="off"
-              @keydown="handleKeydown"
-            />
-          </UFormField>
-
-          <div class="flex gap-2 justify-end">
-            <UButton
-              variant="ghost"
-              :disabled="isVerifying"
-              @click="$emit('close')"
-            >
-              Cancel
-            </UButton>
-            <UButton
-              :loading="isVerifying"
-              @click="handleVerify"
-            >
-              Verify
-            </UButton>
-          </div>
-        </div>
-      </div>
-    </template>
-  </UModal>
+      <UFormField label="PIN" :error="error">
+        <UInput
+          ref="pinInput"
+          v-model="pin"
+          type="password"
+          placeholder="Enter PIN"
+          :disabled="isVerifying"
+          autocomplete="off"
+          @keydown="handleKeydown"
+        />
+      </UFormField>
+    </div>
+  </GlobalDialog>
 </template>

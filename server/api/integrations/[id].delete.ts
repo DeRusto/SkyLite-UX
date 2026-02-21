@@ -1,3 +1,5 @@
+import { consola } from "consola";
+
 import prisma from "~/lib/prisma";
 
 export default defineEventHandler(async (event) => {
@@ -11,16 +13,32 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    await prisma.integration.delete({
-      where: { id: integrationId },
-    });
+    await prisma.$transaction([
+      // First, nullify calendar linkage for all users using this integration
+      prisma.user.updateMany({
+        where: { calendarIntegrationId: integrationId },
+        data: {
+          calendarIntegrationId: null,
+          calendarId: null,
+          calendarService: null,
+        },
+      }),
+      // Then delete the integration
+      prisma.integration.delete({
+        where: { id: integrationId },
+      }),
+    ]);
 
     return { success: true };
   }
-  catch (error) {
+  catch (error: any) {
+    if (error?.statusCode) {
+      throw error;
+    }
+    consola.error("Failed to delete integration:", error);
     throw createError({
       statusCode: 500,
-      message: `Failed to delete integration: ${error}`,
+      message: "Failed to delete integration",
     });
   }
 });

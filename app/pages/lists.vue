@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useTodoHandlers } from "~/composables/useTodoHandlers";
+
 // Tab state
 const activeTab = ref("shopping");
 
@@ -6,6 +8,30 @@ const tabs = [
   { key: "shopping", label: "Shopping", icon: "i-lucide-shopping-cart" },
   { key: "todo", label: "To-Do", icon: "i-lucide-list-todo" },
 ];
+
+const {
+  todos,
+  todoColumns,
+  isLoadingTodos,
+  columnDialog,
+  todoDialog,
+  editingColumn,
+  editingTodo,
+  editingTodoAsListItem,
+  selectedColumnId,
+  openCreateColumn,
+  openEditColumn,
+  openCreateTodo,
+  openEditTodo,
+  handleColumnSave,
+  handleColumnDelete,
+  handleTodoSave,
+  handleTodoDelete,
+  handleTodoToggle,
+  handleColumnReorder,
+  handleTodoReorder,
+  handleTodoMove,
+} = useTodoHandlers();
 </script>
 
 <template>
@@ -37,11 +63,43 @@ const tabs = [
 
       <!-- Tab Content -->
       <div class="flex-1 overflow-hidden">
-        <KeepAlive>
-          <ShoppingListsContent v-if="activeTab === 'shopping'" />
-          <TodoListsContent v-else-if="activeTab === 'todo'" />
-        </KeepAlive>
+        <ShoppingListsContent
+          v-show="activeTab === 'shopping'"
+          class="h-full overflow-hidden"
+        />
+        <TodoListsContent
+          v-show="activeTab === 'todo'"
+          class="h-full overflow-hidden"
+          :columns="todoColumns"
+          :todos="todos"
+          :loading="isLoadingTodos"
+          @add-column="openCreateColumn"
+          @edit-column="openEditColumn"
+          @reorder-column="handleColumnReorder"
+          @add-todo="openCreateTodo"
+          @edit-todo="openEditTodo"
+          @toggle-todo="handleTodoToggle"
+          @reorder-todo="handleTodoReorder"
+          @move-todo="handleTodoMove"
+        />
       </div>
     </div>
+
+    <TodoColumnDialog
+      :is-open="columnDialog"
+      :column="editingColumn ?? undefined"
+      @save="handleColumnSave"
+      @delete="handleColumnDelete"
+      @close="columnDialog = false; editingColumn = null"
+    />
+
+    <TodoItemDialog
+      :is-open="todoDialog"
+      :todo="editingTodoAsListItem"
+      :todo-columns="todoColumns"
+      @save="handleTodoSave"
+      @delete="handleTodoDelete"
+      @close="todoDialog = false; editingTodo = null; selectedColumnId = ''"
+    />
   </div>
 </template>

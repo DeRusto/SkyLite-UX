@@ -27,7 +27,6 @@ const emit = defineEmits<{
   (e: "delete", eventId: string): void;
 }>();
 
-const { isDesktop } = useBreakpoint();
 const { users, fetchUsers } = useUsers();
 
 const { getEventStartTimeForInput, getEventEndTimeForInput, getLocalTimeFromUTC } = useCalendar();
@@ -968,566 +967,438 @@ function handleDelete() {
 </script>
 
 <template>
-  <!-- Unsaved Changes Warning Modal -->
-  <div
-    v-if="showUnsavedWarning"
-    class="fixed inset-0 z-[110] flex items-center justify-center bg-black/50"
-    @click="cancelClose"
+  <GlobalDialog
+    :is-open="isOpen"
+    :title="event?.id ? 'Edit Event' : 'Create Event'"
+    :is-submitting="isSubmitting"
+    :is-read-only="isReadOnly"
+    :show-delete="!!(event?.id && canDelete)"
+    :is-deleting="isDeleting"
+    @close="handleClose"
+    @save="handleSave"
+    @delete="handleDelete"
   >
-    <div
-      class="w-full max-w-sm mx-4 bg-default rounded-lg border border-default shadow-lg p-4"
-      @click.stop
-    >
-      <h3 class="text-base font-semibold mb-2">
-        Unsaved Changes
-      </h3>
-      <p class="text-sm text-muted mb-4">
-        You have unsaved changes. Are you sure you want to close without saving?
-      </p>
-      <div class="flex gap-2 justify-end">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          @click="cancelClose"
-        >
-          Keep Editing
-        </UButton>
-        <UButton
-          color="error"
-          variant="subtle"
-          @click="confirmClose"
-        >
-          Discard Changes
-        </UButton>
+    <div class="space-y-6">
+      <div v-if="isReadOnly" class="bg-info/10 text-info rounded-md px-3 py-2 text-sm">
+        This event cannot be edited. {{ integrationServiceName || 'This integration' }} does not support editing events.
       </div>
-    </div>
-  </div>
-
-  <div
-    v-if="isOpen"
-    :class="isDesktop
-      ? 'fixed inset-0 z-[100] flex items-center justify-center bg-black/50'
-      : 'fixed inset-0 z-[100] bg-default'"
-    @click="isDesktop ? handleClose() : undefined"
-  >
-    <div
-      :class="isDesktop
-        ? 'w-full max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto bg-default rounded-lg border border-default shadow-lg'
-        : 'h-full flex flex-col'"
-      @click.stop
-    >
-      <!-- Mobile top bar -->
-      <div
-        v-if="!isDesktop"
-        class="flex items-center justify-between p-3 border-b border-default shrink-0"
-      >
-        <UButton
-          color="neutral"
-          variant="ghost"
-          @click="handleClose"
-        >
-          Cancel
-        </UButton>
-        <h2 class="text-base font-semibold leading-6">
-          {{ event?.id ? 'Edit Event' : 'New Event' }}
-        </h2>
-        <UButton
-          v-if="!isReadOnly"
-          color="primary"
-          :loading="isSubmitting"
-          :disabled="isSubmitting"
-          @click="handleSave"
-        >
-          Save
-        </UButton>
-        <span
-          v-else
-          class="w-[60px]"
-        />
-      </div>
-
-      <!-- Desktop header -->
-      <div
-        v-if="isDesktop"
-        class="flex items-center justify-between p-4 border-b border-default"
-      >
-        <h2 class="text-base font-semibold leading-6">
-          {{ event?.id ? 'Edit Event' : 'Create Event' }}
-        </h2>
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-x"
-          class="-my-1"
-          aria-label="Close dialog"
-          @click="handleClose"
-        />
-      </div>
-      <div :class="isDesktop ? 'p-4 space-y-6' : 'flex-1 overflow-y-auto p-4 space-y-6'">
-        <div
-          v-if="error"
-          role="alert"
-          class="bg-error/10 text-error rounded-md px-3 py-2 text-sm"
-        >
-          {{ error }}
-        </div>
-        <div v-if="isReadOnly" class="bg-info/10 text-info rounded-md px-3 py-2 text-sm">
-          This event cannot be edited. {{ integrationServiceName || 'This integration' }} does not support editing events.
-        </div>
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-highlighted">Title</label>
-          <UInput
-            v-model="title"
-            placeholder="Event title"
-            class="w-full"
-            :ui="{ base: 'w-full' }"
-            :disabled="isReadOnly"
-          />
-        </div>
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-highlighted">Description</label>
-          <UTextarea
-            v-model="description"
-            placeholder="Event description"
-            :rows="3"
-            class="w-full"
-            :ui="{ base: 'w-full' }"
-            :disabled="isReadOnly"
-          />
-        </div>
-        <div class="flex gap-4">
-          <div class="w-1/2 space-y-2">
-            <label class="block text-sm font-medium text-highlighted">Start Date</label>
-            <UPopover>
-              <UButton
-                color="neutral"
-                variant="subtle"
-                icon="i-lucide-calendar"
-                class="w-full justify-between"
-                :disabled="isReadOnly"
-              >
-                <NuxtTime
-                  v-if="startDate"
-                  :datetime="startDate.toDate(getLocalTimeZone())"
-                  year="numeric"
-                  month="short"
-                  day="numeric"
-                />
-                <span v-else>Select a date</span>
-              </UButton>
-              <template #content>
-                <UCalendar
-                  :model-value="startDate as DateValue"
-                  class="p-2"
-                  :disabled="isReadOnly"
-                  @update:model-value="(value) => { if (value) startDate = value as DateValue }"
-                />
-              </template>
-            </UPopover>
-          </div>
-          <div v-if="!allDay" class="w-1/2 space-y-2">
-            <label class="block text-sm font-medium text-highlighted">Start Time</label>
-            <div class="flex gap-2">
-              <USelect
-                v-model="startHour"
-                :items="hourOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="flex-1"
-                :ui="{ base: 'flex-1' }"
-                :disabled="isReadOnly"
-              />
-              <USelect
-                v-model="startMinute"
-                :items="minuteOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="flex-1"
-                :ui="{ base: 'flex-1' }"
-                :disabled="isReadOnly"
-              />
-              <USelect
-                v-model="startAmPm"
-                :items="amPmOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="flex-1"
-                :ui="{ base: 'flex-1' }"
-                :disabled="isReadOnly"
-              />
-            </div>
-          </div>
-        </div>
-        <div class="flex gap-4">
-          <div class="w-1/2 space-y-2">
-            <label class="block text-sm font-medium text-highlighted">End Date</label>
-            <UPopover>
-              <UButton
-                color="neutral"
-                variant="subtle"
-                icon="i-lucide-calendar"
-                class="w-full justify-between"
-                :disabled="isReadOnly"
-              >
-                <NuxtTime
-                  v-if="endDate"
-                  :datetime="endDate.toDate(getLocalTimeZone())"
-                  year="numeric"
-                  month="short"
-                  day="numeric"
-                />
-                <span v-else>Select a date</span>
-              </UButton>
-              <template #content>
-                <UCalendar
-                  :model-value="endDate as DateValue"
-                  class="p-2"
-                  :disabled="isReadOnly"
-                  @update:model-value="(value) => { if (value) endDate = value as DateValue }"
-                />
-              </template>
-            </UPopover>
-          </div>
-          <div v-if="!allDay" class="w-1/2 space-y-2">
-            <label class="block text-sm font-medium text-highlighted">End Time</label>
-            <div class="flex gap-2">
-              <USelect
-                v-model="endHour"
-                :items="hourOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="flex-1"
-                :ui="{ base: 'flex-1' }"
-                :disabled="isReadOnly"
-              />
-              <USelect
-                v-model="endMinute"
-                :items="minuteOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="flex-1"
-                :ui="{ base: 'flex-1' }"
-                :disabled="isReadOnly"
-              />
-              <USelect
-                v-model="endAmPm"
-                :items="amPmOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="flex-1"
-                :ui="{ base: 'flex-1' }"
-                :disabled="isReadOnly"
-              />
-            </div>
-          </div>
-        </div>
-        <div class="flex items-center gap-2">
-          <UCheckbox
-            v-model="allDay"
-            label="All day"
-            :disabled="isReadOnly"
-            @change="handleAllDayToggle"
-          />
-        </div>
-        <div class="flex items-center gap-2">
-          <UCheckbox
-            v-model="isRecurring"
-            label="Repeat"
-            :disabled="isReadOnly"
-          />
-        </div>
-        <div v-if="isRecurring" class="space-y-4 p-4 bg-muted rounded-lg">
-          <div class="flex gap-4">
-            <div class="w-1/2 space-y-2">
-              <label class="block text-sm font-medium text-highlighted">Repeat</label>
-              <USelect
-                v-model="recurrenceType"
-                :items="recurrenceTypeOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="w-full"
-                :ui="{ base: 'w-full' }"
-                :disabled="isReadOnly"
-              />
-            </div>
-            <div class="w-1/2 space-y-2">
-              <label class="block text-sm font-medium text-highlighted">Every</label>
-              <UInput
-                v-model.number="recurrenceInterval"
-                type="number"
-                min="1"
-                max="99"
-                class="w-full"
-                :ui="{ base: 'w-full' }"
-                :disabled="isReadOnly"
-              />
-            </div>
-          </div>
-          <div v-if="recurrenceType === 'weekly'" class="space-y-2">
-            <label class="block text-sm font-medium text-highlighted">Repeat on</label>
-            <div class="flex gap-1">
-              <UButton
-                v-for="day in dayOptions"
-                :key="day.value"
-                :variant="recurrenceDays.includes(day.value) ? 'solid' : 'outline'"
-                size="sm"
-                class="flex-1"
-                :disabled="isReadOnly"
-                @click="toggleRecurrenceDay(day.value)"
-              >
-                {{ day.label }}
-              </UButton>
-            </div>
-            <div v-if="recurrenceDays.length > 0" class="text-sm text-warning">
-              <div class="flex items-center justify-center gap-2">
-                <span>
-                  Dates will be adjusted based on selected days
-                </span>
-              </div>
-            </div>
-          </div>
-          <div v-if="recurrenceType === 'monthly'" class="space-y-4">
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-highlighted">Repeat on</label>
-              <USelect
-                v-model="recurrenceMonthlyType"
-                :items="monthlyTypeOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="w-full"
-                :ui="{ base: 'w-full' }"
-                :disabled="isReadOnly"
-              />
-            </div>
-            <div v-if="recurrenceMonthlyType === 'weekday'" class="space-y-2">
-              <label class="block text-sm font-medium text-highlighted">Weekday</label>
-              <div class="flex gap-2">
-                <USelect
-                  v-model="recurrenceMonthlyWeekday.week"
-                  :items="weekOptions"
-                  option-attribute="label"
-                  value-attribute="value"
-                  class="flex-1"
-                  :ui="{ base: 'flex-1' }"
-                  :disabled="isReadOnly"
-                />
-                <USelect
-                  v-model="recurrenceMonthlyWeekday.day"
-                  :items="dayOptions"
-                  option-attribute="label"
-                  value-attribute="value"
-                  class="flex-1"
-                  :ui="{ base: 'flex-1' }"
-                  :disabled="isReadOnly"
-                />
-              </div>
-            </div>
-          </div>
-          <div v-if="recurrenceType === 'yearly'" class="space-y-4">
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-highlighted">Repeat on</label>
-              <USelect
-                v-model="recurrenceYearlyType"
-                :items="yearlyTypeOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="w-full"
-                :ui="{ base: 'w-full' }"
-                :disabled="isReadOnly"
-              />
-            </div>
-            <div v-if="recurrenceYearlyType === 'weekday'" class="space-y-2">
-              <label class="block text-sm font-medium text-highlighted">Weekday</label>
-              <div class="flex gap-2">
-                <USelect
-                  v-model="recurrenceYearlyWeekday.week"
-                  :items="weekOptions"
-                  option-attribute="label"
-                  value-attribute="value"
-                  class="flex-1"
-                  :ui="{ base: 'flex-1' }"
-                  :disabled="isReadOnly"
-                />
-                <USelect
-                  v-model="recurrenceYearlyWeekday.day"
-                  :items="dayOptions"
-                  option-attribute="label"
-                  value-attribute="value"
-                  class="flex-1"
-                  :ui="{ base: 'flex-1' }"
-                  :disabled="isReadOnly"
-                />
-                <USelect
-                  v-model="recurrenceYearlyWeekday.month"
-                  :items="monthOptions"
-                  option-attribute="label"
-                  value-attribute="value"
-                  class="flex-1"
-                  :ui="{ base: 'flex-1' }"
-                  :disabled="isReadOnly"
-                />
-              </div>
-            </div>
-          </div>
-          <div class="space-y-2">
-            <label class="block text-sm font-medium text-highlighted">Ends</label>
-            <div class="flex gap-4">
-              <USelect
-                v-model="recurrenceEndType"
-                :items="recurrenceEndTypeOptions"
-                option-attribute="label"
-                value-attribute="value"
-                class="flex-1"
-                :ui="{ base: 'flex-1' }"
-                :disabled="isReadOnly"
-              />
-              <UInput
-                v-if="recurrenceEndType === 'count'"
-                v-model.number="recurrenceCount"
-                type="number"
-                min="1"
-                max="999"
-                placeholder="10"
-                class="w-20"
-                :ui="{ base: 'w-20' }"
-                :disabled="isReadOnly"
-              />
-              <UPopover v-if="recurrenceEndType === 'until'">
-                <UButton
-                  color="neutral"
-                  variant="subtle"
-                  icon="i-lucide-calendar"
-                  class="flex-1 justify-between"
-                  :disabled="isReadOnly"
-                >
-                  <NuxtTime
-                    v-if="recurrenceUntil"
-                    :datetime="recurrenceUntil.toDate(getLocalTimeZone())"
-                    year="numeric"
-                    month="short"
-                    day="numeric"
-                  />
-                  <span v-else>Select date</span>
-                </UButton>
-                <template #content>
-                  <UCalendar
-                    :model-value="recurrenceUntil as DateValue"
-                    class="p-2"
-                    :disabled="isReadOnly"
-                    @update:model-value="(value) => { if (value) recurrenceUntil = value as DateValue }"
-                  />
-                </template>
-              </UPopover>
-            </div>
-          </div>
-        </div>
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-highlighted">Location</label>
-          <UInput
-            v-model="location"
-            placeholder="Event location"
-            class="w-full"
-            :ui="{ base: 'w-full' }"
-            :disabled="isReadOnly"
-          />
-        </div>
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-highlighted">Users</label>
-          <div class="space-y-2">
-            <div class="text-sm text-muted mb-2">
-              {{ event?.id ? 'Edit users for this event:' : 'Select users for this event:' }}
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <UButton
-                v-for="user in users"
-                :key="user.id"
-                variant="ghost"
-                size="sm"
-                class="p-1"
-                :class="selectedUsers.includes(user.id) ? 'ring-2 ring-primary-500' : ''"
-                :disabled="isReadOnly"
-                @click="selectedUsers.includes(user.id) ? selectedUsers = selectedUsers.filter(id => id !== user.id) : selectedUsers.push(user.id)"
-              >
-                <UAvatar
-                  :src="user.avatar || undefined"
-                  :alt="user.name"
-                  size="xl"
-                />
-              </UButton>
-            </div>
-            <div v-if="!users.length" class="text-sm text-muted">
-              No users found! Please add some users in the <NuxtLink to="/settings" class="text-primary">
-                settings
-              </NuxtLink> page.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Desktop footer -->
-      <div
-        v-if="isDesktop"
-        class="flex justify-between p-4 border-t border-default"
-      >
-        <div class="flex gap-2">
-          <UButton
-            v-if="event?.id && canDelete"
-            color="error"
-            variant="ghost"
-            icon="i-lucide-trash"
-            :loading="isDeleting"
-            :disabled="isDeleting"
-            @click="handleDelete"
-          >
-            Delete
-          </UButton>
-          <UButton
-            v-if="!isReadOnly && !event?.id"
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-rotate-ccw"
-            @click="resetForm"
-          >
-            Reset
-          </UButton>
-        </div>
-        <div class="flex gap-2">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            @click="handleClose"
-          >
-            Cancel
-          </UButton>
-          <UButton
-            v-if="!isReadOnly"
-            color="primary"
-            :loading="isSubmitting"
-            :disabled="isSubmitting"
-            @click="handleSave"
-          >
-            Save
-          </UButton>
-        </div>
-      </div>
-
-      <!-- Mobile delete section -->
-      <div
-        v-if="!isDesktop && event?.id && canDelete"
-        class="p-4 pb-[env(safe-area-inset-bottom,16px)] shrink-0"
-      >
-        <UButton
-          color="error"
-          variant="soft"
-          icon="i-lucide-trash"
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Title</label>
+        <UInput
+          v-model="title"
+          placeholder="Event title"
           class="w-full"
-          :loading="isDeleting"
-          :disabled="isDeleting"
-          @click="handleDelete"
-        >
-          Delete Event
-        </UButton>
+          :ui="{ base: 'w-full' }"
+          :disabled="isReadOnly"
+        />
+      </div>
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Description</label>
+        <UTextarea
+          v-model="description"
+          placeholder="Event description"
+          :rows="3"
+          class="w-full"
+          :ui="{ base: 'w-full' }"
+          :disabled="isReadOnly"
+        />
+      </div>
+      <div class="flex gap-4">
+        <div class="w-1/2 space-y-2">
+          <label class="block text-sm font-medium text-highlighted">Start Date</label>
+          <UPopover>
+            <UButton
+              color="neutral"
+              variant="subtle"
+              icon="i-lucide-calendar"
+              class="w-full justify-between"
+              :disabled="isReadOnly"
+            >
+              <NuxtTime
+                v-if="startDate"
+                :datetime="startDate.toDate(getLocalTimeZone())"
+                year="numeric"
+                month="short"
+                day="numeric"
+              />
+              <span v-else>Select a date</span>
+            </UButton>
+            <template #content>
+              <UCalendar
+                :model-value="startDate as DateValue"
+                class="p-2"
+                :disabled="isReadOnly"
+                @update:model-value="(value) => { if (value) startDate = value as DateValue }"
+              />
+            </template>
+          </UPopover>
+        </div>
+        <div v-if="!allDay" class="w-1/2 space-y-2">
+          <label class="block text-sm font-medium text-highlighted">Start Time</label>
+          <div class="flex gap-2">
+            <USelect
+              v-model="startHour"
+              :items="hourOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="flex-1"
+              :ui="{ base: 'flex-1' }"
+              :disabled="isReadOnly"
+            />
+            <USelect
+              v-model="startMinute"
+              :items="minuteOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="flex-1"
+              :ui="{ base: 'flex-1' }"
+              :disabled="isReadOnly"
+            />
+            <USelect
+              v-model="startAmPm"
+              :items="amPmOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="flex-1"
+              :ui="{ base: 'flex-1' }"
+              :disabled="isReadOnly"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="w-1/2 space-y-2">
+          <label class="block text-sm font-medium text-highlighted">End Date</label>
+          <UPopover>
+            <UButton
+              color="neutral"
+              variant="subtle"
+              icon="i-lucide-calendar"
+              class="w-full justify-between"
+              :disabled="isReadOnly"
+            >
+              <NuxtTime
+                v-if="endDate"
+                :datetime="endDate.toDate(getLocalTimeZone())"
+                year="numeric"
+                month="short"
+                day="numeric"
+              />
+              <span v-else>Select a date</span>
+            </UButton>
+            <template #content>
+              <UCalendar
+                :model-value="endDate as DateValue"
+                class="p-2"
+                :disabled="isReadOnly"
+                @update:model-value="(value) => { if (value) endDate = value as DateValue }"
+              />
+            </template>
+          </UPopover>
+        </div>
+        <div v-if="!allDay" class="w-1/2 space-y-2">
+          <label class="block text-sm font-medium text-highlighted">End Time</label>
+          <div class="flex gap-2">
+            <USelect
+              v-model="endHour"
+              :items="hourOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="flex-1"
+              :ui="{ base: 'flex-1' }"
+              :disabled="isReadOnly"
+            />
+            <USelect
+              v-model="endMinute"
+              :items="minuteOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="flex-1"
+              :ui="{ base: 'flex-1' }"
+              :disabled="isReadOnly"
+            />
+            <USelect
+              v-model="endAmPm"
+              :items="amPmOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="flex-1"
+              :ui="{ base: 'flex-1' }"
+              :disabled="isReadOnly"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <UCheckbox
+          v-model="allDay"
+          label="All day"
+          :disabled="isReadOnly"
+          @change="handleAllDayToggle"
+        />
+      </div>
+      <div class="flex items-center gap-2">
+        <UCheckbox
+          v-model="isRecurring"
+          label="Repeat"
+          :disabled="isReadOnly"
+        />
+      </div>
+      <div v-if="isRecurring" class="space-y-4 p-4 bg-muted rounded-lg">
+        <div class="flex gap-4">
+          <div class="w-1/2 space-y-2">
+            <label class="block text-sm font-medium text-highlighted">Repeat</label>
+            <USelect
+              v-model="recurrenceType"
+              :items="recurrenceTypeOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="w-full"
+              :ui="{ base: 'w-full' }"
+              :disabled="isReadOnly"
+            />
+          </div>
+          <div class="w-1/2 space-y-2">
+            <label class="block text-sm font-medium text-highlighted">Every</label>
+            <UInput
+              v-model.number="recurrenceInterval"
+              type="number"
+              min="1"
+              max="99"
+              class="w-full"
+              :ui="{ base: 'w-full' }"
+              :disabled="isReadOnly"
+            />
+          </div>
+        </div>
+        <div v-if="recurrenceType === 'weekly'" class="space-y-2">
+          <label class="block text-sm font-medium text-highlighted">Repeat on</label>
+          <div class="flex gap-1">
+            <UButton
+              v-for="day in dayOptions"
+              :key="day.value"
+              :variant="recurrenceDays.includes(day.value) ? 'solid' : 'outline'"
+              size="sm"
+              class="flex-1"
+              :disabled="isReadOnly"
+              @click="toggleRecurrenceDay(day.value)"
+            >
+              {{ day.label }}
+            </UButton>
+          </div>
+          <div v-if="recurrenceDays.length > 0" class="text-sm text-warning">
+            <div class="flex items-center justify-center gap-2">
+              <span>
+                Dates will be adjusted based on selected days
+              </span>
+            </div>
+          </div>
+        </div>
+        <div v-if="recurrenceType === 'monthly'" class="space-y-4">
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-highlighted">Repeat on</label>
+            <USelect
+              v-model="recurrenceMonthlyType"
+              :items="monthlyTypeOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="w-full"
+              :ui="{ base: 'w-full' }"
+              :disabled="isReadOnly"
+            />
+          </div>
+          <div v-if="recurrenceMonthlyType === 'weekday'" class="space-y-2">
+            <label class="block text-sm font-medium text-highlighted">Weekday</label>
+            <div class="flex gap-2">
+              <USelect
+                v-model="recurrenceMonthlyWeekday.week"
+                :items="weekOptions"
+                option-attribute="label"
+                value-attribute="value"
+                class="flex-1"
+                :ui="{ base: 'flex-1' }"
+                :disabled="isReadOnly"
+              />
+              <USelect
+                v-model="recurrenceMonthlyWeekday.day"
+                :items="dayOptions"
+                option-attribute="label"
+                value-attribute="value"
+                class="flex-1"
+                :ui="{ base: 'flex-1' }"
+                :disabled="isReadOnly"
+              />
+            </div>
+          </div>
+        </div>
+        <div v-if="recurrenceType === 'yearly'" class="space-y-4">
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-highlighted">Repeat on</label>
+            <USelect
+              v-model="recurrenceYearlyType"
+              :items="yearlyTypeOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="w-full"
+              :ui="{ base: 'w-full' }"
+              :disabled="isReadOnly"
+            />
+          </div>
+          <div v-if="recurrenceYearlyType === 'weekday'" class="space-y-2">
+            <label class="block text-sm font-medium text-highlighted">Weekday</label>
+            <div class="flex gap-2">
+              <USelect
+                v-model="recurrenceYearlyWeekday.week"
+                :items="weekOptions"
+                option-attribute="label"
+                value-attribute="value"
+                class="flex-1"
+                :ui="{ base: 'flex-1' }"
+                :disabled="isReadOnly"
+              />
+              <USelect
+                v-model="recurrenceYearlyWeekday.day"
+                :items="dayOptions"
+                option-attribute="label"
+                value-attribute="value"
+                class="flex-1"
+                :ui="{ base: 'flex-1' }"
+                :disabled="isReadOnly"
+              />
+              <USelect
+                v-model="recurrenceYearlyWeekday.month"
+                :items="monthOptions"
+                option-attribute="label"
+                value-attribute="value"
+                class="flex-1"
+                :ui="{ base: 'flex-1' }"
+                :disabled="isReadOnly"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-highlighted">Ends</label>
+          <div class="flex gap-4">
+            <USelect
+              v-model="recurrenceEndType"
+              :items="recurrenceEndTypeOptions"
+              option-attribute="label"
+              value-attribute="value"
+              class="flex-1"
+              :ui="{ base: 'flex-1' }"
+              :disabled="isReadOnly"
+            />
+            <UInput
+              v-if="recurrenceEndType === 'count'"
+              v-model.number="recurrenceCount"
+              type="number"
+              min="1"
+              max="999"
+              placeholder="10"
+              class="w-20"
+              :ui="{ base: 'w-20' }"
+              :disabled="isReadOnly"
+            />
+            <UPopover v-if="recurrenceEndType === 'until'">
+              <UButton
+                color="neutral"
+                variant="subtle"
+                icon="i-lucide-calendar"
+                class="flex-1 justify-between"
+                :disabled="isReadOnly"
+              >
+                <NuxtTime
+                  v-if="recurrenceUntil"
+                  :datetime="recurrenceUntil.toDate(getLocalTimeZone())"
+                  year="numeric"
+                  month="short"
+                  day="numeric"
+                />
+                <span v-else>Select date</span>
+              </UButton>
+              <template #content>
+                <UCalendar
+                  :model-value="recurrenceUntil as DateValue"
+                  class="p-2"
+                  :disabled="isReadOnly"
+                  @update:model-value="(value) => { if (value) recurrenceUntil = value as DateValue }"
+                />
+              </template>
+            </UPopover>
+          </div>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Location</label>
+        <UInput
+          v-model="location"
+          placeholder="Event location"
+          class="w-full"
+          :ui="{ base: 'w-full' }"
+          :disabled="isReadOnly"
+        />
+      </div>
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Users</label>
+        <div class="space-y-2">
+          <div class="text-sm text-muted mb-2">
+            {{ event?.id ? 'Edit users for this event:' : 'Select users for this event:' }}
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <UButton
+              v-for="user in users"
+              :key="user.id"
+              variant="ghost"
+              size="sm"
+              class="p-1"
+              :class="selectedUsers.includes(user.id) ? 'ring-2 ring-primary-500' : ''"
+              :disabled="isReadOnly"
+              @click="selectedUsers.includes(user.id) ? selectedUsers = selectedUsers.filter(id => id !== user.id) : selectedUsers.push(user.id)"
+            >
+              <UAvatar
+                :src="user.avatar || undefined"
+                :alt="user.name"
+                size="xl"
+              />
+            </UButton>
+          </div>
+          <div v-if="!users.length" class="text-sm text-muted">
+            No users found! Please add some users in the <NuxtLink to="/settings" class="text-primary">
+              settings
+            </NuxtLink> page.
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+
+    <template #footer-left>
+      <UButton
+        v-if="!isReadOnly && !event?.id"
+        color="neutral"
+        variant="ghost"
+        icon="i-lucide-rotate-ccw"
+        @click="resetForm"
+      >
+        Reset
+      </UButton>
+    </template>
+  </GlobalDialog>
+
+  <!-- Unsaved Changes Warning Modal -->
+  <GlobalDialog
+    :is-open="showUnsavedWarning"
+    title="Unsaved Changes"
+    save-label="Discard Changes"
+    save-color="error"
+    save-variant="subtle"
+    cancel-label="Keep Editing"
+    max-width="max-w-sm"
+    @close="cancelClose"
+    @save="confirmClose"
+  >
+    <p class="text-sm text-muted mb-4">
+      You have unsaved changes. Are you sure you want to close without saving?
+    </p>
+  </GlobalDialog>
 </template>

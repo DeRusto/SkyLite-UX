@@ -10,7 +10,7 @@ import { useStableDate } from "~/composables/useStableDate";
 const props = defineProps<{
   todo: TodoListItem | null;
   isOpen: boolean;
-  todoColumns: TodoColumnBasic[];
+  todoColumns: readonly TodoColumnBasic[];
 }>();
 
 const emit = defineEmits<{
@@ -106,147 +106,98 @@ function handleDelete() {
 </script>
 
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-    @click="emit('close')"
+  <GlobalDialog
+    :is-open="isOpen"
+    :title="todo?.id ? 'Edit Todo' : 'Add Todo'"
+    :error="todoError"
+    :show-delete="!!todo?.id"
+    :save-label="todo?.id ? 'Update Todo' : 'Add Todo'"
+    @close="emit('close')"
+    @save="handleSave"
+    @delete="handleDelete"
   >
-    <div
-      class="w-full max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto bg-default rounded-lg border border-default shadow-lg"
-      @click.stop
-    >
-      <div class="flex items-center justify-between p-4 border-b border-default">
-        <h3 class="text-base font-semibold leading-6">
-          {{ todo?.id ? 'Edit Todo' : 'Add Todo' }}
-        </h3>
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-x"
-          aria-label="Close"
-          class="-my-1"
-          @click="emit('close')"
+    <div class="space-y-6">
+      <div class="space-y-2">
+        <label for="todo-title" class="block text-sm font-medium text-highlighted">Title</label>
+        <UInput
+          id="todo-title"
+          v-model="todoTitle"
+          placeholder="Todo title"
+          class="w-full"
+          :ui="{ base: 'w-full' }"
+          autofocus
         />
       </div>
 
-      <div class="p-4 space-y-6">
-        <div
-          v-if="todoError"
-          role="alert"
-          class="bg-error/10 text-error rounded-md px-3 py-2 text-sm"
-        >
-          {{ todoError }}
-        </div>
-
-        <div class="space-y-2">
-          <label for="todo-title" class="block text-sm font-medium text-highlighted">Title</label>
-          <UInput
-            id="todo-title"
-            v-model="todoTitle"
-            placeholder="Todo title"
-            class="w-full"
-            :ui="{ base: 'w-full' }"
-            autofocus
-          />
-        </div>
-
-        <div class="space-y-2">
-          <label for="todo-description" class="block text-sm font-medium text-highlighted">Description</label>
-          <UTextarea
-            id="todo-description"
-            v-model="todoDescription"
-            placeholder="Todo description (optional)"
-            :rows="3"
-            class="w-full"
-            :ui="{ base: 'w-full' }"
-          />
-        </div>
-
-        <div class="flex gap-4">
-          <div class="w-1/2 space-y-2">
-            <label for="todo-priority" class="block text-sm font-medium text-highlighted">Priority</label>
-            <USelect
-              id="todo-priority"
-              v-model="todoPriority"
-              :items="priorityOptions"
-              option-attribute="label"
-              value-attribute="value"
-              class="w-full"
-              :ui="{ base: 'w-full' }"
-            />
-          </div>
-
-          <div class="w-1/2 space-y-2">
-            <label class="block text-sm font-medium text-highlighted">Due Date</label>
-            <UPopover>
-              <UButton
-                color="neutral"
-                variant="subtle"
-                icon="i-lucide-calendar"
-                class="w-full justify-between"
-              >
-                <NuxtTime
-                  v-if="todoDueDate"
-                  :datetime="todoDueDate.toDate(getLocalTimeZone())"
-                  year="numeric"
-                  month="short"
-                  day="numeric"
-                />
-                <span v-else>No due date</span>
-              </UButton>
-
-              <template #content>
-                <div class="p-2 space-y-2">
-                  <UButton
-                    v-if="todoDueDate"
-                    color="neutral"
-                    variant="ghost"
-                    class="w-full justify-start"
-                    @click="todoDueDate = null"
-                  >
-                    <template #leading>
-                      <UIcon name="i-lucide-x" />
-                    </template>
-                    Clear due date
-                  </UButton>
-                  <UCalendar
-                    :model-value="todoDueDate as unknown as DateValue"
-                    class="p-2"
-                    @update:model-value="todoDueDate = $event as CalendarDate"
-                  />
-                </div>
-              </template>
-            </UPopover>
-          </div>
-        </div>
+      <div class="space-y-2">
+        <label for="todo-description" class="block text-sm font-medium text-highlighted">Description</label>
+        <UTextarea
+          id="todo-description"
+          v-model="todoDescription"
+          placeholder="Todo description (optional)"
+          :rows="3"
+          class="w-full"
+          :ui="{ base: 'w-full' }"
+        />
       </div>
 
-      <div class="flex justify-between p-4 border-t border-default">
-        <UButton
-          v-if="todo?.id"
-          color="error"
-          variant="ghost"
-          icon="i-lucide-trash"
-          @click="handleDelete"
-        >
-          Delete
-        </UButton>
-        <div class="flex gap-2" :class="{ 'ml-auto': !todo?.id }">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            @click="emit('close')"
-          >
-            Cancel
-          </UButton>
-          <UButton
-            color="primary"
-            @click="handleSave"
-          >
-            {{ todo?.id ? 'Update Todo' : 'Add Todo' }}
-          </UButton>
+      <div class="flex gap-4">
+        <div class="w-1/2 space-y-2">
+          <label for="todo-priority" class="block text-sm font-medium text-highlighted">Priority</label>
+          <USelect
+            id="todo-priority"
+            v-model="todoPriority"
+            :items="priorityOptions"
+            option-attribute="label"
+            value-attribute="value"
+            class="w-full"
+            :ui="{ base: 'w-full' }"
+          />
+        </div>
+
+        <div class="w-1/2 space-y-2">
+          <label class="block text-sm font-medium text-highlighted">Due Date</label>
+          <UPopover>
+            <UButton
+              color="neutral"
+              variant="subtle"
+              icon="i-lucide-calendar"
+              class="w-full justify-between"
+            >
+              <NuxtTime
+                v-if="todoDueDate"
+                :datetime="todoDueDate.toDate(getLocalTimeZone())"
+                year="numeric"
+                month="short"
+                day="numeric"
+              />
+              <span v-else>No due date</span>
+            </UButton>
+
+            <template #content>
+              <div class="p-2 space-y-2">
+                <UButton
+                  v-if="todoDueDate"
+                  color="neutral"
+                  variant="ghost"
+                  class="w-full justify-start"
+                  @click="todoDueDate = null"
+                >
+                  <template #leading>
+                    <UIcon name="i-lucide-x" />
+                  </template>
+                  Clear due date
+                </UButton>
+                <UCalendar
+                  :model-value="todoDueDate as unknown as DateValue"
+                  class="p-2"
+                  @update:model-value="todoDueDate = $event as CalendarDate"
+                />
+              </div>
+            </template>
+          </UPopover>
         </div>
       </div>
     </div>
-  </div>
+  </GlobalDialog>
 </template>

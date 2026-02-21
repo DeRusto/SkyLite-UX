@@ -111,7 +111,7 @@ function toggleCalendar(calendarId: string) {
       <UIcon name="i-lucide-loader-2" class="animate-spin h-6 w-6 text-muted" />
     </div>
 
-    <div v-else-if="calendars.length > 0" class="space-y-2 max-h-[300px] overflow-y-auto">
+    <div v-else-if="calendars.length > 0" class="space-y-2">
       <div
         v-for="calendar in calendars"
         :key="calendar.id"

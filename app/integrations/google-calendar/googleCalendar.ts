@@ -7,13 +7,24 @@ import type { CalendarIntegrationService, IntegrationStatus } from "~/types/inte
  */
 export class GoogleCalendarService implements CalendarIntegrationService {
   private integrationId: string;
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+  private tokenExpiry: Date | null = null;
   private status: IntegrationStatus = {
     isConnected: false,
     lastChecked: new Date(),
   };
 
-  constructor(integrationId: string) {
+  constructor(
+    integrationId: string,
+    accessToken?: string | null,
+    refreshToken?: string | null,
+    tokenExpiry?: Date | null,
+  ) {
     this.integrationId = integrationId;
+    this.accessToken = accessToken || null;
+    this.refreshToken = refreshToken || null;
+    this.tokenExpiry = tokenExpiry || null;
   }
 
   async initialize(): Promise<void> {
@@ -26,9 +37,11 @@ export class GoogleCalendarService implements CalendarIntegrationService {
       await $fetch("/api/integrations/google-calendar/calendars", {
         query: {
           integrationId: this.integrationId,
-          accessToken: "", // Server will use stored token
-          refreshToken: "",
-          tokenExpiry: "",
+        },
+        headers: {
+          "x-access-token": this.accessToken || "",
+          "x-refresh-token": this.refreshToken || "",
+          "x-token-expiry": this.tokenExpiry ? String(this.tokenExpiry.getTime()) : "",
         },
       });
 
@@ -73,6 +86,11 @@ export class GoogleCalendarService implements CalendarIntegrationService {
 /**
  * Factory function to create Google Calendar service instance
  */
-export function createGoogleCalendarService(integrationId: string): GoogleCalendarService {
-  return new GoogleCalendarService(integrationId);
+export function createGoogleCalendarService(
+  integrationId: string,
+  accessToken?: string | null,
+  refreshToken?: string | null,
+  tokenExpiry?: Date | null,
+): GoogleCalendarService {
+  return new GoogleCalendarService(integrationId, accessToken, refreshToken, tokenExpiry);
 }

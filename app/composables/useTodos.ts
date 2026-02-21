@@ -1,33 +1,35 @@
 import { consola } from "consola";
 
-import type { CreateTodoInput, TodoWithOrder, UpdateTodoInput } from "~/types/database";
+import type { CreateTodoInput, TodoWithOrder, TodoWithOrderResponse, UpdateTodoInput } from "~/types/database";
+
+import { useAlertToast } from "~/composables/useAlertToast";
+import { getErrorMessage } from "~/utils/error";
+import { performOptimisticUpdate } from "~/utils/optimistic";
 
 export function useTodos() {
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const loading = useState<boolean>("todos-loading", () => false);
+  const error = useState<string | null>("todos-error", () => null);
 
-  const { data: todos } = useNuxtData<TodoWithOrder[]>("todos");
+  const { data: todos } = useNuxtData<TodoWithOrderResponse[]>("todos");
+  const { showError } = useAlertToast();
 
-  const currentTodos = computed(() => todos.value || []);
+  const currentTodos = computed(() => (todos.value || []).map(todo => ({
+    ...todo,
+    createdAt: new Date(todo.createdAt),
+    updatedAt: new Date(todo.updatedAt),
+    dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
+  })) as TodoWithOrder[]);
 
-  const fetchTodos = async (options?: { history?: boolean }) => {
+  const fetchTodos = async () => {
     loading.value = true;
     error.value = null;
     try {
-      if (options?.history) {
-        const data = await $fetch<TodoWithOrder[]>("/api/todos", {
-          query: { history: true },
-        });
-        todos.value = data;
-      }
-      else {
-        await refreshNuxtData("todos");
-      }
+      await refreshNuxtData("todos");
       consola.debug("Use Todos: Todos refreshed successfully");
       return currentTodos.value;
     }
     catch (err) {
-      error.value = "Failed to fetch todos";
+      error.value = getErrorMessage(err, "Failed to fetch todos");
       consola.error("Use Todos: Error fetching todos:", err);
       throw err;
     }
@@ -37,37 +39,94 @@ export function useTodos() {
   };
 
   const createTodo = async (todoData: CreateTodoInput) => {
+    const previousTodos = structuredClone(todos.value ?? []);
+    const tempId = crypto.randomUUID();
+
+    const newTodo: TodoWithOrderResponse = {
+      id: tempId,
+      title: todoData.title,
+      description: todoData.description ?? null,
+      priority: todoData.priority ?? "MEDIUM",
+      dueDate: todoData.dueDate ? (todoData.dueDate instanceof Date ? todoData.dueDate.toISOString() : todoData.dueDate) : null,
+      completed: todoData.completed ?? false,
+      order: todoData.order ?? 0,
+      todoColumnId: todoData.todoColumnId ?? null,
+      todoColumn: null, // Minimal stub for optimistic item
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
     try {
-      const newTodo = await $fetch<TodoWithOrder>("/api/todos", {
-        method: "POST",
-        body: todoData,
-      });
+      const createdTodo = await performOptimisticUpdate(
+        () => $fetch<TodoWithOrderResponse>("/api/todos", {
+          method: "POST",
+          body: todoData,
+        }),
+        () => {
+          if (todos.value && Array.isArray(todos.value)) {
+            todos.value.push(newTodo);
+          }
+        },
+        () => {
+          if (todos.value) {
+            todos.value.splice(0, todos.value.length, ...previousTodos);
+          }
+        },
+      );
 
-      await refreshNuxtData("todos");
+      if (todos.value && Array.isArray(todos.value)) {
+        const tempIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === tempId);
+        if (tempIndex !== -1) {
+          todos.value[tempIndex] = createdTodo;
+        }
+      }
 
-      return newTodo;
+      return createdTodo;
     }
     catch (err) {
-      error.value = "Failed to create todo";
-      consola.error("Use Todos: Error creating todo:", err);
+      const message = getErrorMessage(err, "Failed to create todo");
+      showError("Error", message);
       throw err;
     }
   };
 
   const updateTodo = async (id: string, updates: UpdateTodoInput) => {
+    const previousTodos = structuredClone(todos.value ?? []);
+
     try {
-      const updatedTodo = await $fetch<TodoWithOrder>(`/api/todos/${id}`, {
-        method: "PUT",
-        body: updates,
-      });
+      const updatedTodoFromResponse = await performOptimisticUpdate(
+        () => $fetch<TodoWithOrderResponse>(`/api/todos/${id}`, {
+          method: "PUT",
+          body: updates,
+        }),
+        () => {
+          if (todos.value && Array.isArray(todos.value)) {
+            const todoIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === id);
+            if (todoIndex !== -1) {
+              todos.value[todoIndex] = { ...todos.value[todoIndex], ...updates } as any;
+            }
+          }
+        },
+        () => {
+          if (todos.value) {
+            todos.value.splice(0, todos.value.length, ...previousTodos);
+          }
+        },
+      );
 
-      await refreshNuxtData("todos");
+      // Reconciliation
+      if (todos.value && Array.isArray(todos.value)) {
+        const todoIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === id);
+        if (todoIndex !== -1) {
+          todos.value[todoIndex] = updatedTodoFromResponse;
+        }
+      }
 
-      return updatedTodo;
+      return updatedTodoFromResponse;
     }
     catch (err) {
-      error.value = "Failed to update todo";
-      consola.error("Use Todos: Error updating todo:", err);
+      const message = getErrorMessage(err, "Failed to update todo");
+      showError("Error", message);
       throw err;
     }
   };
@@ -77,29 +136,45 @@ export function useTodos() {
   };
 
   const deleteTodo = async (id: string) => {
-    try {
-      const response = await fetch(`/api/todos/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to delete todo");
-      }
+    const previousTodos = structuredClone(todos.value ?? []);
 
-      await refreshNuxtData("todos");
+    try {
+      return await performOptimisticUpdate(
+        async () => {
+          await $fetch<void>(`/api/todos/${id}`, {
+            method: "DELETE",
+          });
+          return true;
+        },
+        () => {
+          if (todos.value && Array.isArray(todos.value)) {
+            const index = todos.value.findIndex(t => t.id === id);
+            if (index !== -1) {
+              todos.value.splice(index, 1);
+            }
+          }
+        },
+        () => {
+          if (todos.value) {
+            todos.value.splice(0, todos.value.length, ...previousTodos);
+          }
+        },
+      );
     }
     catch (err) {
-      error.value = "Failed to delete todo";
-      consola.error("Use Todos: Error deleting todo:", err);
+      const message = getErrorMessage(err, "Failed to delete todo");
+      showError("Error", message);
       throw err;
     }
   };
 
   const reorderTodo = async (todoId: string, direction: "up" | "down", todoColumnId: string | null) => {
-    try {
-      const currentTodo = currentTodos.value.find(t => t.id === todoId);
-      if (!currentTodo)
-        return;
+    const previousTodos = structuredClone(todos.value ?? []);
+    const currentTodo = currentTodos.value.find(t => t.id === todoId);
+    if (!currentTodo)
+      return;
 
+    try {
       const sameSectionTodos = currentTodos.value
         .filter(t =>
           t.todoColumnId === todoColumnId
@@ -126,44 +201,73 @@ export function useTodos() {
       if (!targetTodo)
         return;
 
-      await $fetch("/api/todos/reorder", {
-        method: "POST",
-        body: { todoId, direction, todoColumnId },
-      });
+      await performOptimisticUpdate(
+        () => $fetch("/api/todos/reorder", {
+          method: "POST",
+          body: { todoId, direction, todoColumnId },
+        }),
+        () => {
+          if (todos.value && Array.isArray(todos.value)) {
+            const currentTodoInCache = todos.value.find(t => t.id === todoId);
+            const targetTodoInCache = todos.value.find(t => t.id === targetTodo.id);
+            if (currentTodoInCache && targetTodoInCache) {
+              const updatedTodos = todos.value.map(t => {
+                if (t.id === todoId) return { ...t, order: targetTodoInCache.order };
+                if (t.id === targetTodo.id) return { ...t, order: currentTodoInCache.order };
+                return t;
+              });
+              todos.value.splice(0, todos.value.length, ...updatedTodos);
+            }
+          }
+        },
+        () => {
+          if (todos.value) {
+            todos.value.splice(0, todos.value.length, ...previousTodos);
+          }
+        },
+      );
+    }
+    catch (err) {
+      const message = getErrorMessage(err, "Failed to reorder todo");
+      showError("Error", message);
+      throw err;
+    }
 
+    // We still need to refresh because reorder on server might affect more than just two items
+    // but we do it after the optimistic update has finished.
+    try {
       await refreshNuxtData("todos");
     }
     catch (err) {
-      error.value = "Failed to reorder todo";
-      consola.error("Use Todos: Error reordering todo:", err);
-      throw err;
+      consola.error("Use Todos: Failed to refresh todos after reorder:", err);
     }
   };
 
-  const clearCompleted = async (columnId: string, completedTodos?: TodoWithOrder[]) => {
+  const clearCompleted = async (columnId: string) => {
+    const previousTodos = structuredClone(todos.value ?? []);
+
     try {
-      let todosToDelete: TodoWithOrder[] = [];
-
-      if (completedTodos && completedTodos.length > 0) {
-        todosToDelete = completedTodos;
-      }
-      else {
-        todosToDelete = currentTodos.value.filter(t => t.todoColumnId === columnId && t.completed);
-      }
-
-      if (todosToDelete.length === 0)
-        return;
-
-      await $fetch(`/api/todo-columns/${columnId}/todos/clear-completed`, {
-        method: "POST",
-        body: { action: "delete" },
-      });
-
-      await refreshNuxtData("todos");
+      await performOptimisticUpdate(
+        () => $fetch(`/api/todo-columns/${columnId}/todos/clear-completed`, {
+          method: "POST",
+          body: { action: "delete" },
+        }),
+        () => {
+          if (todos.value && Array.isArray(todos.value)) {
+            const updatedTodos = todos.value.filter((t: TodoWithOrderResponse) => !(t.todoColumnId === columnId && t.completed));
+            todos.value.splice(0, todos.value.length, ...updatedTodos);
+          }
+        },
+        () => {
+          if (todos.value) {
+            todos.value.splice(0, todos.value.length, ...previousTodos);
+          }
+        },
+      );
     }
     catch (err) {
-      error.value = "Failed to clear completed todos";
-      consola.error("Use Todos: Error clearing completed todos:", err);
+      const message = getErrorMessage(err, "Failed to clear completed todos");
+      showError("Error", message);
       throw err;
     }
   };

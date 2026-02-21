@@ -3,6 +3,9 @@ import type { Priority, Prisma } from "@prisma/client";
 export type User = Prisma.UserGetPayload<Record<string, never>> & {
   avatar?: string | null;
   color?: string | null;
+  calendarId?: string | null;
+  calendarIntegrationId?: string | null;
+  calendarService?: string | null;
 };
 export type UserWithTodos = Prisma.UserGetPayload<{
   include: {
@@ -47,7 +50,7 @@ export type TodoColumn = Omit<Prisma.TodoColumnGetPayload<{
     };
   };
 }>, "todos" | "createdAt" | "updatedAt"> & {
-  todos?: Prisma.TodoGetPayload<Record<string, never>>[];
+  readonly todos?: readonly Prisma.TodoGetPayload<Record<string, never>>[];
   createdAt: string;
   updatedAt: string;
 };
@@ -57,7 +60,7 @@ export type TodoColumnBasic = Pick<TodoColumn, "id" | "name"> & {
     id: string;
     name: string;
     avatar: string | null;
-  };
+  } | null;
 };
 
 export type BaseListItem = {
@@ -156,9 +159,20 @@ export type TodoListItem = BaseListItem & {
 
 export type TodoWithOrder = TodoWithUser & { order: number };
 
+export type TodoWithOrderResponse = Omit<TodoWithOrder, "createdAt" | "updatedAt" | "dueDate"> & {
+  createdAt: string;
+  updatedAt: string;
+  dueDate: string | null;
+};
+
 export type UserWithOrder = User & { todoOrder: number };
 
 export type ShoppingListWithOrder = ShoppingListWithItemsAndCount & { order: number };
+
+export type ShoppingListWithOrderResponse = Omit<ShoppingListWithOrder, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type RawIntegrationList = {
   readonly id: string;

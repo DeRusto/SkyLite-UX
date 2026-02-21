@@ -236,6 +236,8 @@ export class GoogleCalendarServerService {
       end,
       allDay,
       color: this.settings.useUserColors ? undefined : (this.settings.eventColor || "#06b6d4"),
+      integrationId: this.integrationId,
+      calendarId: googleEvent.calendarId,
       users: [], // Users will be populated by the integration layer based on settings
     };
   }

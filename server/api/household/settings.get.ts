@@ -10,7 +10,7 @@ export default defineEventHandler(async () => {
         familyName: "Our Family",
         choreCompletionMode: "SELF_CLAIM",
         rewardApprovalThreshold: null,
-        parentPin: null,
+        adultPin: null,
       },
     });
   }
@@ -21,6 +21,6 @@ export default defineEventHandler(async () => {
     familyName: settings.familyName,
     choreCompletionMode: settings.choreCompletionMode,
     rewardApprovalThreshold: settings.rewardApprovalThreshold,
-    hasParentPin: !!settings.parentPin,
+    hasAdultPin: !!settings.adultPin,
   };
 });
