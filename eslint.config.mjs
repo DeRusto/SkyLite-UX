@@ -13,7 +13,7 @@ export default withNuxt(antfu({
     semi: true,
     quotes: "double",
   },
-  ignores: [".pnpm-store/**", "**/migrations/*", ".gitignore", ".devcontainer/**", ".github/**", "docker-compose-example.yaml"],
+  ignores: [".pnpm-store/**", "**/migrations/*", ".gitignore", ".devcontainer/**", ".github/**", "docker-compose-example.yaml", "*.md"],
 }, {
   rules: {
     "vue/max-attributes-per-line": ["error", {
@@ -40,6 +40,7 @@ export default withNuxt(antfu({
         "CLAUDE.md",
         "LICENSE.md",
         "AGENTS.md",
+        /\.md$/i, // Ignore all markdown files
         /docker-compose\.yml$/i,
         /-docker-compose\.yml$/i,
         /clear-completed\.post\.ts$/i,
