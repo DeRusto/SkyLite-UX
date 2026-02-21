@@ -1,3 +1,4 @@
+import { consola } from "consola";
 import { z } from "zod";
 
 import prisma from "~/lib/prisma";
@@ -23,14 +24,40 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // PIN is stored on household settings, not on the user model
-  const settings = await prisma.householdSettings.findFirst();
-
-  if (!settings || !settings.parentPin) {
-    return { valid: false };
+  // If the user has a specific PIN, verify it
+  if (user.pin) {
+    const isValid = await verifyPin(pin, user.pin);
+    return { valid: isValid };
   }
 
-  const isValid = settings.parentPin === pin;
+  // Fallback: check household settings adult PIN
+  const settings = await prisma.householdSettings.findFirst();
+
+  if (!settings || !settings.adultPin) {
+    // When neither user settings nor household settings provide a PIN (settings or settings.adultPin is falsy),
+    // the endpoint intentionally treats the PIN as valid only for users where user.role is "ADULT".
+    return { valid: user.role === "ADULT" };
+  }
+
+  // Verify against household PIN as fallback
+  let isValid = await verifyPin(pin, settings.adultPin);
+
+  // Migration: If verification failed, check if it's a legacy plaintext PIN
+  if (!isValid && settings.adultPin === pin) {
+    isValid = true;
+
+    // Upgrade to hashed PIN
+    try {
+      const hashed = await hashPin(pin);
+      await prisma.householdSettings.update({
+        where: { id: settings.id },
+        data: { adultPin: hashed },
+      });
+    }
+    catch (error) {
+      consola.error("Failed to migrate PIN:", error);
+    }
+  }
 
   return { valid: isValid };
 });

@@ -67,6 +67,21 @@ export async function createGooglePhotosClient(
     refresh_token: refreshToken,
   });
 
+  // DEBUG: Check token scopes directly from Google
+  try {
+    const infoUrl = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`;
+    // consola.info("DEBUG: Checking token info at", infoUrl);
+    const infoRes = await fetch(infoUrl);
+    const info = await infoRes.json();
+    consola.debug("Token verification (scopes):", info.scope);
+    if (info.error) {
+      consola.error("Token info error:", info.error_description);
+    }
+  }
+  catch (e) {
+    consola.error("Failed to verify token scopes:", e);
+  }
+
   // Google Photos API base URL
   const PHOTOS_API_BASE = "https://photoslibrary.googleapis.com/v1";
 

@@ -63,6 +63,7 @@ export const integrationConfigs: IntegrationConfig[] = [
     files: [],
     dialogFields: [],
     syncInterval: 10,
+    idPrefix: "iCal",
   },
   {
     type: "calendar",
@@ -88,6 +89,7 @@ export const integrationConfigs: IntegrationConfig[] = [
     files: [],
     dialogFields: [],
     syncInterval: 1,
+    idPrefix: "google",
   },
   // ================================================
   // Weather integration configs
@@ -220,9 +222,14 @@ export const integrationConfigs: IntegrationConfig[] = [
   },
   // ================================================
   // Meal integration configs can support the following list-level capabilities:
+  // - get_recipes: Can get recipes from the integration
+  // - add_recipe: Can add new recipes to the integration
+  // - get_meal_plan: Can get meal plans from the integration
+  // - add_meal_plan: Can add meals to the meal plan
+  // - edit_meal_plan: Can edit meals in the meal plan
+  // - delete_meal_plan: Can delete meals from the meal plan
   // ================================================
   // TODO: Add meal integration configs
-  // TODO: Define meal capabilities
   // ================================================
   // Shopping integration configs can support the following list-level capabilities:
   // - add_items: Can add new items to lists
@@ -359,11 +366,11 @@ const serviceFactoryMap = {
     const useUserColors = settings?.useUserColors || false;
     return createICalService(_id, baseUrl, eventColor, user, useUserColors);
   },
-  "calendar:google-calendar": (id: string, _apiKey: string, _baseUrl: string, _settings?: unknown) => createGoogleCalendarService(id),
+  "calendar:google-calendar": (id: string, _apiKey: string, _baseUrl: string, _settings?: unknown, accessToken?: string | null, refreshToken?: string | null, tokenExpiry?: Date | null) => createGoogleCalendarService(id, accessToken, refreshToken, tokenExpiry),
   "weather:home-assistant": (id: string, apiKey: string, baseUrl: string, settings?: HomeAssistantWeatherSettings) => {
     return createHomeAssistantWeatherService(id, apiKey, baseUrl, settings);
   },
-  "photos:google-photos": (id: string, _apiKey: string, _baseUrl: string, _settings?: GooglePhotosSettings) => createGooglePhotosService(id),
+  "photos:google-photos": (id: string, _apiKey: string, _baseUrl: string, _settings?: GooglePhotosSettings, accessToken?: string | null, refreshToken?: string | null, tokenExpiry?: Date | null) => createGooglePhotosService(id, accessToken, refreshToken, tokenExpiry),
   "photos:immich": (id: string, apiKey: string, baseUrl: string, settings?: ImmichSettings) => createImmichService(id, apiKey, baseUrl, settings),
   "shopping:mealie": (id: string, apiKey: string, baseUrl: string, _settings?: unknown) => createMealieService(id, apiKey, baseUrl),
   "shopping:tandoor": (id: string, apiKey: string, baseUrl: string, _settings?: unknown) => createTandoorService(id, apiKey, baseUrl),

@@ -409,214 +409,183 @@ function handleDelete() {
 </script>
 
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-    @click="emit('close')"
+  <GlobalDialog
+    :is-open="isOpen"
+    :title="integration?.id ? 'Edit Integration' : 'Add Integration'"
+    :error="error"
+    :show-delete="!!integration?.id"
+    :is-submitting="isTestingConnection"
+    @close="emit('close')"
+    @save="handleSave"
+    @delete="handleDelete"
   >
-    <div
-      class="w-full max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto bg-default rounded-lg border border-default shadow-lg"
-      @click.stop
-    >
-      <div class="flex items-center justify-between p-4 border-b border-default">
-        <h3 class="text-base font-semibold leading-6">
-          {{ integration?.id ? 'Edit Integration' : 'Add Integration' }}
-        </h3>
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-x"
-          class="-my-1"
-          aria-label="Close dialog"
-          @click="emit('close')"
-        />
+    <div class="space-y-6">
+      <div v-if="isTestingConnection" class="bg-info/10 text-info rounded-md px-3 py-2 text-sm flex items-center gap-2">
+        <UIcon name="i-lucide-loader-2" class="animate-spin h-4 w-4" />
+        {{ props.connectionTestResult?.message || 'Testing connection...' }}
       </div>
 
-      <form class="p-4 space-y-6" @submit.prevent="handleSave">
-        <div
-          v-if="error"
-          role="alert"
-          class="bg-error/10 text-error rounded-md px-3 py-2 text-sm"
-        >
-          {{ error }}
+      <div v-if="props.connectionTestResult && !props.connectionTestResult.isLoading">
+        <div v-if="props.connectionTestResult.success" class="bg-success/10 text-success rounded-md px-3 py-2 text-sm flex items-center gap-2">
+          <UIcon name="i-lucide-check-circle" class="h-4 w-4" />
+          {{ props.connectionTestResult.message || 'Connection test successful! Integration saved.' }}
         </div>
-
-        <div v-if="isTestingConnection" class="bg-info/10 text-info rounded-md px-3 py-2 text-sm flex items-center gap-2">
-          <UIcon name="i-lucide-loader-2" class="animate-spin h-4 w-4" />
-          {{ props.connectionTestResult?.message || 'Testing connection...' }}
+        <div v-else class="bg-error/10 text-error rounded-md px-3 py-2 text-sm flex items-center gap-2">
+          <UIcon name="i-lucide-x-circle" class="h-4 w-4" />
+          {{ props.connectionTestResult.error || 'Connection test failed. Check your API key and base URL.' }}
         </div>
+      </div>
 
-        <div v-if="props.connectionTestResult && !props.connectionTestResult.isLoading">
-          <div v-if="props.connectionTestResult.success" class="bg-success/10 text-success rounded-md px-3 py-2 text-sm flex items-center gap-2">
-            <UIcon name="i-lucide-check-circle" class="h-4 w-4" />
-            {{ props.connectionTestResult.message || 'Connection test successful! Integration saved.' }}
-          </div>
-          <div v-else class="bg-error/10 text-error rounded-md px-3 py-2 text-sm flex items-center gap-2">
-            <UIcon name="i-lucide-x-circle" class="h-4 w-4" />
-            {{ props.connectionTestResult.error || 'Connection test failed. Check your API key and base URL.' }}
-          </div>
-        </div>
-
-        <div v-if="integration?.id" class="bg-info/10 text-info rounded-md px-3 py-2 text-sm">
-          <div class="flex items-start gap-2">
-            <UIcon name="i-lucide-info" class="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <div>
-              <p class="font-medium">
-                Editing existing integration
-              </p>
-              <p class="text-xs mt-1">
-                For security reasons, API keys and URLs are not displayed. Leave these fields empty to keep current values, or enter new values to update them.
-              </p>
-            </div>
+      <div v-if="integration?.id" class="bg-info/10 text-info rounded-md px-3 py-2 text-sm">
+        <div class="flex items-start gap-2">
+          <UIcon name="i-lucide-info" class="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <p class="font-medium">
+              Editing existing integration
+            </p>
+            <p class="text-xs mt-1">
+              For security reasons, API keys and URLs are not displayed. Leave these fields empty to keep current values, or enter new values to update them.
+            </p>
           </div>
         </div>
+      </div>
 
-        <template v-if="!integration?.id">
-          <div class="space-y-2">
-            <label class="block text-sm font-medium text-highlighted">Integration Type *</label>
-            <USelect
-              v-model="type"
-              :items="availableTypes"
-              class="w-full"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <label class="block text-sm font-medium text-highlighted">Service *</label>
-            <USelect
-              v-model="service"
-              :items="availableServices"
-              class="w-full"
-            />
-          </div>
-        </template>
+      <template v-if="!integration?.id">
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-highlighted">Integration Type *</label>
+          <USelect
+            v-model="type"
+            :items="availableTypes"
+            class="w-full"
+          />
+        </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-medium text-highlighted">Integration Name</label>
-          <UInput
-            v-model="name"
-            placeholder="Jane's Integration"
+          <label class="block text-sm font-medium text-highlighted">Service *</label>
+          <USelect
+            v-model="service"
+            :items="availableServices"
             class="w-full"
-            :ui="{ base: 'w-full' }"
           />
-          <p class="text-sm text-muted">
-            Optional: If not provided, a name will be generated.
-          </p>
         </div>
+      </template>
 
-        <!-- Google Calendar OAuth Flow -->
-        <template v-if="isOAuthFlow && service === 'google-calendar'">
-          <settingsGoogleCalendarOAuth v-if="oauthStep === 'init'" />
-          <settingsGoogleCalendarSelector
-            v-else-if="oauthStep === 'select-calendars' && tempOAuthTokens"
-            :access-token="tempOAuthTokens.accessToken"
-            :refresh-token="tempOAuthTokens.refreshToken"
-            :token-expiry="tempOAuthTokens.tokenExpiry"
-            @calendars-selected="handleCalendarsSelected"
-          />
-          <div v-else-if="oauthStep === 'complete'" class="bg-success/10 text-success rounded-md px-3 py-2 text-sm flex items-center gap-2">
-            <UIcon name="i-lucide-check-circle" class="h-4 w-4" />
-            Calendars selected successfully. Click Save to complete setup.
-          </div>
-        </template>
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Integration Name</label>
+        <UInput
+          v-model="name"
+          placeholder="Jane's Integration"
+          class="w-full"
+          :ui="{ base: 'w-full' }"
+        />
+        <p class="text-sm text-muted">
+          Optional: If not provided, a name will be generated.
+        </p>
+      </div>
 
-        <!-- Google Photos OAuth Flow -->
-        <template v-else-if="isOAuthFlow && service === 'google-photos'">
-          <settingsGooglePhotosOAuth v-if="oauthStep === 'init'" />
-          <settingsGooglePhotosAlbumSelector
-            v-else-if="oauthStep === 'select-albums' && tempOAuthTokens"
-            :access-token="tempOAuthTokens.accessToken"
-            :refresh-token="tempOAuthTokens.refreshToken"
-            :token-expiry="tempOAuthTokens.tokenExpiry"
-            @albums-selected="handleAlbumsSelected"
-          />
-          <div v-else-if="oauthStep === 'complete'" class="bg-success/10 text-success rounded-md px-3 py-2 text-sm flex items-center gap-2">
-            <UIcon name="i-lucide-check-circle" class="h-4 w-4" />
-            Albums selected successfully. Click Save to complete setup.
-          </div>
-        </template>
+      <!-- Google Calendar OAuth Flow -->
+      <template v-if="isOAuthFlow && service === 'google-calendar'">
+        <settingsGoogleCalendarOAuth v-if="oauthStep === 'init'" />
+        <settingsGoogleCalendarSelector
+          v-else-if="oauthStep === 'select-calendars' && tempOAuthTokens"
+          :access-token="tempOAuthTokens.accessToken"
+          :refresh-token="tempOAuthTokens.refreshToken"
+          :token-expiry="tempOAuthTokens.tokenExpiry"
+          @calendars-selected="handleCalendarsSelected"
+        />
+        <div v-else-if="oauthStep === 'complete'" class="bg-success/10 text-success rounded-md px-3 py-2 text-sm flex items-center gap-2">
+          <UIcon name="i-lucide-check-circle" class="h-4 w-4" />
+          Calendars selected successfully. Click Save to complete setup.
+        </div>
+      </template>
 
-        <template v-else-if="currentIntegrationConfig">
-          <div
-            v-for="field in settingsFields"
-            :key="field.key"
-            class="space-y-2"
-          >
-            <template v-if="field.type === 'color'">
-              <label :for="field.key" class="block text-sm font-medium text-highlighted">
-                {{ field.label }}{{ field.required ? ' *' : '' }}
-              </label>
-              <p v-if="field.description" class="text-sm text-muted">
-                {{ field.description }}
-              </p>
-              <UPopover class="mt-2">
-                <UButton
-                  label="Choose color"
-                  color="neutral"
-                  variant="outline"
-                >
-                  <template #leading>
-                    <span :style="{ backgroundColor: typeof settingsData[field.key] === 'string' ? settingsData[field.key] as string : '#06b6d4' }" class="size-3 rounded-full" />
-                  </template>
-                </UButton>
-                <template #content>
-                  <UColorPicker v-model="settingsData[field.key] as string" class="p-2" />
-                </template>
-              </UPopover>
-            </template>
-            <template v-else-if="field.type === 'boolean'">
-              <UCheckbox
-                v-model="settingsData[field.key] as boolean"
-                :label="field.label"
-              />
-            </template>
-            <template v-else-if="field.key === 'user'">
-              <USelect
-                v-model="settingsData[field.key] as string[]"
-                :items="users.map(u => ({ label: u.name, value: u.id }))"
-                placeholder="Optional: Select user(s)"
-                class="w-full"
-                multiple
-              />
-            </template>
-            <template v-else>
-              <UInput
-                :id="field.key"
-                v-model="settingsData[field.key] as string"
-                :type="field.type === 'password' ? (show ? 'text' : 'password') : field.type"
-                :placeholder="getFieldPlaceholder(field)"
-                class="w-full"
-                :ui="{ base: 'w-full' }"
-              >
-                <template v-if="field.type === 'password'" #trailing>
-                  <UButton
-                    color="neutral"
-                    variant="ghost"
-                    :icon="show ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                    :aria-label="show ? 'Hide password' : 'Show password'"
-                    @click="show = !show"
-                  />
-                </template>
-              </UInput>
-            </template>
+      <!-- Google Photos OAuth Flow -->
+      <template v-else-if="isOAuthFlow && service === 'google-photos'">
+        <settingsGooglePhotosOAuth v-if="oauthStep === 'init'" />
+        <settingsGooglePhotosAlbumSelector
+          v-else-if="oauthStep === 'select-albums' && tempOAuthTokens"
+          :access-token="tempOAuthTokens.accessToken"
+          :refresh-token="tempOAuthTokens.refreshToken"
+          :token-expiry="tempOAuthTokens.tokenExpiry"
+          @albums-selected="handleAlbumsSelected"
+        />
+        <div v-else-if="oauthStep === 'complete'" class="bg-success/10 text-success rounded-md px-3 py-2 text-sm flex items-center gap-2">
+          <UIcon name="i-lucide-check-circle" class="h-4 w-4" />
+          Albums selected successfully. Click Save to complete setup.
+        </div>
+      </template>
+
+      <template v-else-if="currentIntegrationConfig">
+        <div
+          v-for="field in settingsFields"
+          :key="field.key"
+          class="space-y-2"
+        >
+          <template v-if="field.type === 'color'">
+            <label :for="field.key" class="block text-sm font-medium text-highlighted">
+              {{ field.label }}{{ field.required ? ' *' : '' }}
+            </label>
             <p v-if="field.description" class="text-sm text-muted">
               {{ field.description }}
             </p>
-          </div>
-        </template>
-
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
+            <UPopover class="mt-2">
+              <UButton
+                label="Choose color"
+                color="neutral"
+                variant="outline"
+              >
+                <template #leading>
+                  <span :style="{ backgroundColor: typeof settingsData[field.key] === 'string' ? settingsData[field.key] as string : '#06b6d4' }" class="size-3 rounded-full" />
+                </template>
+              </UButton>
+              <template #content>
+                <UColorPicker v-model="settingsData[field.key] as string" class="p-2" />
+              </template>
+            </UPopover>
+          </template>
+          <template v-else-if="field.type === 'boolean'">
             <UCheckbox
-              v-model="enabled"
-              label="Enable integration"
+              v-model="settingsData[field.key] as boolean"
+              :label="field.label"
             />
-          </div>
+          </template>
+          <template v-else-if="field.key === 'user'">
+            <USelect
+              v-model="settingsData[field.key] as string[]"
+              :items="users.map(u => ({ label: u.name, value: u.id }))"
+              placeholder="Optional: Select user(s)"
+              class="w-full"
+              multiple
+            />
+          </template>
+          <template v-else>
+            <UInput
+              :id="field.key"
+              v-model="settingsData[field.key] as string"
+              :type="field.type === 'password' ? (show ? 'text' : 'password') : field.type"
+              :placeholder="getFieldPlaceholder(field)"
+              class="w-full"
+              :ui="{ base: 'w-full' }"
+            >
+              <template v-if="field.type === 'password'" #trailing>
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  :icon="show ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                  :aria-label="show ? 'Hide password' : 'Show password'"
+                  @click="show = !show"
+                />
+              </template>
+            </UInput>
+          </template>
+          <p v-if="field.description" class="text-sm text-muted">
+            {{ field.description }}
+          </p>
         </div>
-      </form>
+      </template>
 
-      <!-- Google Photos Import UI (Only for existing/saved integrations) -->
-      <div v-if="service === 'google-photos' && integration?.id" class="p-4 border-t border-default bg-muted/5">
+      <!-- Integration Specific Settings -->
+      <div v-if="service === 'google-photos' && integration?.id" class="pt-6 border-t border-default">
         <settingsGooglePhotosAlbumSelector
           :integration-id="integration.id"
           :access-token="integration.accessToken || ''"
@@ -625,17 +594,12 @@ function handleDelete() {
         />
       </div>
 
-      <!-- Immich Album Selector UI (Only for existing/saved Immich integrations) -->
-      <div v-if="service === 'immich' && integration?.id" class="p-4 border-t border-default bg-muted/5">
+      <div v-if="service === 'immich' && integration?.id" class="pt-6 border-t border-default space-y-8">
         <settingsImmichAlbumSelector
           :integration-id="integration.id"
           :selected-albums="(settingsData.selectedAlbums as string[]) || []"
           @albums-selected="handleImmichAlbumsSelected"
         />
-      </div>
-
-      <!-- Immich People Selector UI (Only for existing/saved Immich integrations) -->
-      <div v-if="service === 'immich' && integration?.id" class="p-4 border-t border-default bg-muted/5">
         <settingsImmichPeopleSelector
           :integration-id="integration.id"
           :selected-people="(settingsData.selectedPeople as string[]) || []"
@@ -643,35 +607,14 @@ function handleDelete() {
         />
       </div>
 
-      <div class="flex justify-between p-4 border-t border-default">
-        <UButton
-          v-if="integration?.id"
-          color="error"
-          variant="ghost"
-          icon="i-lucide-trash"
-          aria-label="Delete integration"
-          @click="handleDelete"
-        >
-          Delete
-        </UButton>
-        <div class="flex gap-2" :class="{ 'ml-auto': !integration?.id }">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            @click="emit('close')"
-          >
-            Cancel
-          </UButton>
-          <UButton
-            color="primary"
-            :loading="isTestingConnection"
-            :disabled="isTestingConnection"
-            @click="handleSave"
-          >
-            {{ isTestingConnection ? 'Saving...' : 'Save' }}
-          </UButton>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <UCheckbox
+            v-model="enabled"
+            label="Enable integration"
+          />
         </div>
       </div>
     </div>
-  </div>
+  </GlobalDialog>
 </template>

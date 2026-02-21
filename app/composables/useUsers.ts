@@ -2,6 +2,8 @@ import { consola } from "consola";
 
 import type { CreateUserInput, User, UserWithOrder } from "~/types/database";
 
+import { getErrorMessage } from "~/utils/error";
+
 export function useUsers() {
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -20,7 +22,7 @@ export function useUsers() {
       return currentUsers.value;
     }
     catch (err) {
-      error.value = "Failed to fetch users";
+      error.value = getErrorMessage(err, "Failed to fetch users");
       consola.error("Use Users: Error fetching users:", err);
       throw err;
     }
@@ -32,7 +34,7 @@ export function useUsers() {
   const createUser = async (userData: CreateUserInput) => {
     try {
       const newUser = await $fetch<UserWithOrder>("/api/users", {
-        method: "POST",
+        method: "POST" as any,
         body: userData,
       });
 
@@ -43,7 +45,7 @@ export function useUsers() {
       return newUser;
     }
     catch (err) {
-      error.value = "Failed to create user";
+      error.value = getErrorMessage(err, "Failed to create user");
       consola.error("Use Users: Error creating user:", err);
       throw err;
     }
@@ -52,7 +54,7 @@ export function useUsers() {
   const updateUser = async (id: string, updates: Partial<User>) => {
     try {
       const updatedUser = await $fetch<User>(`/api/users/${id}`, {
-        method: "PUT",
+        method: "PUT" as any,
         body: updates,
       });
 
@@ -62,7 +64,7 @@ export function useUsers() {
       return updatedUser;
     }
     catch (err) {
-      error.value = "Failed to update user";
+      error.value = getErrorMessage(err, "Failed to update user");
       consola.error("Use Users: Error updating user:", err);
       throw err;
     }
@@ -76,7 +78,7 @@ export function useUsers() {
       });
     }
     catch (err) {
-      error.value = "Failed to select user";
+      error.value = getErrorMessage(err, "Failed to select user");
       consola.error("Use Users: Error selecting user:", err);
       throw err;
     }
@@ -90,7 +92,7 @@ export function useUsers() {
       });
     }
     catch (err) {
-      error.value = "Failed to clear current user";
+      error.value = getErrorMessage(err, "Failed to clear current user");
       consola.error("Use Users: Error clearing current user:", err);
       throw err;
     }
@@ -101,7 +103,7 @@ export function useUsers() {
   const deleteUser = async (userId: string) => {
     try {
       await $fetch(`/api/users/${userId}`, {
-        method: "DELETE" as const,
+        method: "DELETE" as any,
       });
 
       if (currentUser.value?.id === userId) {
@@ -114,7 +116,7 @@ export function useUsers() {
       return true;
     }
     catch (err) {
-      error.value = "Failed to delete user";
+      error.value = getErrorMessage(err, "Failed to delete user");
       consola.error("Use Users: Error deleting user:", err);
       throw err;
     }
@@ -139,17 +141,17 @@ export function useUsers() {
         return;
       }
 
-      const currentUser = sortedUsers[currentIndex];
+      const currentUserItem = sortedUsers[currentIndex];
       const targetUser = sortedUsers[targetIndex];
 
-      if (!currentUser || !targetUser)
+      if (!currentUserItem || !targetUser)
         return;
 
-      const currentOrder = currentUser.todoOrder || 0;
+      const currentOrder = currentUserItem.todoOrder || 0;
       const targetOrder = targetUser.todoOrder || 0;
 
       const updatedUsers = currentUsers.value.map((user) => {
-        if (user.id === currentUser.id) {
+        if (user.id === currentUserItem.id) {
           return { ...user, todoOrder: targetOrder };
         }
         if (user.id === targetUser.id) {
@@ -163,7 +165,7 @@ export function useUsers() {
         .map(user => user.id);
 
       await $fetch("/api/users/reorder", {
-        method: "POST",
+        method: "POST" as any,
         body: { userIds: newOrder },
       });
 
@@ -171,7 +173,7 @@ export function useUsers() {
       await refreshNuxtData("todo-columns");
     }
     catch (err) {
-      error.value = "Failed to reorder user";
+      error.value = getErrorMessage(err, "Failed to reorder user");
       consola.error("Use Users: Error reordering user:", err);
       throw err;
     }

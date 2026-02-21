@@ -1,15 +1,28 @@
-import { PrismaClient } from "@prisma/client";
+import { encryptToken as encryptCalendarToken } from "~~/server/integrations/google-calendar/oauth";
+import { encryptToken as encryptPhotosToken } from "~~/server/integrations/google-photos/oauth";
 import { consola } from "consola";
 import { createError, defineEventHandler, readBody } from "h3";
 
+import prisma from "~/lib/prisma";
 import { integrationRegistry } from "~/types/integrations";
-
-const prisma = new PrismaClient();
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
-    const { name, type, service, apiKey, baseUrl, icon, enabled, settings } = body;
+    const {
+      name,
+      type,
+      service,
+      apiKey,
+      baseUrl,
+      icon,
+      enabled,
+      settings,
+      accessToken,
+      refreshToken,
+      tokenExpiry,
+      tokenType,
+    } = body;
 
     const integrationKey = `${type}:${service}`;
 
@@ -51,6 +64,24 @@ export default defineEventHandler(async (event) => {
     }
 
     const { createIntegrationService } = await import("~/types/integrations");
+
+    // Encrypt tokens if provided (Google Calendar/Photos)
+    let finalAccessToken = accessToken;
+    let finalRefreshToken = refreshToken;
+
+    if (service === "google-calendar") {
+      if (accessToken)
+        finalAccessToken = encryptCalendarToken(accessToken);
+      if (refreshToken)
+        finalRefreshToken = encryptCalendarToken(refreshToken);
+    }
+    else if (service === "google-photos") {
+      if (accessToken)
+        finalAccessToken = encryptPhotosToken(accessToken);
+      if (refreshToken)
+        finalRefreshToken = encryptPhotosToken(refreshToken);
+    }
+
     const tempIntegration = {
       id: "temp",
       type,
@@ -61,10 +92,10 @@ export default defineEventHandler(async (event) => {
       name: name || "Temp",
       icon: icon || null,
       settings: settings || {},
-      accessToken: null,
-      refreshToken: null,
-      tokenExpiry: null,
-      tokenType: null,
+      accessToken: finalAccessToken || null,
+      refreshToken: finalRefreshToken || null,
+      tokenExpiry: tokenExpiry ? new Date(tokenExpiry) : null,
+      tokenType: tokenType || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -96,6 +127,10 @@ export default defineEventHandler(async (event) => {
         icon,
         enabled,
         settings,
+        accessToken: finalAccessToken,
+        refreshToken: finalRefreshToken,
+        tokenExpiry: tokenExpiry ? new Date(tokenExpiry) : null,
+        tokenType,
       },
     });
 

@@ -91,15 +91,15 @@ const isIntegrationsSectionUnlocked = ref(false);
 // PIN change dialog state
 const isPinChangeDialogOpen = ref(false);
 
-// Check if parent PIN is set on mount
+// Check if adult PIN is set on mount
 const householdSettings = ref<any>(null);
 
-// Check if parent PIN is set on mount
+// Check if adult PIN is set on mount
 onMounted(async () => {
   try {
     const settings = await $fetch<any>("/api/household/settings");
     householdSettings.value = settings;
-    // Check if there are any PARENT users
+    // Check if there are any ADULT users
     // Actually best to rely on fetching fresh list or assuming `users` composable is source of truth.
     // The `useUsers` composable is already used in script.
 
@@ -108,9 +108,9 @@ onMounted(async () => {
     // Let's just set unlocked to false by default.
     isIntegrationsSectionUnlocked.value = false;
 
-    // We can auto-unlock if there are NO parent users (first install scenario?)
-    // But index.post.ts forces first user to be PARENT.
-    // So if there are users, there should be a parent.
+    // We can auto-unlock if there are NO adult users (first install scenario?)
+    // But index.post.ts forces first user to be ADULT.
+    // So if there are users, there should be an adult.
   }
   catch (err) {
     consola.warn("Settings: Failed to check household settings:", err);
@@ -132,6 +132,12 @@ watch(users, (newUsers) => {
 }, { immediate: true });
 
 function handleUnlockIntegrations() {
+  // If no PIN is set, allow access immediately
+  if (householdSettings.value && !householdSettings.value.hasAdultPin) {
+    isIntegrationsSectionUnlocked.value = true;
+    return;
+  }
+
   if (users.value.length > 0 && !isIntegrationsSectionUnlocked.value) {
     isPinDialogOpen.value = true;
   }
@@ -146,7 +152,11 @@ function handlePinVerified() {
 
 function handlePinChanged() {
   isPinChangeDialogOpen.value = false;
-  showSuccess("PIN Changed", "Parent PIN has been updated successfully");
+  // Update local state to reflect that PIN is now set
+  if (householdSettings.value) {
+    householdSettings.value.hasAdultPin = true;
+  }
+  showSuccess("PIN Changed", "Adult PIN has been updated successfully");
 }
 
 // Fetch integration statuses when section is unlocked
@@ -1231,6 +1241,7 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
 
     <SettingsPinChangeDialog
       :is-open="isPinChangeDialogOpen"
+      :has-adult-pin="!!householdSettings?.hasAdultPin"
       @close="isPinChangeDialogOpen = false"
       @saved="handlePinChanged"
     />

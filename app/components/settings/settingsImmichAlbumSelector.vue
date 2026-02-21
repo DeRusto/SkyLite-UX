@@ -169,7 +169,7 @@ function deselectAll() {
     </div>
 
     <!-- Album Grid with Thumbnails -->
-    <div v-else class="max-h-80 overflow-y-auto">
+    <div v-else>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div
           v-for="album in albums"

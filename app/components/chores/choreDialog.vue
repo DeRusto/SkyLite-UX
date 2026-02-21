@@ -1,11 +1,14 @@
 <script setup lang="ts">
 const props = defineProps<{
   isOpen: boolean;
+  chore?: any | null;
 }>();
 
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "created"): void;
+  (e: "updated"): void;
+  (e: "deleted"): void;
 }>();
 
 type User = {
@@ -74,22 +77,40 @@ async function handleSave() {
     isSubmitting.value = true;
     error.value = null;
 
-    await $fetch("/api/chores", {
-      method: "POST",
-      body: {
-        name: name.value.trim(),
-        description: description.value.trim() || undefined,
-        pointValue: pointValue.value,
-        recurrence: recurrence.value,
-        assignedUserId: assignedUserId.value || undefined,
-        dueDate: dueDate.value || undefined,
-        icon: icon.value || undefined,
-      },
-    });
+    if (props.chore?.id) {
+      await $fetch(`/api/chores/${props.chore.id}`, {
+        method: "PUT" as any,
+        body: {
+          name: name.value.trim(),
+          description: description.value.trim() || undefined,
+          pointValue: pointValue.value,
+          recurrence: recurrence.value,
+          assignedUserId: assignedUserId.value || undefined,
+          dueDate: dueDate.value || undefined,
+          icon: icon.value || undefined,
+        },
+      });
+      showSuccess("Chore Updated", `"${name.value}" has been updated.`);
+      emit("updated");
+    }
+    else {
+      await $fetch("/api/chores", {
+        method: "POST",
+        body: {
+          name: name.value.trim(),
+          description: description.value.trim() || undefined,
+          pointValue: pointValue.value,
+          recurrence: recurrence.value,
+          assignedUserId: assignedUserId.value || undefined,
+          dueDate: dueDate.value || undefined,
+          icon: icon.value || undefined,
+        },
+      });
+      showSuccess("Chore Created", `"${name.value}" has been created.`);
+      emit("created");
+    }
 
-    showSuccess("Chore Created", `"${name.value}" has been created.`);
     resetForm();
-    emit("created");
     emit("close");
   }
   catch (err: unknown) {
@@ -107,107 +128,113 @@ function handleClose() {
   emit("close");
 }
 
+async function handleDelete() {
+  if (!props.chore?.id)
+    return;
+
+  try {
+    isSubmitting.value = true;
+    error.value = null;
+
+    await $fetch(`/api/chores/${props.chore.id}`, {
+      method: "DELETE" as any,
+    });
+
+    showSuccess("Chore Deleted", `"${name.value}" has been removed.`);
+    emit("deleted");
+    emit("close");
+    resetForm();
+  }
+  catch (err: unknown) {
+    const fetchError = err as { data?: { message?: string } };
+    error.value = fetchError.data?.message || "Failed to delete chore";
+    showError("Error", error.value);
+  }
+  finally {
+    isSubmitting.value = false;
+  }
+}
+
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
     fetchUsers();
+    if (props.chore) {
+      name.value = props.chore.name;
+      description.value = props.chore.description || "";
+      pointValue.value = props.chore.pointValue;
+      recurrence.value = props.chore.recurrence;
+      assignedUserId.value = props.chore.assignedUserId;
+      // @ts-expect-error - dueDate might be undefined in chore object
+      dueDate.value = props.chore.dueDate ? new Date(props.chore.dueDate).toISOString().split("T")[0] : null;
+      icon.value = props.chore.icon || null;
+    }
+    else {
+      resetForm();
+    }
   }
 });
 </script>
 
 <template>
-  <UModal :open="isOpen" @update:open="(val) => !val && handleClose()">
-    <template #content>
-      <UCard class="w-full max-w-[425px] mx-4">
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold">
-              Create Chore
-            </h3>
-            <UButton
-              icon="i-lucide-x"
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              aria-label="Close"
-              @click="handleClose"
-            />
-          </div>
-        </template>
+  <GlobalDialog
+    :is-open="isOpen"
+    :title="chore ? 'Edit Chore' : 'Create Chore'"
+    :is-submitting="isSubmitting"
+    :save-label="chore ? 'Update Chore' : 'Create Chore'"
+    :show-delete="!!chore"
+    :error="error"
+    @close="handleClose"
+    @save="handleSave"
+    @delete="handleDelete"
+  >
+    <div class="space-y-4">
+      <UFormField label="Name" required>
+        <UInput
+          v-model="name"
+          placeholder="Chore name"
+          :class="{ 'border-error': error && !name.trim() }"
+        />
+      </UFormField>
 
-        <div class="space-y-4 overflow-y-auto max-h-[60vh]">
-          <div
-            v-if="error"
-            role="alert"
-            class="bg-error/10 text-error rounded-md px-3 py-2 text-sm"
-          >
-            {{ error }}
-          </div>
+      <UFormField label="Description">
+        <UTextarea
+          v-model="description"
+          placeholder="Optional description"
+          :rows="2"
+        />
+      </UFormField>
 
-          <UFormField label="Name" required>
-            <UInput
-              v-model="name"
-              placeholder="Chore name"
-              :class="{ 'border-error': error && !name.trim() }"
-            />
-          </UFormField>
+      <UFormField label="Point Value" required>
+        <UInput
+          v-model.number="pointValue"
+          type="number"
+          :min="1"
+        />
+      </UFormField>
 
-          <UFormField label="Description">
-            <UTextarea
-              v-model="description"
-              placeholder="Optional description"
-              :rows="2"
-            />
-          </UFormField>
+      <UFormField label="Recurrence">
+        <USelect
+          v-model="recurrence"
+          :items="recurrenceOptions"
+          option-attribute="label"
+          value-attribute="value"
+        />
+      </UFormField>
 
-          <UFormField label="Point Value" required>
-            <UInput
-              v-model.number="pointValue"
-              type="number"
-              :min="1"
-            />
-          </UFormField>
+      <UFormField label="Assign To">
+        <USelect
+          v-model="assignedUserId"
+          :items="[{ value: null, label: 'Anyone (open)' }, ...users.map(u => ({ value: u.id, label: u.name }))]"
+          placeholder="Anyone can claim"
+        />
+      </UFormField>
 
-          <UFormField label="Recurrence">
-            <USelect
-              v-model="recurrence"
-              :items="recurrenceOptions"
-              option-attribute="label"
-              value-attribute="value"
-            />
-          </UFormField>
-
-          <UFormField label="Assign To">
-            <USelect
-              v-model="assignedUserId"
-              :items="[{ value: null, label: 'Anyone (open)' }, ...users.map(u => ({ value: u.id, label: u.name }))]"
-              placeholder="Anyone can claim"
-            />
-          </UFormField>
-
-          <UFormField v-if="recurrence === 'NONE'" label="Due Date">
-            <UInput
-              v-model="dueDate"
-              type="date"
-            />
-          </UFormField>
-        </div>
-
-        <template #footer>
-          <div class="flex justify-end gap-2">
-            <UButton variant="ghost" @click="handleClose">
-              Cancel
-            </UButton>
-            <UButton
-              color="primary"
-              :loading="isSubmitting"
-              :disabled="isSubmitting"
-              @click="handleSave"
-            >
-              Create Chore
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </template>
-  </UModal>
+      <UFormField v-if="recurrence === 'NONE'" label="Due Date">
+        <UInput
+          v-model="dueDate"
+          type="date"
+        />
+      </UFormField>
+    </div>
+  </GlobalDialog>
 </template>

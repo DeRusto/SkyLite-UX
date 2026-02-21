@@ -2,9 +2,9 @@ import prisma from "~/lib/prisma";
 
 type UpdateHouseholdSettingsBody = {
   familyName?: string;
-  choreCompletionMode?: "SELF_CLAIM" | "PARENT_VERIFY";
+  choreCompletionMode?: "SELF_CLAIM" | "ADULT_VERIFY";
   rewardApprovalThreshold?: number | null;
-  parentPin?: string | null;
+  adultPin?: string | null;
 };
 
 export default defineEventHandler(async (event) => {
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
         familyName: "Our Family",
         choreCompletionMode: "SELF_CLAIM",
         rewardApprovalThreshold: null,
-        parentPin: null,
+        adultPin: null,
       },
     });
   }
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  if (body.choreCompletionMode !== undefined && !["SELF_CLAIM", "PARENT_VERIFY"].includes(body.choreCompletionMode)) {
+  if (body.choreCompletionMode !== undefined && !["SELF_CLAIM", "ADULT_VERIFY"].includes(body.choreCompletionMode)) {
     throw createError({
       statusCode: 400,
       statusMessage: "Invalid chore completion mode",
@@ -50,12 +50,12 @@ export default defineEventHandler(async (event) => {
 
   // Hash PIN if provided
   let hashedPin: string | null | undefined;
-  if (body.parentPin !== undefined) {
-    if (body.parentPin === null) {
+  if (body.adultPin !== undefined) {
+    if (body.adultPin === null) {
       hashedPin = null;
     }
     else {
-      hashedPin = await hashPin(body.parentPin);
+      hashedPin = await hashPin(body.adultPin);
     }
   }
 
@@ -66,7 +66,7 @@ export default defineEventHandler(async (event) => {
       ...(body.familyName !== undefined && { familyName: body.familyName.trim() }),
       ...(body.choreCompletionMode !== undefined && { choreCompletionMode: body.choreCompletionMode }),
       ...(body.rewardApprovalThreshold !== undefined && { rewardApprovalThreshold: body.rewardApprovalThreshold }),
-      ...(hashedPin !== undefined && { parentPin: hashedPin }),
+      ...(hashedPin !== undefined && { adultPin: hashedPin }),
     },
   });
 
@@ -76,6 +76,6 @@ export default defineEventHandler(async (event) => {
     familyName: updatedSettings.familyName,
     choreCompletionMode: updatedSettings.choreCompletionMode,
     rewardApprovalThreshold: updatedSettings.rewardApprovalThreshold,
-    hasParentPin: !!updatedSettings.parentPin,
+    hasAdultPin: !!updatedSettings.adultPin,
   };
 });

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SkyLite-UX is an **open-source alternative to Skylight Calendar**, a self-hosted family management web app. Built with Nuxt 4, Vue 3, and TypeScript, deployed via Docker.
 
-**Core features**: Family calendar (Google Calendar two-way sync, iCal), chores system with points, rewards marketplace, weather (Open-Meteo, OpenWeatherMap, Home Assistant), photo screensaver (Google Photos, Immich), task lists, shopping lists (Mealie, Tandoor integration), meal planning, parent/child user roles.
+**Core features**: Family calendar (Google Calendar two-way sync, iCal), chores system with points, rewards marketplace, weather (Open-Meteo, OpenWeatherMap, Home Assistant), photo screensaver (Google Photos, Immich), task lists, shopping lists (Mealie, Tandoor integration), meal planning, adult/child user roles.
 
 ## Commands
 
@@ -59,7 +59,7 @@ Uses Nuxt 4's `app/` directory with `future.compatibilityVersion: 4`.
 
 **Global components**: `globalAppLoading`, `globalSideBar`, `globalDock` are statically imported in `app.vue` (explicitly excluded from auto-import chunking in `nuxt.config.ts`).
 
-**Dialog pattern**: `*Dialog.vue` components for CRUD modals using Nuxt UI's `UModal`.
+**Dialog pattern**: `*Dialog.vue` components for CRUD modals using the standardized `GlobalDialog` component.
 
 **Sync Manager**: Server plugin polls enabled integrations at configured intervals and broadcasts updates via SSE. Client composable `useSyncManager()` listens for real-time updates.
 
@@ -71,12 +71,12 @@ PostgreSQL with Prisma ORM. Schema in `prisma/schema.prisma`. Prisma client sing
 
 Key model groups:
 
-- **Users**: `User` (with `UserRole` enum: PARENT/CHILD), `UserPoints`
+- **Users**: `User` (with `UserRole` enum: ADULT/CHILD), `UserPoints`
 - **Calendar**: `CalendarEvent`, `CalendarEventUser` (many-to-many), `CalendarEventMapping` (Google sync tracking)
 - **Tasks**: `TodoColumn` → `Todo` (columnar kanban)
 - **Shopping**: `ShoppingList` → `ShoppingListItem`
 - **Chores/Rewards**: `Chore` → `ChoreCompletion`, `Reward` → `RewardRedemption`
-- **Settings**: `HouseholdSettings` (family name, chore mode, parent PIN), `ScreensaverSettings`, `Integration`
+- **Settings**: `HouseholdSettings` (family name, chore mode, adult PIN), `ScreensaverSettings`, `Integration`
 - **Caching**: `WeatherCache`, `PhotoAlbum`, `PhotoCache`
 
 ### Timezone Handling
