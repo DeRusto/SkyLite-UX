@@ -3,8 +3,8 @@ import { consola } from "consola";
 import type { CalendarEvent } from "~/types/calendar";
 
 export function useCalendarEvents() {
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const loading = useState<boolean>("calendar-events-loading", () => false);
+  const error = useState<string | null>("calendar-events-error", () => null);
 
   const { data: events } = useNuxtData<CalendarEvent[]>("calendar-events");
 
