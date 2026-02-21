@@ -211,9 +211,12 @@ export function useTodos() {
             const currentTodoInCache = todos.value.find(t => t.id === todoId);
             const targetTodoInCache = todos.value.find(t => t.id === targetTodo.id);
             if (currentTodoInCache && targetTodoInCache) {
-              const tempOrder = currentTodoInCache.order;
-              currentTodoInCache.order = targetTodoInCache.order;
-              targetTodoInCache.order = tempOrder;
+              const updatedTodos = todos.value.map(t => {
+                if (t.id === todoId) return { ...t, order: targetTodoInCache.order };
+                if (t.id === targetTodo.id) return { ...t, order: currentTodoInCache.order };
+                return t;
+              });
+              todos.value.splice(0, todos.value.length, ...updatedTodos);
             }
           }
         },
