@@ -29,6 +29,7 @@ export function useCalendarEvents() {
   };
 
   const createEvent = async (eventData: Omit<CalendarEvent, "id">) => {
+    error.value = null;
     try {
       const newEvent = await $fetch<CalendarEvent>("/api/calendar-events", {
         method: "POST",
@@ -47,6 +48,7 @@ export function useCalendarEvents() {
   };
 
   const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
+    error.value = null;
     try {
       const updatedEvent = await $fetch<CalendarEvent>(`/api/calendar-events/${id}`, {
         method: "PUT",
@@ -65,6 +67,7 @@ export function useCalendarEvents() {
   };
 
   const deleteEvent = async (id: string) => {
+    error.value = null;
     try {
       await ($fetch as (url: string, opts?: { method?: string }) => Promise<void>)(`/api/calendar-events/${id}`, {
         method: "DELETE",
