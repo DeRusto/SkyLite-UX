@@ -57,6 +57,26 @@ export default defineEventHandler(async (event) => {
   const baseUrl = integration.baseUrl.endsWith("/") ? integration.baseUrl.slice(0, -1) : integration.baseUrl;
   const path = Array.isArray(pathParts) ? pathParts.join("/") : pathParts;
 
+  // Whitelist allowed Tandoor API endpoints to prevent SSRF
+  const ALLOWED_TANDOOR_ENDPOINTS = [
+    "shopping-list-entry",
+    "shopping-list",
+    "food",
+    "unit",
+    "recipe",
+    "keyword",
+    "ingredient",
+    "meal-plan",
+  ];
+
+  const firstSegment = path.split("/")[0];
+  if (!firstSegment || !ALLOWED_TANDOOR_ENDPOINTS.includes(firstSegment)) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: `Access to Tandoor endpoint "${firstSegment}" is not allowed`,
+    });
+  }
+
   const { integrationId: _, ...restQuery } = query;
   const url = `${baseUrl}/api/${path}${Object.keys(restQuery).length ? `?${new URLSearchParams(restQuery as Record<string, string>).toString()}` : ""}`;
 
@@ -69,7 +89,8 @@ export default defineEventHandler(async (event) => {
     };
 
     if (integration.apiKey) {
-      headers.Authorization = `Bearer ${integration.apiKey}`;
+      const { decryptApiKey } = await import("~~/server/utils/oauthCrypto");
+      headers.Authorization = `Bearer ${decryptApiKey(integration.apiKey)}`;
     }
 
     const response = await fetch(fixedUrl, {
@@ -92,7 +113,10 @@ export default defineEventHandler(async (event) => {
   catch (error: unknown) {
     consola.error("Integrations Tandoor: Error proxying request to Tandoor:", error);
     const statusCode = error && typeof error === "object" && "statusCode" in error ? Number(error.statusCode) : 500;
-    const message = error && typeof error === "object" && "message" in error ? String(error.message) : "Failed to proxy request to Tandoor";
+    const isDev = import.meta.dev;
+    const message = isDev
+      ? (error && typeof error === "object" && "statusMessage" in error ? String(error.statusMessage) : (error && typeof error === "object" && "message" in error ? String(error.message) : "Failed to proxy request to Tandoor"))
+      : "Integration request failed";
     throw createError({
       statusCode,
       statusMessage: message,

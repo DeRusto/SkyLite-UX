@@ -85,7 +85,7 @@ const availableServices = computed(() => {
 
 const { users, fetchUsers } = useUsers();
 
-onMounted(() => {
+onMounted(async () => {
   fetchUsers();
 
   // Check URL params for OAuth callback
@@ -94,11 +94,27 @@ onMounted(() => {
     const oauthService = urlParams.get("service");
 
     if (urlParams.get("oauth_success") === "true" && (oauthService === "google-calendar" || oauthService === "google-photos")) {
-      tempOAuthTokens.value = {
-        accessToken: urlParams.get("access_token") || "",
-        refreshToken: urlParams.get("refresh_token") || "",
-        tokenExpiry: urlParams.get("token_expiry") || "",
-      };
+      const sessionToken = urlParams.get("session_token");
+
+      if (sessionToken) {
+        try {
+          const oauthData = await $fetch<{
+            accessToken: string;
+            refreshToken: string;
+            expiryDate: number;
+            service: string;
+          }>(`/api/integrations/google-oauth-session/${sessionToken}`);
+
+          tempOAuthTokens.value = {
+            accessToken: oauthData.accessToken,
+            refreshToken: oauthData.refreshToken,
+            tokenExpiry: String(oauthData.expiryDate),
+          };
+        }
+        catch (err) {
+          console.error("Failed to retrieve OAuth session:", err);
+        }
+      }
 
       if (oauthService === "google-calendar") {
         oauthStep.value = "select-calendars";

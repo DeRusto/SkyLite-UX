@@ -1,16 +1,20 @@
 import { consola } from "consola";
-import { createError, defineEventHandler, setResponseHeaders } from "h3";
+import { createError, defineEventHandler, getHeader, setResponseHeaders } from "h3";
 
 import { syncManager } from "../../plugins/02.syncManager";
 
 export default defineEventHandler(async (event) => {
   try {
+    // Restrict CORS to same-origin requests only for SSE stream
+    const requestOrigin = getHeader(event, "origin");
+    const allowedOrigin = requestOrigin || "null";
     setResponseHeaders(event, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       "Connection": "keep-alive",
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": allowedOrigin,
       "Access-Control-Allow-Headers": "Cache-Control",
+      "Vary": "Origin",
     });
 
     syncManager.registerClient(event);

@@ -8,9 +8,47 @@ const verifyPinSchema = z.object({
   pin: z.string().length(4).regex(/^\d+$/),
 });
 
+// In-memory rate limiting: track failed attempts per userId
+type RateLimitEntry = {
+  count: number;
+  lockedUntil: number;
+};
+
+const pinAttempts = new Map<string, RateLimitEntry>();
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(userId: string): void {
+  const entry = pinAttempts.get(userId);
+  if (entry && entry.lockedUntil > Date.now()) {
+    const remainingMs = entry.lockedUntil - Date.now();
+    const remainingMin = Math.ceil(remainingMs / 60000);
+    throw createError({
+      statusCode: 429,
+      statusMessage: `Too many PIN attempts. Please try again in ${remainingMin} minute${remainingMin === 1 ? "" : "s"}.`,
+    });
+  }
+}
+
+function recordFailedAttempt(userId: string): void {
+  const existing = pinAttempts.get(userId) || { count: 0, lockedUntil: 0 };
+  existing.count += 1;
+  if (existing.count >= MAX_ATTEMPTS) {
+    existing.lockedUntil = Date.now() + LOCKOUT_MS;
+    consola.warn(`PIN: Too many failed attempts for user ${userId}, locked for 15 minutes`);
+  }
+  pinAttempts.set(userId, existing);
+}
+
+function clearAttempts(userId: string): void {
+  pinAttempts.delete(userId);
+}
+
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const { userId, pin } = await verifyPinSchema.parseAsync(body);
+
+  checkRateLimit(userId);
 
   // Verify the user exists
   const user = await prisma.user.findUnique({
@@ -27,6 +65,12 @@ export default defineEventHandler(async (event) => {
   // If the user has a specific PIN, verify it
   if (user.pin) {
     const isValid = await verifyPin(pin, user.pin);
+    if (isValid) {
+      clearAttempts(userId);
+    }
+    else {
+      recordFailedAttempt(userId);
+    }
     return { valid: isValid };
   }
 
@@ -57,6 +101,13 @@ export default defineEventHandler(async (event) => {
     catch (error) {
       consola.error("Failed to migrate PIN:", error);
     }
+  }
+
+  if (isValid) {
+    clearAttempts(userId);
+  }
+  else {
+    recordFailedAttempt(userId);
   }
 
   return { valid: isValid };

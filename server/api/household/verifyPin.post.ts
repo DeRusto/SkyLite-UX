@@ -1,16 +1,58 @@
+import { consola } from "consola";
+import { createError, defineEventHandler, getRequestIP, readBody } from "h3";
+
 import prisma from "~/lib/prisma";
 
 type VerifyPinBody = {
   pin: string;
 };
 
+// In-memory rate limiting: track failed attempts per IP
+type RateLimitEntry = {
+  count: number;
+  lockedUntil: number;
+};
+
+const pinAttempts = new Map<string, RateLimitEntry>();
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(ip: string): void {
+  const entry = pinAttempts.get(ip);
+  if (entry && entry.lockedUntil > Date.now()) {
+    const remainingMs = entry.lockedUntil - Date.now();
+    const remainingMin = Math.ceil(remainingMs / 60000);
+    throw createError({
+      statusCode: 429,
+      statusMessage: `Too many PIN attempts. Please try again in ${remainingMin} minute${remainingMin === 1 ? "" : "s"}.`,
+    });
+  }
+}
+
+function recordFailedAttempt(ip: string): void {
+  const existing = pinAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+  existing.count += 1;
+  if (existing.count >= MAX_ATTEMPTS) {
+    existing.lockedUntil = Date.now() + LOCKOUT_MS;
+    consola.warn(`PIN: Too many failed attempts from IP ${ip}, locked for 15 minutes`);
+  }
+  pinAttempts.set(ip, existing);
+}
+
+function clearAttempts(ip: string): void {
+  pinAttempts.delete(ip);
+}
+
 export default defineEventHandler(async (event) => {
+  const ip = getRequestIP(event) || "unknown";
+  checkRateLimit(ip);
+
   const body = await readBody<VerifyPinBody>(event);
 
-  if (!body.pin) {
+  if (!body.pin || typeof body.pin !== "string" || !/^\d{4}$/.test(body.pin)) {
     throw createError({
       statusCode: 400,
-      statusMessage: "PIN is required",
+      statusMessage: "PIN must be a 4-digit number",
     });
   }
 
@@ -37,8 +79,15 @@ export default defineEventHandler(async (event) => {
       });
     }
     catch (error) {
-      console.error("Failed to migrate PIN:", error);
+      consola.error("Failed to migrate PIN:", error);
     }
+  }
+
+  if (isValid) {
+    clearAttempts(ip);
+  }
+  else {
+    recordFailedAttempt(ip);
   }
 
   return { valid: isValid };

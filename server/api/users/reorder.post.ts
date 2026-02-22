@@ -1,15 +1,14 @@
+import { z } from "zod";
+
 import prisma from "~/lib/prisma";
+
+const reorderSchema = z.object({
+  userIds: z.array(z.string().cuid()).max(1000),
+});
 
 export default defineEventHandler(async (event) => {
   try {
-    const { userIds } = await readBody(event);
-
-    if (!Array.isArray(userIds)) {
-      throw createError({
-        statusCode: 400,
-        message: "userIds must be an array",
-      });
-    }
+    const { userIds } = await reorderSchema.parseAsync(await readBody(event));
 
     const updates = userIds.map((userId, index) => {
       return prisma.user.update({

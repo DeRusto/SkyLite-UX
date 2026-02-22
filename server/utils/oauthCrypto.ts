@@ -94,3 +94,21 @@ export function decryptToken(encryptedToken: string): string {
     return encryptedToken;
   }
 }
+
+/**
+ * Encrypt an API key using AES-256-GCM (same encryption as OAuth tokens)
+ * @param apiKey - Plain text API key to encrypt
+ * @returns Encrypted key in format: iv:authTag:encrypted
+ */
+export function encryptApiKey(apiKey: string): string {
+  return encryptToken(apiKey);
+}
+
+/**
+ * Decrypt an API key using AES-256-GCM
+ * @param encryptedKey - Encrypted key in format: iv:authTag:encrypted
+ * @returns Decrypted plain text API key
+ */
+export function decryptApiKey(encryptedKey: string): string {
+  return decryptToken(encryptedKey);
+}
