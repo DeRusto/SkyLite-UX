@@ -112,7 +112,7 @@ onMounted(async () => {
           };
         }
         catch (err) {
-          console.error("Failed to retrieve OAuth session:", err);
+          consola.error("Failed to retrieve OAuth session:", err);
         }
       }
 
