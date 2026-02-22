@@ -17,7 +17,17 @@ const pinAttempts = new Map<string, RateLimitEntry>();
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 
+function pruneStaleAttempts(): void {
+  const now = Date.now();
+  for (const [key, entry] of pinAttempts.entries()) {
+    if (entry.lockedUntil > 0 && entry.lockedUntil < now) {
+      pinAttempts.delete(key);
+    }
+  }
+}
+
 function checkRateLimit(ip: string): void {
+  pruneStaleAttempts();
   const entry = pinAttempts.get(ip);
   if (entry && entry.lockedUntil > Date.now()) {
     const remainingMs = entry.lockedUntil - Date.now();
@@ -30,7 +40,11 @@ function checkRateLimit(ip: string): void {
 }
 
 function recordFailedAttempt(ip: string): void {
-  const existing = pinAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+  let existing = pinAttempts.get(ip);
+  // Reset counter if previous lockout has expired so the user gets a fresh set of attempts
+  if (!existing || (existing.lockedUntil > 0 && existing.lockedUntil <= Date.now())) {
+    existing = { count: 0, lockedUntil: 0 };
+  }
   existing.count += 1;
   if (existing.count >= MAX_ATTEMPTS) {
     existing.lockedUntil = Date.now() + LOCKOUT_MS;
