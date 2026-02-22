@@ -2,6 +2,8 @@
 import type { CreateIntegrationInput, Integration } from "~/types/database";
 import type { ConnectionTestResult, IntegrationSettingsField } from "~/types/ui";
 
+import { consola } from "consola";
+
 import { useUsers } from "~/composables/useUsers";
 import { integrationRegistry } from "~/types/integrations";
 
