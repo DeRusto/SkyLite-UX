@@ -98,7 +98,15 @@ onMounted(async () => {
     if (urlParams.get("oauth_success") === "true" && (oauthService === "google-calendar" || oauthService === "google-photos")) {
       const sessionToken = urlParams.get("session_token");
 
-      if (sessionToken) {
+      if (!sessionToken) {
+        error.value = "OAuth session token is missing. Please try connecting again.";
+      }
+      else if (!/^[a-f0-9]+$/i.test(sessionToken) || sessionToken.length > 128) {
+        // Validate token is a hex string to prevent path traversal via "../" sequences
+        consola.error("Invalid session token format detected");
+        error.value = "OAuth session token is invalid. Please try connecting again.";
+      }
+      else {
         try {
           const oauthData = await $fetch<{
             accessToken: string;
@@ -115,24 +123,28 @@ onMounted(async () => {
         }
         catch (err) {
           consola.error("Failed to retrieve OAuth session:", err);
+          error.value = "OAuth session expired or already used. Please try connecting again.";
         }
       }
 
-      if (oauthService === "google-calendar") {
-        oauthStep.value = "select-calendars";
-        type.value = "calendar";
-        // Use nextTick to ensure watcher doesn't reset service
-        nextTick(() => {
-          service.value = "google-calendar";
-        });
-      }
-      else if (oauthService === "google-photos") {
-        oauthStep.value = "complete";
-        type.value = "photos";
-        // Use nextTick to ensure watcher doesn't reset service
-        nextTick(() => {
-          service.value = "google-photos";
-        });
+      // Only advance the OAuth step if tokens were successfully retrieved
+      if (tempOAuthTokens.value) {
+        if (oauthService === "google-calendar") {
+          oauthStep.value = "select-calendars";
+          type.value = "calendar";
+          // Use nextTick to ensure watcher doesn't reset service
+          nextTick(() => {
+            service.value = "google-calendar";
+          });
+        }
+        else if (oauthService === "google-photos") {
+          oauthStep.value = "complete";
+          type.value = "photos";
+          // Use nextTick to ensure watcher doesn't reset service
+          nextTick(() => {
+            service.value = "google-photos";
+          });
+        }
       }
 
       emit("open");
