@@ -1,7 +1,7 @@
 import { consola } from "consola";
 import { createError, defineEventHandler } from "h3";
 
-import { consumeOAuthSession } from "../../../utils/oauthSessionStore";
+import { consumeOAuthSession } from "~/server/utils/oauthSessionStore";
 
 export default defineEventHandler((event) => {
   const token = event.context.params?.token;
