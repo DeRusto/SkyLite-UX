@@ -1,5 +1,5 @@
 import { consola } from "consola";
-import { defineEventHandler, readBody } from "h3";
+import { createError, defineEventHandler, readBody } from "h3";
 
 import prisma from "~/lib/prisma";
 import { decryptApiKey } from "~~/server/utils/oauthCrypto";
