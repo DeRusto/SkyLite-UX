@@ -22,7 +22,7 @@ const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 function pruneStaleAttempts(): void {
   const now = Date.now();
   for (const [key, entry] of pinAttempts.entries()) {
-    const expired = entry.lockedUnitl > 0 && entry.lockedUntil < now;
+    const expired = entry.lockedUntil > 0 && entry.lockedUntil < now;
     const stale = entry.lockedUntil === 0 && (now - entry.firstAttemptAt) > LOCKOUT_MS;
     if (expired || stale) {
       pinAttempts.delete(key);
@@ -44,11 +44,11 @@ function checkRateLimit(userId: string): void {
 }
 
 function recordFailedAttempt(userId: string): void {
-  let existing = pinAttempts.get(userId);
+  const raw = pinAttempts.get(userId);
   // Reset counter if previous lockout has expired so the user gets a fresh set of attempts
-  if (!existing || (existing.lockedUntil > 0 && existing.lockedUntil <= Date.now())) {
-    existing = { count: 0, lockedUntil: 0 };
-  }
+  const existing: RateLimitEntry = (!raw || (raw.lockedUntil > 0 && raw.lockedUntil <= Date.now()))
+    ? { count: 0, lockedUntil: 0, firstAttemptAt: Date.now() }
+    : raw;
   existing.count += 1;
   if (existing.count >= MAX_ATTEMPTS) {
     existing.lockedUntil = Date.now() + LOCKOUT_MS;

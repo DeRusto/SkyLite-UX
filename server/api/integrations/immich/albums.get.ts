@@ -2,7 +2,7 @@ import { consola } from "consola";
 import { createError, defineEventHandler, getQuery } from "h3";
 
 import prisma from "~/lib/prisma";
-import { decryptApiKey } from "~/server/utils/oauthCrypto";
+import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 
 /**
  * Immich Album type from Immich API

@@ -4,7 +4,7 @@ import { Buffer } from "node:buffer";
 
 import prisma from "~/lib/prisma";
 
-import { decryptApiKey } from "~/server/utils/oauthCrypto";
+import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 
 /**
  * GET /api/integrations/immich/people/:personId/thumbnail

@@ -104,10 +104,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (isValid) {
-    clearAttempts(ip);
+    if (ip) clearAttempts(ip);
   }
   else {
-    recordFailedAttempt(ip);
+    if (ip) recordFailedAttempt(ip);
   }
 
   return { valid: isValid };

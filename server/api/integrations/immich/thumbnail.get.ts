@@ -5,7 +5,7 @@ import { Buffer } from "node:buffer";
 
 import prisma from "~/lib/prisma";
 
-import { decryptApiKey } from "~/server/utils/oauthCrypto";
+import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 
 // Cache expiration: 7 days
 const CACHE_EXPIRY_DAYS = 7;

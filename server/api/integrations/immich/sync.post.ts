@@ -2,7 +2,7 @@ import { consola } from "consola";
 import { defineEventHandler, readBody } from "h3";
 
 import prisma from "~/lib/prisma";
-import { decryptApiKey } from "~/server/utils/oauthCrypto";
+import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 
 /**
  * POST /api/integrations/immich/sync
