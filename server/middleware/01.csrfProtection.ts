@@ -61,4 +61,11 @@ export default defineEventHandler((event) => {
       statusMessage: "Forbidden: Cross-origin requests are not allowed",
     });
   }
+
+  //Origin present but no Host header - cannot validate, reject defensively
+  consola.warn(`CSRF: Origin present (${origin}) but no Host header for ${method} ${url}`);
+  throw createError({
+    statusCode: 403,
+    statusMessage: "Forbidden: Unable to validate request origin",
+  });
 });
