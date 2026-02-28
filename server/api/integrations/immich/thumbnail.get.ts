@@ -5,7 +5,7 @@ import { Buffer } from "node:buffer";
 
 import prisma from "~/lib/prisma";
 
-import { decryptToken } from "../../../integrations/google-calendar/oauth";
+import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 
 // Cache expiration: 7 days
 const CACHE_EXPIRY_DAYS = 7;
@@ -125,7 +125,7 @@ export default defineEventHandler(async (event) => {
   // Try to decrypt if encrypted, otherwise use as-is (plaintext API keys)
   let apiKey: string;
   try {
-    apiKey = decryptToken(storedApiKey);
+    apiKey = decryptApiKey(storedApiKey);
   }
   catch {
     // API key stored in plaintext (non-OAuth integrations)

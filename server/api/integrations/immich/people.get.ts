@@ -2,8 +2,7 @@ import { consola } from "consola";
 import { createError, defineEventHandler, getQuery } from "h3";
 
 import prisma from "~/lib/prisma";
-// eslint-disable-next-line perfectionist/sort-imports
-import { decryptToken } from "../../../integrations/google-calendar/oauth";
+import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 
 /**
  * Immich Person type from Immich API
@@ -68,7 +67,7 @@ export default defineEventHandler(async (event) => {
   // Try to decrypt if encrypted, otherwise use as-is (plaintext API keys)
   let apiKey: string;
   try {
-    apiKey = decryptToken(storedApiKey);
+    apiKey = decryptApiKey(storedApiKey);
   }
   catch {
     // API key stored in plaintext (non-OAuth integrations)
