@@ -58,14 +58,14 @@ function clearAttempts(ip: string): void {
 }
 
 export default defineEventHandler(async (event) => {
-        const ip = getRequestIP(event);
-        if (!ip) {
-          consola.warn("PIN: Unable to determine client IP for rate limiting");
-          // Still allow the request but log the gap
-        }
-        else {
-          checkRateLimit(ip);
-        }
+  const ip = getRequestIP(event);
+  if (!ip) {
+    consola.warn("PIN: Unable to determine client IP for rate limiting");
+    // Still allow the request but log the gap
+    }
+    else {
+      checkRateLimit(ip);
+    }
 
   const body = await readBody<VerifyPinBody>(event);
 
