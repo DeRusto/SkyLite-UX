@@ -12,6 +12,7 @@ const verifyPinSchema = z.object({
 type RateLimitEntry = {
   count: number;
   lockedUntil: number;
+  firstAttemptAt: number;
 };
 
 const pinAttempts = new Map<string, RateLimitEntry>();
@@ -21,7 +22,9 @@ const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 function pruneStaleAttempts(): void {
   const now = Date.now();
   for (const [key, entry] of pinAttempts.entries()) {
-    if (entry.lockedUntil > 0 && entry.lockedUntil < now) {
+    const expired = entry.lockedUnitl > 0 && entry.lockedUntil < now;
+    const stale = entry.lockedUntil === 0 && (now - entry.firstAttemptAt) > LOCKOUT_MS;
+    if (expired || stale) {
       pinAttempts.delete(key);
     }
   }
