@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
   if (!firstSegment || !ALLOWED_TANDOOR_ENDPOINTS.includes(firstSegment)) {
     throw createError({
       statusCode: 403,
-      statusMessage: `Access to Tandoor endpoint "${firstSegment}" is not allowed`,
+      statusMessage: "Access to this endpoint is not allowed",
     });
   }
 
