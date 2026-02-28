@@ -2,8 +2,7 @@ import { consola } from "consola";
 import { defineEventHandler, readBody } from "h3";
 
 import prisma from "~/lib/prisma";
-// eslint-disable-next-line perfectionist/sort-imports
-import { decryptToken } from "../../../integrations/google-calendar/oauth";
+import { decryptApiKey } from "~/server/utils/oauthCrypto";
 
 /**
  * POST /api/integrations/immich/sync
@@ -42,7 +41,7 @@ export default defineEventHandler(async (event) => {
     // Try to decrypt if encrypted, otherwise use as-is
     let apiKey: string;
     try {
-      apiKey = decryptToken(storedApiKey);
+      apiKey = decryptApiKey(storedApiKey);
     }
     catch {
       apiKey = storedApiKey;

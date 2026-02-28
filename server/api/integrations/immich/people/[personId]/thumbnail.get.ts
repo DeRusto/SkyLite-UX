@@ -4,7 +4,7 @@ import { Buffer } from "node:buffer";
 
 import prisma from "~/lib/prisma";
 
-import { decryptToken } from "../../../../../integrations/google-calendar/oauth";
+import { decryptApiKey } from "~/server/utils/oauthCrypto";
 
 /**
  * GET /api/integrations/immich/people/:personId/thumbnail
@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
 
   let apiKey: string;
   try {
-    apiKey = decryptToken(encryptedApiKey);
+    apiKey = decryptApiKey(encryptedApiKey);
   }
   catch (error) {
     consola.error("Failed to decrypt Immich API key:", error);
