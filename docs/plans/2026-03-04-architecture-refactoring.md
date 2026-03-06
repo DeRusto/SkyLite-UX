@@ -119,9 +119,9 @@ Worktree: Yes
 
 **MANDATORY: Update this checklist as tasks complete. Change `[ ]` to `[x]`.**
 
-- [ ] Task 1: Extract focused composables from useCalendar.ts
-- [ ] Task 2: Refactor useCalendar.ts as facade composable
-- [ ] Task 3: Extract sub-components from calendarEventDialog.vue
+- [x] Task 1: Extract focused composables from useCalendar.ts
+- [x] Task 2: Refactor useCalendar.ts as facade composable
+- [x] Task 3: Extract sub-components from calendarEventDialog.vue
 - [ ] Task 4: Slim calendarEventDialog.vue to orchestrator
 - [ ] Task 5: Extract users + household calendars from settings.vue
 - [ ] Task 6: Extract integrations section + useIntegrationStatus + slim settings.vue
@@ -129,7 +129,7 @@ Worktree: Yes
 - [ ] Task 8: API error standardization
 - [ ] Task 9: Plugin initialization resilience
 
-**Total Tasks:** 9 | **Completed:** 0 | **Remaining:** 9
+**Total Tasks:** 9 | **Completed:** 3 | **Remaining:** 6
 
 ## Implementation Tasks
 
@@ -235,16 +235,24 @@ Worktree: Yes
 
 **Definition of Done:**
 
-- [ ] `calendarEventRecurrence.vue` contains all recurrence UI, state, and logic
-- [ ] `calendarEventUserSelector.vue` contains user selection UI with v-model pattern
-- [ ] `useCalendarEventTime.ts` contains time conversion utilities
-- [ ] `npm run type-check` passes with 0 errors
-- [ ] `npm run lint` passes
+- [x] `calendarEventRecurrence.vue` contains all recurrence UI, state, and logic
+- [x] `calendarEventUserSelector.vue` contains user selection UI with v-model pattern
+- [x] `useCalendarEventTime.ts` contains time conversion utilities
+- [x] `npm run type-check` passes with 0 errors
+- [x] `npm run lint` passes (new files clean; pre-existing stale analysis .md files in worktree root have filename-case errors unrelated to this task)
+
+**Implementation Notes (for Task 4):**
+
+- `calendarEventRecurrence.vue` exposes `{ buildICalEvent, resetRecurrenceFields, isRecurring, recurrenceDays }` via `defineExpose`. The parent accesses these via template ref.
+- `buildICalEvent(start, end)` returns an `ICalEvent` with `uid: ""` and `summary: ""` as placeholders — Task 4's `handleSave` must spread in `uid`, `summary`, `description`, `location`, and `attendees` from parent state.
+- The "Repeat" checkbox (`UCheckbox v-model="isRecurring"`) lives INSIDE `calendarEventRecurrence.vue` (not in the parent), so Task 4 removes lines 1140-1145 from `calendarEventDialog.vue`.
+- `calendarEventUserSelector.vue` has an `isNewEvent: boolean` prop to control the label text ("Select..." vs "Edit..."). Pass `:is-new-event="!event?.id"` from parent.
+- The `recurrenceUntil` watcher (originally lines 328-339) has been moved into `calendarEventRecurrence.vue` — remove it from `calendarEventDialog.vue` in Task 4. Also remove the recurrence `if` block from the `watch(startDate, ...)` watcher (the component now watches `props.startDate` directly).
 
 **Verify:**
 
 - `npm run type-check` — 0 type errors
-- `npm run lint` — 0 lint errors
+- `npm run lint` — 0 lint errors (new files only)
 
 ---
 
