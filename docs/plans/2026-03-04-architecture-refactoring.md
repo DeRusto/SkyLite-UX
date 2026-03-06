@@ -122,14 +122,14 @@ Worktree: Yes
 - [x] Task 1: Extract focused composables from useCalendar.ts
 - [x] Task 2: Refactor useCalendar.ts as facade composable
 - [x] Task 3: Extract sub-components from calendarEventDialog.vue
-- [ ] Task 4: Slim calendarEventDialog.vue to orchestrator
+- [x] Task 4: Slim calendarEventDialog.vue to orchestrator
 - [ ] Task 5: Extract users + household calendars from settings.vue
 - [ ] Task 6: Extract integrations section + useIntegrationStatus + slim settings.vue
 - [ ] Task 7: Split settingsScreensaver.vue into sub-components
 - [ ] Task 8: API error standardization
 - [ ] Task 9: Plugin initialization resilience
 
-**Total Tasks:** 9 | **Completed:** 3 | **Remaining:** 6
+**Total Tasks:** 9 | **Completed:** 4 | **Remaining:** 5
 
 ## Implementation Tasks
 
