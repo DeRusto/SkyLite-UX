@@ -53,19 +53,31 @@ function clearPets() {
   emit("peopleSelected", currentPeopleIds);
 }
 
+/** XML-escapes a string so it is safe to embed inside SVG/XML text nodes. */
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /**
  * Returns a data-URL SVG avatar using initials derived from the name.
  * No external request is made, so no user data leaves the browser.
+ * Initials are XML-escaped before embedding to keep the SVG valid.
  */
 function getInitialsDataUrl(name: string, background: string): string {
-  const initials = name
+  const raw = name
     .split(/\s+/)
     .filter(Boolean)
     .map(word => word[0] ?? "")
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><rect width="56" height="56" rx="28" fill="${background}"/><text x="28" y="28" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="20" fill="white">${initials}</text></svg>`;
+  const safeInitials = escapeXml(raw) || "?";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><rect width="56" height="56" rx="28" fill="${background}"/><text x="28" y="28" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="20" fill="white">${safeInitials}</text></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 </script>
@@ -88,7 +100,12 @@ function getInitialsDataUrl(name: string, background: string): string {
         </template>
       </template>
       <template v-else>
-        When no albums are selected, all photos of the selected people/pets will be shown.
+        <template v-if="props.selectedPeople.length > 0">
+          When no albums are selected, all photos of the selected people/pets will be shown.
+        </template>
+        <template v-else>
+          When no albums and no people/pets are selected, all photos will be shown.
+        </template>
       </template>
     </p>
 
