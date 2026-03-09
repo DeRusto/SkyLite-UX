@@ -92,20 +92,21 @@ async function toggleHouseholdCalendar(type: "HOLIDAY" | "FAMILY", value: string
     );
   }
 
-  // Emit updated settings for parent to update its ref
-  emit("update:householdSettings", { ...props.householdSettings, linkedCalendars: currentLinks });
-
   try {
     await $fetch("/api/household/settings", {
       method: "PUT",
       body: { linkedCalendars: currentLinks },
     });
 
+    // Only update parent state after a successful save
+    emit("update:householdSettings", { ...props.householdSettings, linkedCalendars: currentLinks });
     emit("triggerSync");
   }
   catch (err) {
     consola.error("Failed to update household calendars", err);
     showError("Failed to Save", "Could not update calendar settings.");
+    // Revert parent state to the original settings
+    emit("update:householdSettings", props.householdSettings);
   }
 }
 
@@ -122,8 +123,6 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
   if (type === "FAMILY")
     updatedSettings.familyColor = color;
 
-  emit("update:householdSettings", updatedSettings);
-
   try {
     await $fetch("/api/household/settings", {
       method: "PUT",
@@ -133,11 +132,15 @@ async function updateHouseholdColor(type: "HOLIDAY" | "FAMILY", color: string) {
       },
     });
 
+    // Only update parent state after a successful save
+    emit("update:householdSettings", updatedSettings);
     emit("triggerSync");
   }
   catch (err) {
     consola.error("Failed to update household colors", err);
     showError("Failed to Save", "Could not update color settings.");
+    // Revert parent state to the original settings
+    emit("update:householdSettings", props.householdSettings);
   }
 }
 </script>
