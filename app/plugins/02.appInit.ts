@@ -74,16 +74,23 @@ export default defineNuxtPlugin(async () => {
 
     if (_usersResult.error.value || integrationsResult.error.value) {
       consola.warn("AppInit: Core data load failed, retrying...");
-      try {
-        await Promise.all([
-          _usersResult.error.value ? _usersResult.refresh() : Promise.resolve(),
-          integrationsResult.error.value ? integrationsResult.refresh() : Promise.resolve(),
-        ]);
-        consola.debug("AppInit: Core data retry succeeded");
+      // Note: useAsyncData.refresh() stores failures in error.value rather than
+      // throwing, so errors must be re-checked explicitly after the await.
+      await Promise.all([
+        _usersResult.error.value ? _usersResult.refresh() : Promise.resolve(),
+        integrationsResult.error.value ? integrationsResult.refresh() : Promise.resolve(),
+      ]);
+
+      if (_usersResult.error.value || integrationsResult.error.value) {
+        const details = [
+          _usersResult.error.value ? `users: ${_usersResult.error.value.message}` : null,
+          integrationsResult.error.value ? `integrations: ${integrationsResult.error.value.message}` : null,
+        ].filter(Boolean).join(", ");
+        consola.error("AppInit: Core data unavailable after retry — app will render with missing data:", details);
+        throw new Error(`Core data load failed after retry: ${details}`);
       }
-      catch (retryError) {
-        consola.error("AppInit: Core data retry failed, app will render with missing data:", retryError);
-      }
+
+      consola.debug("AppInit: Core data retry succeeded");
     }
 
     consola.debug("AppInit: Core dependencies loaded successfully");
