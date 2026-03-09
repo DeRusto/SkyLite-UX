@@ -490,7 +490,7 @@ test.describe("Chore Completion Workflow", () => {
     // Verify error is shown
     const errorToast = adultPage.locator("[data-testid='error-toast']");
     await expect(errorToast).toBeVisible();
-    await expect(errorToast).toContainText("network" || "offline");
+    await expect(errorToast).toContainText(/network|offline/);
 
     // Bring connection back
     await adultPage.context().setOffline(false);
@@ -523,7 +523,7 @@ test.describe("Chore Completion Workflow", () => {
 
     // Chore should still show as completed/pending verification
     const status = childPage.locator("[data-testid='chore-status']");
-    await expect(status).toContainText("PENDING_VERIFICATION" || "COMPLETED");
+    await expect(status).toContainText(/PENDING_VERIFICATION|COMPLETED/);
   });
 
   test("should handle adult declining chore verification", async () => {
