@@ -2,7 +2,7 @@
 import type { User } from "~/types/database";
 
 const props = defineProps<{
-  users: User[];
+  users: readonly User[];
   modelValue: string[];
   isReadOnly: boolean;
   isNewEvent: boolean;
