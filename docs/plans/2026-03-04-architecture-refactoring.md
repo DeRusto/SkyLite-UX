@@ -1,7 +1,7 @@
 # Architecture Refactoring Implementation Plan
 
 Created: 2026-03-04
-Status: PENDING
+Status: COMPLETE
 Approved: Yes
 Iterations: 0
 Worktree: Yes
@@ -123,13 +123,13 @@ Worktree: Yes
 - [x] Task 2: Refactor useCalendar.ts as facade composable
 - [x] Task 3: Extract sub-components from calendarEventDialog.vue
 - [x] Task 4: Slim calendarEventDialog.vue to orchestrator
-- [ ] Task 5: Extract users + household calendars from settings.vue
-- [ ] Task 6: Extract integrations section + useIntegrationStatus + slim settings.vue
-- [ ] Task 7: Split settingsScreensaver.vue into sub-components
-- [ ] Task 8: API error standardization
-- [ ] Task 9: Plugin initialization resilience
+- [x] Task 5: Extract users + household calendars from settings.vue
+- [x] Task 6: Extract integrations section + useIntegrationStatus + slim settings.vue
+- [x] Task 7: Split settingsScreensaver.vue into sub-components
+- [x] Task 8: API error standardization
+- [x] Task 9: Plugin initialization resilience
 
-**Total Tasks:** 9 | **Completed:** 4 | **Remaining:** 5
+**Total Tasks:** 9 | **Completed:** 9 | **Remaining:** 0
 
 ## Implementation Tasks
 
