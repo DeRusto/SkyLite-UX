@@ -420,7 +420,7 @@ test.describe("Chore Completion Workflow", () => {
     await expect(pendingChore).toBeVisible();
 
     // STEP 6: Adult verifies chore
-    await adultPage.click("[data-testid='pending-verification-badge']").first();
+    await adultPage.locator("[data-testid='pending-verification-badge']").first().click();
     await adultPage.click("[data-testid='verify-chore-btn']");
     const verifyConfirm = adultPage.locator("[data-testid='confirm-verify-btn']");
     await expect(verifyConfirm).toBeVisible();
