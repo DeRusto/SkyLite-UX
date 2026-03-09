@@ -1,8 +1,12 @@
 import prisma from "~/lib/prisma";
 
+import { createServerError, validateRequired } from "../../utils/apiErrors";
+
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
+
+    validateRequired(body, ["name"]);
 
     const maxOrder = await prisma.todoColumn.aggregate({
       _max: {
@@ -39,10 +43,10 @@ export default defineEventHandler(async (event) => {
 
     return result.user;
   }
-  catch (error) {
-    throw createError({
-      statusCode: 500,
-      message: `Failed to create user: ${error}`,
-    });
+  catch (error: unknown) {
+    if (isError(error)) {
+      throw error;
+    }
+    throw createServerError("create user", error);
   }
 });
