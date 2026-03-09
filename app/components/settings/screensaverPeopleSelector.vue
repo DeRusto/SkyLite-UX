@@ -52,6 +52,22 @@ function clearPets() {
   const currentPeopleIds = props.selectedPeople.filter(id => props.people.some(person => person.id === id));
   emit("peopleSelected", currentPeopleIds);
 }
+
+/**
+ * Returns a data-URL SVG avatar using initials derived from the name.
+ * No external request is made, so no user data leaves the browser.
+ */
+function getInitialsDataUrl(name: string, background: string): string {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => word[0] ?? "")
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><rect width="56" height="56" rx="28" fill="${background}"/><text x="28" y="28" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="20" fill="white">${initials}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
 </script>
 
 <template>
@@ -170,7 +186,7 @@ function clearPets() {
                 :alt="person.name"
                 class="w-full h-full object-cover"
                 loading="lazy"
-                @error="(e: Event) => (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(person.name)}&size=56&background=6BCBCB&color=fff`"
+                @error="(e: Event) => (e.target as HTMLImageElement).src = getInitialsDataUrl(person.name, '#6BCBCB')"
               >
               <!-- Selection checkmark overlay -->
               <div
@@ -243,7 +259,7 @@ function clearPets() {
                 :alt="pet.name"
                 class="w-full h-full object-cover"
                 loading="lazy"
-                @error="(e: Event) => (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(pet.name)}&size=56&background=FFD93D&color=fff`"
+                @error="(e: Event) => (e.target as HTMLImageElement).src = getInitialsDataUrl(pet.name, '#FFD93D')"
               >
               <!-- Selection checkmark overlay -->
               <div
