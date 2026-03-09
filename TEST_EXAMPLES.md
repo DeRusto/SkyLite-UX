@@ -936,7 +936,7 @@ async function globalSetup(config: FullConfig) {
   // Optional: Setup test data before running tests
   // E.g., seed database with test users
   const browser = await chromium.launch();
-  const context = await browser.createContext();
+  const context = await browser.newContext();
   const page = await context.newPage();
 
   // Navigate to app
