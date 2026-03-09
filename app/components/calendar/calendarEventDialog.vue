@@ -38,12 +38,13 @@ const EndHour = 23;
 const DefaultStartHour = 9;
 const DefaultEndHour = 10;
 
-// Ref to the CalendarEventRecurrence child component (exposed: buildICalEvent, resetRecurrenceFields, isRecurring, recurrenceDays)
+// Ref to the CalendarEventRecurrence child component (exposed: buildICalEvent, resetRecurrenceFields, isRecurring, recurrenceDays, serializeRecurrence)
 const recurrenceRef = ref<{
   buildICalEvent: (start: Date, end: Date) => ICalEvent;
   resetRecurrenceFields: () => void;
   isRecurring: { value: boolean };
   recurrenceDays: { value: number[] };
+  serializeRecurrence: () => Record<string, unknown>;
 } | null>(null);
 
 // Drives the child's internal parse watcher — set to the event's ical_event or null to reset
@@ -73,7 +74,7 @@ const initialValues = ref({
   location: "",
   allDay: false,
   selectedUsers: [] as string[],
-  isRecurring: false,
+  recurrence: null as string | null,
 });
 
 const hourOptions = computed(() => {
@@ -129,12 +130,13 @@ const isReadOnly = computed(() => {
 
 // Check if form has unsaved changes
 const hasUnsavedChanges = computed(() => {
+  const currentRecurrence = JSON.stringify(recurrenceRef.value?.serializeRecurrence() ?? null);
   return (
     title.value !== initialValues.value.title
     || description.value !== initialValues.value.description
     || location.value !== initialValues.value.location
     || allDay.value !== initialValues.value.allDay
-    || (recurrenceRef.value?.isRecurring.value ?? false) !== initialValues.value.isRecurring
+    || currentRecurrence !== initialValues.value.recurrence
     || JSON.stringify([...selectedUsers.value].sort()) !== JSON.stringify([...initialValues.value.selectedUsers].sort())
   );
 });
@@ -166,7 +168,7 @@ function storeInitialValues() {
     location: location.value,
     allDay: allDay.value,
     selectedUsers: [...selectedUsers.value],
-    isRecurring: recurrenceRef.value?.isRecurring.value ?? false,
+    recurrence: JSON.stringify(recurrenceRef.value?.serializeRecurrence() ?? null),
   };
 }
 
@@ -338,8 +340,10 @@ watch(() => props.event, async (newEvent) => {
     selectedUsers.value = newEvent.users?.map(user => user.id) || [];
     error.value = null;
 
-    // Drive the child's parse watcher instead of calling parseICalEvent directly
-    currentIcalEvent.value = newEvent.ical_event ?? null;
+    // Drive the child's parse watcher instead of calling parseICalEvent directly.
+    // Prefer originalEvent.ical_event (which carries the fetched RRULE + instance
+    // dtstart/dtend for expanded events) and fall back to newEvent.ical_event.
+    currentIcalEvent.value = originalEvent.ical_event ?? newEvent.ical_event ?? null;
   }
   else {
     resetForm();

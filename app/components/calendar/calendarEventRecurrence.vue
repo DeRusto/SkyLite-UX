@@ -313,7 +313,28 @@ watch(recurrenceUntil, () => {
   }
 });
 
-defineExpose({ buildICalEvent, resetRecurrenceFields, isRecurring, recurrenceDays });
+/**
+ * Returns a plain, JSON-serialisable snapshot of all recurrence fields.
+ *  Used by the parent's dirty-check so changes to interval/days/count/until
+ *  are detected, not just the isRecurring boolean.
+ */
+function serializeRecurrence() {
+  return {
+    isRecurring: isRecurring.value,
+    type: recurrenceType.value,
+    interval: recurrenceInterval.value,
+    endType: recurrenceEndType.value,
+    count: recurrenceCount.value,
+    until: recurrenceUntil.value?.toString() ?? null,
+    days: [...recurrenceDays.value].sort((a, b) => a - b),
+    monthlyType: recurrenceMonthlyType.value,
+    monthlyWeekday: { ...recurrenceMonthlyWeekday.value },
+    yearlyType: recurrenceYearlyType.value,
+    yearlyWeekday: { ...recurrenceYearlyWeekday.value },
+  };
+}
+
+defineExpose({ buildICalEvent, resetRecurrenceFields, isRecurring, recurrenceDays, serializeRecurrence });
 </script>
 
 <template>

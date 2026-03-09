@@ -42,7 +42,7 @@ function toggleUser(userId: string) {
           :class="modelValue.includes(user.id) ? 'ring-2 ring-primary-500' : ''"
           :aria-pressed="modelValue.includes(user.id)"
           :disabled="isReadOnly"
-          `@click`="toggleUser(user.id)"
+          @click="toggleUser(user.id)"
         >
           <UAvatar
             :src="user.avatar || undefined"
