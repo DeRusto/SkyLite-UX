@@ -570,6 +570,8 @@ async function setupChoreAndMarkComplete(
   await adultPage.click("[data-testid='create-chore-btn']");
   await adultPage.fill("[data-testid='chore-title-input']", chore.title);
   await adultPage.fill("[data-testid='chore-points-input']", chore.points.toString());
+  await adultPage.click("[data-testid='assign-child-btn']");
+  await adultPage.click(`[data-testid='user-${testData.childUser.name}']`);
   await adultPage.click("[data-testid='save-chore-btn']");
 
   // Child marks complete
