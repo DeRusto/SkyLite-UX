@@ -822,7 +822,7 @@ function handleDelete() {
         ref="recurrenceRef"
         :ical-event="currentIcalEvent"
         :is-read-only="isReadOnly"
-        :start-date="startDate"
+        :start-date="startDate as DateValue"
       />
       <div class="space-y-2">
         <label class="block text-sm font-medium text-highlighted">Location</label>
