@@ -109,9 +109,12 @@ function handleKeydown(event: KeyboardEvent) {
           ref="pinInput"
           v-model="pin"
           type="password"
-          placeholder="Enter PIN"
+          placeholder="Enter 4-digit PIN"
           :disabled="isVerifying"
           autocomplete="off"
+          maxlength="4"
+          inputmode="numeric"
+          pattern="[0-9]*"
           @keydown="handleKeydown"
         />
       </UFormField>
