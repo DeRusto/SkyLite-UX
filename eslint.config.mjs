@@ -22,6 +22,9 @@ export default withNuxt(antfu({
     "docker-compose-example.yaml",
     "docs/**",
     ".playwright-cli/**",
+    "**/*.md",
+    "tests/**",
+    "test-results.json",
   ],
 }, {
   rules: {
