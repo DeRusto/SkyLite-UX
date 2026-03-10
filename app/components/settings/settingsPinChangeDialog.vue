@@ -49,13 +49,18 @@ async function handleSave() {
     return;
   }
 
+  if (props.hasAdultPin && !/^\d{4}$/.test(currentPin.value)) {
+    error.value = "Current PIN must be exactly 4 numeric digits";
+    return;
+  }
+
   if (!newPin.value) {
     error.value = "Please enter a new PIN";
     return;
   }
 
-  if (newPin.value.length < 4) {
-    error.value = "PIN must be at least 4 digits";
+  if (!/^\d{4}$/.test(newPin.value)) {
+    error.value = "PIN must be exactly 4 numeric digits";
     return;
   }
 
@@ -130,7 +135,7 @@ function focusConfirmInput() {
 
     <div class="space-y-4">
       <p class="text-muted mb-4">
-        {{ hasAdultPin ? "Enter your current PIN and choose a new PIN for household security." : "Choose a new PIN to secure your household settings." }}
+        {{ hasAdultPin ? "Enter your current PIN and choose a new 4-digit PIN for household security." : "Choose a 4-digit PIN to secure your household settings." }}
       </p>
 
       <UFormField
@@ -145,6 +150,9 @@ function focusConfirmInput() {
           placeholder="Enter current PIN"
           :disabled="isSaving"
           autocomplete="off"
+          maxlength="4"
+          inputmode="numeric"
+          pattern="[0-9]*"
           @keydown="handleKeydown"
         >
           <template #trailing>
@@ -164,9 +172,12 @@ function focusConfirmInput() {
           ref="newPinInput"
           v-model="newPin"
           :type="showPassword ? 'text' : 'password'"
-          placeholder="Enter new PIN (min 4 digits)"
+          placeholder="Enter 4-digit PIN"
           :disabled="isSaving"
           autocomplete="new-password"
+          maxlength="4"
+          inputmode="numeric"
+          pattern="[0-9]*"
           @keydown.enter="focusConfirmInput"
         >
           <template #trailing>
@@ -186,9 +197,12 @@ function focusConfirmInput() {
           ref="confirmPinInput"
           v-model="confirmPin"
           :type="showPassword ? 'text' : 'password'"
-          placeholder="Confirm new PIN"
+          placeholder="Confirm 4-digit PIN"
           :disabled="isSaving"
           autocomplete="new-password"
+          maxlength="4"
+          inputmode="numeric"
+          pattern="[0-9]*"
           @keydown="handleKeydown"
         >
           <template #trailing>

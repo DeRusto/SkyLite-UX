@@ -64,6 +64,12 @@ export default defineEventHandler(async (event) => {
       hashedPin = null;
     }
     else {
+      if (typeof body.adultPin !== "string" || !/^\d{4}$/.test(body.adultPin)) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: "PIN must be exactly 4 numeric digits",
+        });
+      }
       hashedPin = await hashPin(body.adultPin);
     }
   }

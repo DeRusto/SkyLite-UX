@@ -39,6 +39,11 @@ async function handleVerify() {
     return;
   }
 
+  if (!/^\d{4}$/.test(pin.value)) {
+    error.value = "PIN must be exactly 4 numeric digits";
+    return;
+  }
+
   isVerifying.value = true;
   error.value = "";
 
@@ -109,9 +114,12 @@ function handleKeydown(event: KeyboardEvent) {
           ref="pinInput"
           v-model="pin"
           type="password"
-          placeholder="Enter PIN"
+          placeholder="Enter 4-digit PIN"
           :disabled="isVerifying"
           autocomplete="off"
+          maxlength="4"
+          inputmode="numeric"
+          pattern="[0-9]*"
           @keydown="handleKeydown"
         />
       </UFormField>
