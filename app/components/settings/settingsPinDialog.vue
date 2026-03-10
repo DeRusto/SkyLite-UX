@@ -34,8 +34,8 @@ watch(() => props.isOpen, (open) => {
 });
 
 async function handleVerify() {
-  if (!pin.value) {
-    error.value = "Please enter a PIN";
+  if (!/^\d{4}$/.test(pin.value)) {
+    error.value = "Enter a 4-digit PIN";
     return;
   }
 
@@ -105,6 +105,9 @@ function handleKeydown(event: KeyboardEvent) {
           type="password"
           placeholder="Enter PIN"
           :disabled="isVerifying"
+          inputmode="numeric"
+          maxlength="4"
+          pattern="\d{4}"
           autocomplete="off"
           @keydown="handleKeydown"
         />
