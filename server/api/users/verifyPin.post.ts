@@ -79,53 +79,18 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // If the user has a specific PIN, verify it
-  if (user.pin) {
-    const isValid = await verifyPin(pin, user.pin);
-    if (isValid) {
-      clearAttempts(userId);
-    }
-    else {
-      recordFailedAttempt(userId);
-    }
-    return { valid: isValid };
-  }
-
-  // Fallback: check household settings adult PIN
-  const settings = await prisma.householdSettings.findFirst();
-
-  if (!settings || !settings.adultPin) {
-    // When neither user settings nor household settings provide a PIN (settings or settings.adultPin is falsy),
-    // the endpoint intentionally treats the PIN as valid only for users where user.role is "ADULT".
+  // If the user has no PIN and is an adult, allow access without requiring a PIN
+  if (!user.pin) {
     return { valid: user.role === "ADULT" };
   }
 
-  // Verify against household PIN as fallback
-  let isValid = await verifyPin(pin, settings.adultPin);
-
-  // Migration: If verification failed, check if it's a legacy plaintext PIN
-  if (!isValid && settings.adultPin === pin) {
-    isValid = true;
-
-    // Upgrade to hashed PIN
-    try {
-      const hashed = await hashPin(pin);
-      await prisma.householdSettings.update({
-        where: { id: settings.id },
-        data: { adultPin: hashed },
-      });
-    }
-    catch (error) {
-      consola.error("Failed to migrate PIN:", error);
-    }
-  }
-
+  // Verify the user's individual PIN
+  const isValid = await verifyPin(pin, user.pin);
   if (isValid) {
     clearAttempts(userId);
   }
   else {
     recordFailedAttempt(userId);
   }
-
   return { valid: isValid };
 });

@@ -2,7 +2,7 @@
 const props = defineProps<{
   isOpen: boolean;
   title?: string;
-  userId?: string | null;
+  userId: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -39,16 +39,18 @@ async function handleVerify() {
     return;
   }
 
+  if (!props.userId) {
+    error.value = "No user selected";
+    return;
+  }
+
   isVerifying.value = true;
   error.value = "";
 
   try {
-    const endpoint = props.userId ? "/api/users/verifyPin" : "/api/household/verifyPin";
-    const body = props.userId ? { userId: props.userId, pin: pin.value } : { pin: pin.value };
-
-    const result = await $fetch<{ valid: boolean }>(endpoint, {
+    const result = await $fetch<{ valid: boolean }>("/api/users/verifyPin", {
       method: "POST",
-      body,
+      body: { userId: props.userId, pin: pin.value },
     });
 
     if (result.valid) {
@@ -68,15 +70,7 @@ async function handleVerify() {
     }
   }
   catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Verification failed";
-    if (errorMessage.includes("No adult PIN")) {
-      // No PIN set - allow access
-      emit("verified");
-      emit("close");
-    }
-    else {
-      error.value = errorMessage;
-    }
+    error.value = err instanceof Error ? err.message : "Verification failed";
   }
   finally {
     isVerifying.value = false;

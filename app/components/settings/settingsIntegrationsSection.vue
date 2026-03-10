@@ -12,12 +12,6 @@ import { useIntegrationStatus } from "~/composables/useIntegrationStatus";
 import { integrationServices } from "~/plugins/02.appInit";
 import { createIntegrationService, integrationRegistry } from "~/types/integrations";
 
-type Props = {
-  householdSettings: any;
-};
-
-const props = defineProps<Props>();
-
 const { showError, showSuccess } = useAlertToast();
 const { fetchIntegrationStatus, isStatusLoading } = useIntegrationStatus();
 const { users } = useUsers();
@@ -31,10 +25,16 @@ const connectionTestResult = ref<ConnectionTestResult>(null);
 // PIN protection
 const isPinDialogOpen = ref(false);
 const isIntegrationsSectionUnlocked = ref(false);
+const selectedAdultId = ref<string | null>(null);
 
-watch(users, (newUsers) => {
-  if (newUsers.length === 0) {
+const adultUsers = computed(() => users.value.filter(u => u.role === "ADULT"));
+
+watch(adultUsers, (adults) => {
+  if (adults.length === 0) {
     isIntegrationsSectionUnlocked.value = true;
+  }
+  if (!selectedAdultId.value && adults.length > 0) {
+    selectedAdultId.value = adults[0].id;
   }
 }, { immediate: true });
 
@@ -79,16 +79,14 @@ const filteredIntegrations = computed(() => {
 });
 
 function handleUnlockIntegrations() {
-  if (props.householdSettings && !props.householdSettings.hasAdultPin) {
+  if (adultUsers.value.length === 0) {
     isIntegrationsSectionUnlocked.value = true;
     return;
   }
-  if (users.value.length > 0 && !isIntegrationsSectionUnlocked.value) {
-    isPinDialogOpen.value = true;
+  if (!selectedAdultId.value) {
+    selectedAdultId.value = adultUsers.value[0]?.id ?? null;
   }
-  else {
-    isIntegrationsSectionUnlocked.value = true;
-  }
+  isPinDialogOpen.value = true;
 }
 
 function handlePinVerified() {
@@ -305,7 +303,7 @@ async function handleToggleIntegration(integrationId: string, enabled: boolean) 
           Integrations
         </h2>
         <UIcon
-          v-if="users.length > 0 && !isIntegrationsSectionUnlocked"
+          v-if="adultUsers.length > 0 && !isIntegrationsSectionUnlocked"
           name="i-lucide-lock"
           class="h-4 w-4 text-muted"
         />
@@ -318,7 +316,7 @@ async function handleToggleIntegration(integrationId: string, enabled: boolean) 
         Add Integration
       </UButton>
       <UButton
-        v-else-if="users.length > 0"
+        v-else-if="adultUsers.length > 0"
         icon="i-lucide-lock"
         variant="outline"
         @click="handleUnlockIntegrations"
@@ -329,7 +327,7 @@ async function handleToggleIntegration(integrationId: string, enabled: boolean) 
 
     <!-- Locked state -->
     <div
-      v-if="users.length > 0 && !isIntegrationsSectionUnlocked"
+      v-if="adultUsers.length > 0 && !isIntegrationsSectionUnlocked"
       class="text-center py-12"
     >
       <div class="flex flex-col items-center gap-4">
@@ -341,8 +339,23 @@ async function handleToggleIntegration(integrationId: string, enabled: boolean) 
             Access Restricted
           </p>
           <p class="text-muted mt-1">
-            Select an adult user to unlock integration settings
+            Verify with an adult profile PIN to unlock integration settings
           </p>
+        </div>
+        <div v-if="adultUsers.length > 1" class="flex items-center gap-2">
+          <label class="text-sm text-muted">Adult:</label>
+          <select
+            v-model="selectedAdultId"
+            class="border border-default rounded px-2 py-1 text-sm bg-default"
+          >
+            <option
+              v-for="adult in adultUsers"
+              :key="adult.id"
+              :value="adult.id"
+            >
+              {{ adult.name }}
+            </option>
+          </select>
         </div>
         <UButton
           icon="i-lucide-key"
@@ -378,7 +391,9 @@ async function handleToggleIntegration(integrationId: string, enabled: boolean) 
     />
 
     <SettingsPinDialog
+      v-if="selectedAdultId"
       :is-open="isPinDialogOpen"
+      :user-id="selectedAdultId"
       title="Access Integrations"
       @close="isPinDialogOpen = false"
       @verified="handlePinVerified"
