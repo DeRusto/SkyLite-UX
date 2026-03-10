@@ -347,8 +347,9 @@ async function handleToggleIntegration(integrationId: string, enabled: boolean) 
           </p>
         </div>
         <div v-if="adultUsers.length > 1" class="flex items-center gap-2">
-          <label class="text-sm text-muted">Adult:</label>
+          <label for="adult-pin-select" class="text-sm text-muted">Adult:</label>
           <select
+            id="adult-pin-select"
             v-model="selectedAdultId"
             class="border border-default rounded px-2 py-1 text-sm bg-default"
           >
