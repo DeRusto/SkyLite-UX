@@ -39,6 +39,11 @@ async function handleVerify() {
     return;
   }
 
+  if (!/^\d{4}$/.test(pin.value)) {
+    error.value = "PIN must be exactly 4 numeric digits";
+    return;
+  }
+
   isVerifying.value = true;
   error.value = "";
 

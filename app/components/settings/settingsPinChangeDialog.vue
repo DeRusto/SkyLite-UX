@@ -49,6 +49,11 @@ async function handleSave() {
     return;
   }
 
+  if (props.hasAdultPin && !/^\d{4}$/.test(currentPin.value)) {
+    error.value = "Current PIN must be exactly 4 numeric digits";
+    return;
+  }
+
   if (!newPin.value) {
     error.value = "Please enter a new PIN";
     return;
