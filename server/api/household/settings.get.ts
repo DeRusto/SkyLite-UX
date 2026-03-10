@@ -22,5 +22,8 @@ export default defineEventHandler(async () => {
     choreCompletionMode: settings.choreCompletionMode,
     rewardApprovalThreshold: settings.rewardApprovalThreshold,
     hasAdultPin: !!settings.adultPin,
+    linkedCalendars: settings.linkedCalendars,
+    holidayColor: settings.holidayColor,
+    familyColor: settings.familyColor,
   };
 });

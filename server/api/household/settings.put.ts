@@ -1,10 +1,19 @@
 import prisma from "~/lib/prisma";
 
+type LinkedCalendarEntry = {
+  type: "HOLIDAY" | "FAMILY";
+  integrationId: string;
+  calendarId: string;
+};
+
 type UpdateHouseholdSettingsBody = {
   familyName?: string;
   choreCompletionMode?: "SELF_CLAIM" | "ADULT_VERIFY";
   rewardApprovalThreshold?: number | null;
   adultPin?: string | null;
+  linkedCalendars?: LinkedCalendarEntry[];
+  holidayColor?: string;
+  familyColor?: string;
 };
 
 export default defineEventHandler(async (event) => {
@@ -67,6 +76,9 @@ export default defineEventHandler(async (event) => {
       ...(body.choreCompletionMode !== undefined && { choreCompletionMode: body.choreCompletionMode }),
       ...(body.rewardApprovalThreshold !== undefined && { rewardApprovalThreshold: body.rewardApprovalThreshold }),
       ...(hashedPin !== undefined && { adultPin: hashedPin }),
+      ...(body.linkedCalendars !== undefined && { linkedCalendars: body.linkedCalendars }),
+      ...(body.holidayColor !== undefined && { holidayColor: body.holidayColor }),
+      ...(body.familyColor !== undefined && { familyColor: body.familyColor }),
     },
   });
 
@@ -77,5 +89,8 @@ export default defineEventHandler(async (event) => {
     choreCompletionMode: updatedSettings.choreCompletionMode,
     rewardApprovalThreshold: updatedSettings.rewardApprovalThreshold,
     hasAdultPin: !!updatedSettings.adultPin,
+    linkedCalendars: updatedSettings.linkedCalendars,
+    holidayColor: updatedSettings.holidayColor,
+    familyColor: updatedSettings.familyColor,
   };
 });
