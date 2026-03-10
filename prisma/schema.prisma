@@ -388,6 +388,9 @@ model HouseholdSettings {
   choreCompletionMode     ChoreCompletionMode @default(SELF_CLAIM)
   rewardApprovalThreshold Int?                // Points threshold requiring adult approval
   adultPin                String?             // Encrypted PIN for adult verification
+  linkedCalendars         Json?               // Array of { type, integrationId, calendarId } for holiday/family calendar tagging
+  holidayColor            String?             // Hex color for holiday calendar events
+  familyColor             String?             // Hex color for family calendar events
 
   @@map("household_settings")
 }
