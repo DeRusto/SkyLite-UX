@@ -95,7 +95,7 @@ function handleKeydown(event: KeyboardEvent) {
   >
     <div class="space-y-4">
       <p class="text-muted mb-4">
-        Enter the adult PIN to access this section.
+        Enter your adult profile PIN to access this section. If you haven't set a PIN, enter any 4 digits.
       </p>
 
       <UFormField label="PIN" :error="error">

@@ -29,9 +29,13 @@ const selectedAdultId = ref<string | null>(null);
 
 const adultUsers = computed(() => users.value.filter(u => u.role === "ADULT"));
 
-watch(adultUsers, (adults) => {
+watch(adultUsers, (adults, prevAdults) => {
   if (adults.length === 0) {
     isIntegrationsSectionUnlocked.value = true;
+  }
+  else if (prevAdults !== undefined && prevAdults.length === 0 && adults.length > 0) {
+    // Re-lock when first adult is added (was previously unlocked with no-adult bypass)
+    isIntegrationsSectionUnlocked.value = false;
   }
   if (!selectedAdultId.value && adults.length > 0) {
     selectedAdultId.value = adults[0]?.id ?? null;
