@@ -34,7 +34,7 @@ watch(adultUsers, (adults) => {
     isIntegrationsSectionUnlocked.value = true;
   }
   if (!selectedAdultId.value && adults.length > 0) {
-    selectedAdultId.value = adults[0].id;
+    selectedAdultId.value = adults[0]?.id ?? null;
   }
 }, { immediate: true });
 
