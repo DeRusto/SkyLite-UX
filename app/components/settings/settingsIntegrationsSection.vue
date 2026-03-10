@@ -37,9 +37,11 @@ watch(adultUsers, (adults, prevAdults) => {
     // Re-lock when first adult is added (was previously unlocked with no-adult bypass)
     isIntegrationsSectionUnlocked.value = false;
   }
-  if (!selectedAdultId.value && adults.length > 0) {
+  const hasSelectedAdult = adults.some(adult => adult.id === selectedAdultId.value);
+  if (!hasSelectedAdult) {
     selectedAdultId.value = adults[0]?.id ?? null;
   }
+}, { immediate: true });
 }, { immediate: true });
 
 // Fetch statuses when section is unlocked
