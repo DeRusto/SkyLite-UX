@@ -42,7 +42,6 @@ watch(adultUsers, (adults, prevAdults) => {
     selectedAdultId.value = adults[0]?.id ?? null;
   }
 }, { immediate: true });
-}, { immediate: true });
 
 // Fetch statuses when section is unlocked
 watch(isIntegrationsSectionUnlocked, async (unlocked) => {
