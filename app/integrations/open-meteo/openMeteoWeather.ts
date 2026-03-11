@@ -68,8 +68,6 @@ async function resolveLocationToCoords(location: string): Promise<ResolvedCoords
     );
   }
 }
-  }
-}
 
 function isValidLocationFormat(location: string): boolean {
   const trimmed = location.trim();

@@ -112,10 +112,14 @@ export default defineCachedEventHandler(async (event) => {
     else {
       // Geocode city name or zip code via Open-Meteo geocoding API
       const coords = await geocodeLocation(locationStr);
-      if (coords) {
-        lat = coords.lat;
-        lon = coords.lon;
+      if (!coords) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: `Could not resolve location "${locationStr}"`,
+        });
       }
+      lat = coords.lat;
+      lon = coords.lon;
     }
   }
 
