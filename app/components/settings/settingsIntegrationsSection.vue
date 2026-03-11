@@ -26,12 +26,16 @@ const connectionTestResult = ref<ConnectionTestResult>(null);
 const isPinDialogOpen = ref(false);
 const selectedAdultId = ref<string | null>(null);
 
-const { requiresPin, unlock } = usePinProtection();
+const { requiresPin, settingsLoaded, unlock } = usePinProtection();
 
 const adultUsers = computed(() => users.value.filter(u => u.role === "ADULT"));
 
-// Whether this section is accessible (no adults = always open; otherwise check PIN state)
-const isIntegrationsSectionUnlocked = computed(() => adultUsers.value.length === 0 || !requiresPin.value);
+// Whether this section is accessible (no adults = always open; show content while
+// settings are still loading so a slow/failed fetch doesn't permanently lock the
+// section when PIN protection may actually be disabled).
+const isIntegrationsSectionUnlocked = computed(() =>
+  adultUsers.value.length === 0 || !settingsLoaded.value || !requiresPin.value,
+);
 
 watch(adultUsers, (adults) => {
   const hasSelectedAdult = adults.some(adult => adult.id === selectedAdultId.value);

@@ -19,33 +19,36 @@ const selectedUserId = ref<string | null>(null);
 const selectedUser = computed(() => users.value.find(u => u.id === selectedUserId.value));
 const isAdult = computed(() => selectedUser.value?.role === "ADULT");
 
-// Whether chore management is currently accessible
-// Treat as unlocked until settings have loaded to avoid premature PIN prompts
-const isChoreManagementUnlocked = computed(() => !settingsLoaded.value || !requiresPin.value);
+// Whether chore management is currently accessible.
+// Default to locked until settings have loaded — prevents bypassing PIN protection
+// by clicking quickly before the settings fetch completes or if it fails.
+const isChoreManagementUnlocked = computed(() => settingsLoaded.value && !requiresPin.value);
 
 function handleCreateChore() {
-  if (isAdult.value && settingsLoaded.value && requiresPin.value) {
+  if (!isAdult.value || !settingsLoaded.value) return;
+  if (requiresPin.value) {
     pendingChoreAction.value = () => {
       editingChore.value = null;
       showCreateDialog.value = true;
     };
     isPinDialogOpen.value = true;
   }
-  else if (isAdult.value) {
+  else {
     editingChore.value = null;
     showCreateDialog.value = true;
   }
 }
 
 function handleEditChore(chore: Chore) {
-  if (isAdult.value && settingsLoaded.value && requiresPin.value) {
+  if (!isAdult.value || !settingsLoaded.value) return;
+  if (requiresPin.value) {
     pendingChoreAction.value = () => {
       editingChore.value = chore;
       showCreateDialog.value = true;
     };
     isPinDialogOpen.value = true;
   }
-  else if (isAdult.value) {
+  else {
     editingChore.value = chore;
     showCreateDialog.value = true;
   }

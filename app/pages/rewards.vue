@@ -8,8 +8,9 @@ const { showSuccess, showError, showWarning } = useAlertToast();
 // PIN protection for reward management
 const isPinDialogOpen = ref(false);
 const { requiresPin, settingsLoaded, unlock: unlockPin } = usePinProtection();
-// Treat as unlocked until settings have loaded to avoid premature PIN prompts
-const isRewardManagementUnlocked = computed(() => !settingsLoaded.value || !requiresPin.value);
+// Default to locked until settings have loaded — prevents bypassing PIN protection
+// by clicking quickly before the settings fetch completes or if it fails.
+const isRewardManagementUnlocked = computed(() => settingsLoaded.value && !requiresPin.value);
 
 type Reward = {
   id: string;
@@ -70,28 +71,30 @@ const isAdult = computed(() => selectedUser.value?.role === "ADULT");
 
 // PIN protection handlers
 function handleCreateReward() {
-  if (isAdult.value && settingsLoaded.value && requiresPin.value) {
+  if (!isAdult.value || !settingsLoaded.value) return;
+  if (requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = null;
       showCreateDialog.value = true;
     };
     isPinDialogOpen.value = true;
   }
-  else if (isAdult.value) {
+  else {
     editingReward.value = null;
     showCreateDialog.value = true;
   }
 }
 
 function handleEditReward(reward: Reward) {
-  if (isAdult.value && settingsLoaded.value && requiresPin.value) {
+  if (!isAdult.value || !settingsLoaded.value) return;
+  if (requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = reward;
       showCreateDialog.value = true;
     };
     isPinDialogOpen.value = true;
   }
-  else if (isAdult.value) {
+  else {
     editingReward.value = reward;
     showCreateDialog.value = true;
   }
