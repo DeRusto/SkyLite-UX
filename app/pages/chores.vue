@@ -9,7 +9,7 @@ const pendingChoreAction = ref<(() => void) | null>(null);
 
 // PIN protection for chore management
 const isPinDialogOpen = ref(false);
-const isChoreManagementUnlocked = ref(false);
+const { requiresPin, unlock: unlockPin } = usePinProtection();
 
 // For now, we'll use a simple user selection (in a real app, this would come from auth)
 const users = ref<Array<{ id: string; name: string; avatar: string | null; role: string }>>([]);
@@ -19,19 +19,11 @@ const selectedUserId = ref<string | null>(null);
 const selectedUser = computed(() => users.value.find(u => u.id === selectedUserId.value));
 const isAdult = computed(() => selectedUser.value?.role === "ADULT");
 
-// Watch user selection to reset unlock state or prompt for PIN
-watch(selectedUserId, (newId, oldId) => {
-  if (newId !== oldId) {
-    isChoreManagementUnlocked.value = false;
-    // Only prompt for PIN if we already had a selected user (ignore initial set)
-    if (isAdult.value && oldId) {
-      isPinDialogOpen.value = true;
-    }
-  }
-});
+// Whether chore management is currently accessible
+const isChoreManagementUnlocked = computed(() => !requiresPin.value);
 
 function handleCreateChore() {
-  if (isAdult.value && !isChoreManagementUnlocked.value) {
+  if (isAdult.value && requiresPin.value) {
     pendingChoreAction.value = () => {
       editingChore.value = null;
       showCreateDialog.value = true;
@@ -45,7 +37,7 @@ function handleCreateChore() {
 }
 
 function handleEditChore(chore: Chore) {
-  if (isAdult.value && !isChoreManagementUnlocked.value) {
+  if (isAdult.value && requiresPin.value) {
     pendingChoreAction.value = () => {
       editingChore.value = chore;
       showCreateDialog.value = true;
@@ -59,7 +51,7 @@ function handleEditChore(chore: Chore) {
 }
 
 function handlePinVerified() {
-  isChoreManagementUnlocked.value = true;
+  unlockPin();
   if (pendingChoreAction.value) {
     pendingChoreAction.value();
     pendingChoreAction.value = null;

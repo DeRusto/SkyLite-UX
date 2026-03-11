@@ -7,7 +7,8 @@ const { showSuccess, showError, showWarning } = useAlertToast();
 
 // PIN protection for reward management
 const isPinDialogOpen = ref(false);
-const isRewardManagementUnlocked = ref(false);
+const { requiresPin, unlock: unlockPin } = usePinProtection();
+const isRewardManagementUnlocked = computed(() => !requiresPin.value);
 
 type Reward = {
   id: string;
@@ -66,20 +67,9 @@ const pendingRejectRedemption = ref<Redemption | null>(null);
 const selectedUser = computed(() => users.value.find(u => u.id === selectedUserId.value));
 const isAdult = computed(() => selectedUser.value?.role === "ADULT");
 
-// Watch user selection to reset unlock state or prompt for PIN
-watch(selectedUserId, (newId, oldId) => {
-  if (newId !== oldId) {
-    isRewardManagementUnlocked.value = false;
-    // Only prompt for PIN if we already had a selected user (ignore initial set)
-    if (isAdult.value && oldId) {
-      isPinDialogOpen.value = true;
-    }
-  }
-});
-
 // PIN protection handlers
 function handleCreateReward() {
-  if (isAdult.value && !isRewardManagementUnlocked.value) {
+  if (isAdult.value && requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = null;
       showCreateDialog.value = true;
@@ -93,7 +83,7 @@ function handleCreateReward() {
 }
 
 function handleEditReward(reward: Reward) {
-  if (isAdult.value && !isRewardManagementUnlocked.value) {
+  if (isAdult.value && requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = reward;
       showCreateDialog.value = true;
@@ -107,7 +97,7 @@ function handleEditReward(reward: Reward) {
 }
 
 function handlePinVerified() {
-  isRewardManagementUnlocked.value = true;
+  unlockPin();
   if (pendingRewardAction.value) {
     pendingRewardAction.value();
     pendingRewardAction.value = null;

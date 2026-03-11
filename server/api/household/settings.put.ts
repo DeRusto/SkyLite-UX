@@ -13,6 +13,7 @@ type UpdateHouseholdSettingsBody = {
   linkedCalendars?: LinkedCalendarEntry[];
   holidayColor?: string;
   familyColor?: string;
+  pinProtectionEnabled?: boolean;
 };
 
 export default defineEventHandler(async (event) => {
@@ -65,6 +66,7 @@ export default defineEventHandler(async (event) => {
       ...(body.linkedCalendars !== undefined && { linkedCalendars: body.linkedCalendars }),
       ...(body.holidayColor !== undefined && { holidayColor: body.holidayColor }),
       ...(body.familyColor !== undefined && { familyColor: body.familyColor }),
+      ...(body.pinProtectionEnabled !== undefined && { pinProtectionEnabled: body.pinProtectionEnabled }),
     },
   });
 
@@ -76,5 +78,6 @@ export default defineEventHandler(async (event) => {
     linkedCalendars: updatedSettings.linkedCalendars,
     holidayColor: updatedSettings.holidayColor,
     familyColor: updatedSettings.familyColor,
+    pinProtectionEnabled: updatedSettings.pinProtectionEnabled,
   };
 });

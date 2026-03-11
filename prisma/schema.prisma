@@ -390,6 +390,7 @@ model HouseholdSettings {
   linkedCalendars         Json?               // Array of { type, integrationId, calendarId } for holiday/family calendar tagging
   holidayColor            String?             // Hex color for holiday calendar events
   familyColor             String?             // Hex color for family calendar events
+  pinProtectionEnabled    Boolean             @default(true) // Whether PIN protection is required for adult-only sections
 
   @@map("household_settings")
 }

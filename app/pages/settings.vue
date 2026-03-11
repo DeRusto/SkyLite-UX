@@ -10,6 +10,7 @@ import { getSlogan } from "~/types/global";
 
 const { integrations } = useIntegrations();
 const { triggerImmediateSync } = useSyncManager();
+const { pinProtectionEnabled, lock, setPinProtectionEnabled } = usePinProtection();
 
 const colorMode = useColorMode();
 const isDark = computed({
@@ -42,6 +43,19 @@ onMounted(async () => {
     consola.warn("Settings: Failed to load household settings:", err);
   }
 });
+
+async function handlePinProtectionToggle(enabled: boolean) {
+  try {
+    await $fetch("/api/household/settings", {
+      method: "PUT",
+      body: { pinProtectionEnabled: enabled },
+    });
+    setPinProtectionEnabled(enabled);
+  }
+  catch (err) {
+    consola.warn("Settings: Failed to update PIN protection setting:", err);
+  }
+}
 
 // Trigger calendar sync when user colors change
 function handleUserSaved() {
@@ -134,6 +148,46 @@ function handleTriggerSync() {
                 size="xl"
                 aria-label="Toggle notifications"
               />
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-medium text-highlighted">
+                  PIN Protection
+                </p>
+                <p class="text-sm text-muted">
+                  Require adult PIN to access settings, integrations, chore and reward management
+                </p>
+              </div>
+              <USwitch
+                :model-value="pinProtectionEnabled"
+                color="primary"
+                checked-icon="i-lucide-lock"
+                unchecked-icon="i-lucide-lock-open"
+                size="xl"
+                aria-label="Toggle PIN protection"
+                @update:model-value="handlePinProtectionToggle"
+              />
+            </div>
+            <div
+              v-if="pinProtectionEnabled"
+              class="flex items-center justify-between"
+            >
+              <div>
+                <p class="font-medium text-highlighted">
+                  Lock Now
+                </p>
+                <p class="text-sm text-muted">
+                  Re-lock all protected sections — you will need to enter your PIN again
+                </p>
+              </div>
+              <UButton
+                icon="i-lucide-lock"
+                color="error"
+                variant="soft"
+                @click="lock"
+              >
+                Lock Now
+              </UButton>
             </div>
           </div>
         </div>
