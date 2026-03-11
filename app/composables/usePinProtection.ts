@@ -7,8 +7,10 @@ export function usePinProtection() {
   const _isUnlocked = useState<boolean>("pinProtection_isUnlocked", () => false);
   const _pinProtectionEnabled = useState<boolean>("pinProtection_pinProtectionEnabled", () => true);
   const _settingsLoaded = useState<boolean>("pinProtection_settingsLoaded", () => false);
+  const _settingsLoading = useState<boolean>("pinProtection_settingsLoading", () => false);
 
-  if (import.meta.client && !_settingsLoaded.value) {
+  if (import.meta.client && !_settingsLoaded.value && !_settingsLoading.value) {
+    _settingsLoading.value = true;
     $fetch<{ pinProtectionEnabled?: boolean }>("/api/household/settings")
       .then((settings) => {
         _pinProtectionEnabled.value = settings.pinProtectionEnabled ?? true;
@@ -20,6 +22,9 @@ export function usePinProtection() {
       .catch((err) => {
         consola.warn("usePinProtection: Failed to load settings:", err);
         // Leave _settingsLoaded false so the next composable access can retry.
+      })
+      .finally(() => {
+        _settingsLoading.value = false;
       });
   }
 
