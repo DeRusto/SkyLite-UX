@@ -13,6 +13,7 @@ type UpdateHouseholdSettingsBody = {
   linkedCalendars?: LinkedCalendarEntry[];
   holidayColor?: string;
   familyColor?: string;
+  pinProtectionEnabled?: boolean;
 };
 
 export default defineEventHandler(async (event) => {
@@ -55,6 +56,13 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  if (body.pinProtectionEnabled !== undefined && typeof body.pinProtectionEnabled !== "boolean") {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "PIN protection enabled must be a boolean",
+    });
+  }
+
   // Update settings
   const updatedSettings = await prisma.householdSettings.update({
     where: { id: settings.id },
@@ -65,6 +73,7 @@ export default defineEventHandler(async (event) => {
       ...(body.linkedCalendars !== undefined && { linkedCalendars: body.linkedCalendars }),
       ...(body.holidayColor !== undefined && { holidayColor: body.holidayColor }),
       ...(body.familyColor !== undefined && { familyColor: body.familyColor }),
+      ...(body.pinProtectionEnabled !== undefined && { pinProtectionEnabled: body.pinProtectionEnabled }),
     },
   });
 
@@ -76,5 +85,6 @@ export default defineEventHandler(async (event) => {
     linkedCalendars: updatedSettings.linkedCalendars,
     holidayColor: updatedSettings.holidayColor,
     familyColor: updatedSettings.familyColor,
+    pinProtectionEnabled: updatedSettings.pinProtectionEnabled,
   };
 });

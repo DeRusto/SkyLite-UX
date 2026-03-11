@@ -24,19 +24,20 @@ const connectionTestResult = ref<ConnectionTestResult>(null);
 
 // PIN protection
 const isPinDialogOpen = ref(false);
-const isIntegrationsSectionUnlocked = ref(false);
 const selectedAdultId = ref<string | null>(null);
+
+const { requiresPin, settingsLoaded, unlock } = usePinProtection();
 
 const adultUsers = computed(() => users.value.filter(u => u.role === "ADULT"));
 
-watch(adultUsers, (adults, prevAdults) => {
-  if (adults.length === 0) {
-    isIntegrationsSectionUnlocked.value = true;
-  }
-  else if (prevAdults !== undefined && prevAdults.length === 0 && adults.length > 0) {
-    // Re-lock when first adult is added (was previously unlocked with no-adult bypass)
-    isIntegrationsSectionUnlocked.value = false;
-  }
+// Whether this section is accessible (no adults = always open; show content while
+// settings are still loading so a slow/failed fetch doesn't permanently lock the
+// section when PIN protection may actually be disabled).
+const isIntegrationsSectionUnlocked = computed(() =>
+  adultUsers.value.length === 0 || !settingsLoaded.value || !requiresPin.value,
+);
+
+watch(adultUsers, (adults) => {
   const hasSelectedAdult = adults.some(adult => adult.id === selectedAdultId.value);
   if (!hasSelectedAdult) {
     selectedAdultId.value = adults[0]?.id ?? null;
@@ -65,6 +66,7 @@ watch(() => (integrations.value as Integration[]).filter(i => i.enabled).map(i =
   }
 }, { deep: true });
 
+
 const activeIntegrationTab = ref<string>("");
 
 const availableIntegrationTypes = computed(() => {
@@ -85,7 +87,6 @@ const filteredIntegrations = computed(() => {
 
 function handleUnlockIntegrations() {
   if (adultUsers.value.length === 0) {
-    isIntegrationsSectionUnlocked.value = true;
     return;
   }
   if (!selectedAdultId.value) {
@@ -95,7 +96,7 @@ function handleUnlockIntegrations() {
 }
 
 function handlePinVerified() {
-  isIntegrationsSectionUnlocked.value = true;
+  unlock();
 }
 
 function openIntegrationDialog(integration: Integration | null = null) {

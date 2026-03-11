@@ -22,5 +22,6 @@ export default defineEventHandler(async () => {
     linkedCalendars: settings.linkedCalendars,
     holidayColor: settings.holidayColor,
     familyColor: settings.familyColor,
+    pinProtectionEnabled: settings.pinProtectionEnabled,
   };
 });
