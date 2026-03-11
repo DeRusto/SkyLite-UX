@@ -56,6 +56,13 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  if (body.pinProtectionEnabled !== undefined && typeof body.pinProtectionEnabled !== "boolean") {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "PIN protection enabled must be a boolean",
+    });
+  }
+
   // Update settings
   const updatedSettings = await prisma.householdSettings.update({
     where: { id: settings.id },

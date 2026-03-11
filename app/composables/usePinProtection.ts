@@ -7,13 +7,13 @@ const _settingsLoaded = ref(false);
 
 export function usePinProtection() {
   if (import.meta.client && !_settingsLoaded.value) {
-    _settingsLoaded.value = true;
     $fetch<{ pinProtectionEnabled?: boolean }>("/api/household/settings")
       .then((settings) => {
         _pinProtectionEnabled.value = settings.pinProtectionEnabled ?? true;
         if (!_pinProtectionEnabled.value) {
           _isUnlocked.value = true;
         }
+        _settingsLoaded.value = true;
       })
       .catch((err) => {
         consola.warn("usePinProtection: Failed to load settings:", err);
@@ -46,6 +46,7 @@ export function usePinProtection() {
   return {
     isUnlocked: readonly(_isUnlocked),
     pinProtectionEnabled: readonly(_pinProtectionEnabled),
+    settingsLoaded: readonly(_settingsLoaded),
     requiresPin,
     unlock,
     lock,

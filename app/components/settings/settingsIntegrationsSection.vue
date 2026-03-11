@@ -83,7 +83,6 @@ const filteredIntegrations = computed(() => {
 
 function handleUnlockIntegrations() {
   if (adultUsers.value.length === 0) {
-    isIntegrationsSectionUnlocked.value = true;
     return;
   }
   if (!selectedAdultId.value) {

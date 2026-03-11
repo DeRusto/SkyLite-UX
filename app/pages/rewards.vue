@@ -7,8 +7,9 @@ const { showSuccess, showError, showWarning } = useAlertToast();
 
 // PIN protection for reward management
 const isPinDialogOpen = ref(false);
-const { requiresPin, unlock: unlockPin } = usePinProtection();
-const isRewardManagementUnlocked = computed(() => !requiresPin.value);
+const { requiresPin, settingsLoaded, unlock: unlockPin } = usePinProtection();
+// Treat as unlocked until settings have loaded to avoid premature PIN prompts
+const isRewardManagementUnlocked = computed(() => !settingsLoaded.value || !requiresPin.value);
 
 type Reward = {
   id: string;
@@ -69,7 +70,7 @@ const isAdult = computed(() => selectedUser.value?.role === "ADULT");
 
 // PIN protection handlers
 function handleCreateReward() {
-  if (isAdult.value && requiresPin.value) {
+  if (isAdult.value && settingsLoaded.value && requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = null;
       showCreateDialog.value = true;
@@ -83,7 +84,7 @@ function handleCreateReward() {
 }
 
 function handleEditReward(reward: Reward) {
-  if (isAdult.value && requiresPin.value) {
+  if (isAdult.value && settingsLoaded.value && requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = reward;
       showCreateDialog.value = true;
