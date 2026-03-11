@@ -150,7 +150,6 @@ export function createOpenMeteoWeatherService(
 
       lastError = undefined;
       return true;
-    }
     },
 
     async getStatus(): Promise<IntegrationStatus> {
