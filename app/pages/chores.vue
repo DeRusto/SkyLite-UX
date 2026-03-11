@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { consola } from "consola";
-
 import ChoreDialog from "~/components/chores/choreDialog.vue";
 import GlobalFloatingActionButton from "~/components/global/globalFloatingActionButton.vue";
 import SettingsPinDialog from "~/components/settings/settingsPinDialog.vue";
@@ -12,18 +10,6 @@ const pendingChoreAction = ref<(() => void) | null>(null);
 // PIN protection for chore management
 const isPinDialogOpen = ref(false);
 const isChoreManagementUnlocked = ref(false);
-const hasAdultPin = ref(false);
-
-// Check if adult PIN is set
-async function checkAdultPin() {
-  try {
-    const settings = await $fetch<{ hasAdultPin: boolean }>("/api/household/settings");
-    hasAdultPin.value = settings.hasAdultPin;
-  }
-  catch (err) {
-    consola.warn("Chores: Failed to check household settings:", err);
-  }
-}
 
 // For now, we'll use a simple user selection (in a real app, this would come from auth)
 const users = ref<Array<{ id: string; name: string; avatar: string | null; role: string }>>([]);
@@ -299,7 +285,6 @@ function formatDueDate(dateString: string | null): string {
 onMounted(() => {
   fetchChores();
   fetchUsers();
-  checkAdultPin();
 });
 </script>
 
@@ -493,8 +478,8 @@ onMounted(() => {
     <!-- Floating action button for creating chores (adult only) -->
     <GlobalFloatingActionButton
       v-if="isAdult"
-      :icon="hasAdultPin && !isChoreManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'"
-      :label="hasAdultPin && !isChoreManagementUnlocked ? 'Unlock to manage chores' : 'Add new chore'"
+      :icon="!isChoreManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'"
+      :label="!isChoreManagementUnlocked ? 'Unlock to manage chores' : 'Add new chore'"
       color="primary"
       size="lg"
       position="bottom-right"

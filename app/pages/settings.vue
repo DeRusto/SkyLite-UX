@@ -5,12 +5,9 @@ import type { Integration } from "~/types/database";
 
 import SettingsHouseholdCalendars from "~/components/settings/settingsHouseholdCalendars.vue";
 import SettingsIntegrationsSection from "~/components/settings/settingsIntegrationsSection.vue";
-import SettingsPinChangeDialog from "~/components/settings/settingsPinChangeDialog.vue";
 import SettingsUsersSection from "~/components/settings/settingsUsersSection.vue";
-import { useAlertToast } from "~/composables/useAlertToast";
 import { getSlogan } from "~/types/global";
 
-const { showSuccess } = useAlertToast();
 const { integrations } = useIntegrations();
 const { triggerImmediateSync } = useSyncManager();
 
@@ -33,7 +30,7 @@ onMounted(() => {
 
 const logoLoaded = ref(true);
 
-// Household settings (needed by SettingsIntegrationsSection + SettingsHouseholdCalendars)
+// Household settings (needed by SettingsHouseholdCalendars)
 const householdSettings = ref<any>(null);
 
 onMounted(async () => {
@@ -45,17 +42,6 @@ onMounted(async () => {
     consola.warn("Settings: Failed to load household settings:", err);
   }
 });
-
-// PIN change dialog
-const isPinChangeDialogOpen = ref(false);
-
-function handlePinChanged() {
-  isPinChangeDialogOpen.value = false;
-  if (householdSettings.value) {
-    householdSettings.value.hasAdultPin = true;
-  }
-  showSuccess("PIN Changed", "Adult PIN has been updated successfully");
-}
 
 // Trigger calendar sync when user colors change
 function handleUserSaved() {
@@ -88,45 +74,8 @@ function handleTriggerSync() {
         <!-- Users Section -->
         <SettingsUsersSection @user-saved="handleUserSaved" />
 
-        <!-- Household PIN Section -->
-        <div class="bg-default rounded-lg shadow-sm border border-default p-6 mb-6">
-          <div class="flex items-center justify-between mb-6">
-            <div>
-              <h2 class="text-lg font-semibold text-highlighted">
-                <UIcon name="i-lucide-lock" class="h-4 w-4 inline mr-2" />
-                Household Settings
-              </h2>
-              <p class="text-sm text-muted">
-                Manage household security settings
-              </p>
-            </div>
-            <UButton
-              icon="i-lucide-settings"
-              @click="isPinChangeDialogOpen = true"
-            >
-              Change PIN
-            </UButton>
-          </div>
-          <div class="flex items-center justify-between py-3 border-b border-default mb-4">
-            <div>
-              <p class="font-medium text-highlighted">
-                Current PIN
-              </p>
-              <p class="text-sm text-muted">
-                Used to access settings and integrations
-              </p>
-            </div>
-            <p class="text-sm text-muted">
-              ••••
-            </p>
-          </div>
-          <p class="text-xs text-muted">
-            The default PIN is "1234". You should change this to secure your household settings.
-          </p>
-        </div>
-
         <!-- Integrations Section -->
-        <SettingsIntegrationsSection :household-settings="householdSettings" />
+        <SettingsIntegrationsSection />
 
         <!-- Household Calendars Section -->
         <SettingsHouseholdCalendars
@@ -233,11 +182,5 @@ function handleTriggerSync() {
       </div>
     </div>
 
-    <SettingsPinChangeDialog
-      :is-open="isPinChangeDialogOpen"
-      :has-adult-pin="!!householdSettings?.hasAdultPin"
-      @close="isPinChangeDialogOpen = false"
-      @saved="handlePinChanged"
-    />
   </div>
 </template>

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { consola } from "consola";
-
 import GlobalFloatingActionButton from "~/components/global/globalFloatingActionButton.vue";
 import RewardDialog from "~/components/rewards/rewardDialog.vue";
 import SettingsPinDialog from "~/components/settings/settingsPinDialog.vue";
@@ -10,18 +8,6 @@ const { showSuccess, showError, showWarning } = useAlertToast();
 // PIN protection for reward management
 const isPinDialogOpen = ref(false);
 const isRewardManagementUnlocked = ref(false);
-const hasAdultPin = ref(false);
-
-// Check if adult PIN is set
-async function checkAdultPin() {
-  try {
-    const settings = await $fetch<{ hasAdultPin: boolean }>("/api/household/settings");
-    hasAdultPin.value = settings.hasAdultPin;
-  }
-  catch (err) {
-    consola.warn("Rewards: Failed to check household settings:", err);
-  }
-}
 
 type Reward = {
   id: string;
@@ -331,7 +317,6 @@ onMounted(async () => {
     fetchRewards(),
     fetchUsers(),
     fetchPendingRedemptions(),
-    checkAdultPin(),
   ]);
   await fetchUserPoints();
   loading.value = false;
@@ -450,8 +435,8 @@ onMounted(async () => {
             class="mt-4"
             @click="handleCreateReward"
           >
-            <UIcon :name="hasAdultPin && !isRewardManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'" class="w-4 h-4 mr-1" />
-            {{ hasAdultPin && !isRewardManagementUnlocked ? 'Unlock to Create Reward' : 'Create First Reward' }}
+            <UIcon :name="!isRewardManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'" class="w-4 h-4 mr-1" />
+            {{ !isRewardManagementUnlocked ? 'Unlock to Create Reward' : 'Create First Reward' }}
           </UButton>
         </div>
 
