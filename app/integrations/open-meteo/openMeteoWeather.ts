@@ -60,8 +60,14 @@ async function resolveLocationToCoords(location: string): Promise<ResolvedCoords
 
     return null;
   }
-  catch {
-    return null;
+  catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? `Failed to resolve location: ${error.message}`
+        : "Failed to resolve location",
+    );
+  }
+}
   }
 }
 
