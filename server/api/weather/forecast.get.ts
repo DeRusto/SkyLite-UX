@@ -60,6 +60,39 @@ function getWeatherCondition(code: number): WeatherCondition {
   return weatherCodes[code] || { code, description: "Unknown", icon: "i-lucide-cloud" };
 }
 
+type GeocodingResult = {
+  latitude: number;
+  longitude: number;
+};
+
+type GeocodingResponse = {
+  results?: GeocodingResult[];
+};
+
+async function geocodeLocation(location: string): Promise<{ lat: number; lon: number } | null> {
+  try {
+    const response = await $fetch<GeocodingResponse>(
+      "https://geocoding-api.open-meteo.com/v1/search",
+      {
+        query: {
+          name: location,
+          count: 1,
+          language: "en",
+          format: "json",
+        },
+      },
+    );
+    if (response.results && response.results.length > 0) {
+      const result = response.results[0];
+      return { lat: result.latitude, lon: result.longitude };
+    }
+    return null;
+  }
+  catch {
+    return null;
+  }
+}
+
 export default defineCachedEventHandler(async (event) => {
   const query = getQuery(event);
 
@@ -68,13 +101,21 @@ export default defineCachedEventHandler(async (event) => {
   let lon = Number.parseFloat(query.lon as string) || -87.6298;
   const units = (query.units as string) || "fahrenheit";
 
-  // If location is provided as city name, we'll use a simple geocoding
+  // If location is provided, resolve to coordinates
   if (query.location) {
-    const locationStr = query.location as string;
+    const locationStr = (query.location as string).trim();
     const coordMatch = locationStr.match(/^(-?\d+(?:\.\d*)?),\s*(-?\d+(?:\.\d*)?)$/);
     if (coordMatch && coordMatch[1] && coordMatch[2]) {
       lat = Number.parseFloat(coordMatch[1]);
       lon = Number.parseFloat(coordMatch[2]);
+    }
+    else {
+      // Geocode city name or zip code via Open-Meteo geocoding API
+      const coords = await geocodeLocation(locationStr);
+      if (coords) {
+        lat = coords.lat;
+        lon = coords.lon;
+      }
     }
   }
 
