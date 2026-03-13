@@ -158,7 +158,7 @@ export function createOpenMeteoWeatherService(
     async getStatus(): Promise<IntegrationStatus> {
       return {
         isConnected,
-        lastChecked: lastChecked ?? new Date(0),
+        lastChecked,
         error: lastError,
       };
     },

@@ -19,7 +19,7 @@ export type IntegrationService = {
 
 export type IntegrationStatus = {
   isConnected: boolean;
-  lastChecked: Date;
+  lastChecked: Date | null;
   error?: string;
 };
 
