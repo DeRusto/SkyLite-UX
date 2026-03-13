@@ -59,9 +59,6 @@ async function resolveLocationToCoords(location: string): Promise<ResolvedCoords
       lat: result.latitude,
       lon: result.longitude,
     };
-    }
-
-    return null;
   }
   catch (error) {
     throw new Error(
@@ -96,6 +93,7 @@ export function createOpenMeteoWeatherService(
   const units = settings?.units || "fahrenheit";
   let isConnected = false;
   let lastError: string | undefined;
+  let lastChecked: Date | null = null;
   let resolvedCoords: ResolvedCoords | undefined;
 
   return {
@@ -103,6 +101,7 @@ export function createOpenMeteoWeatherService(
       if (!location) {
         isConnected = false;
         lastError = "Location is required";
+        lastChecked = new Date();
         return;
       }
 
@@ -111,6 +110,7 @@ export function createOpenMeteoWeatherService(
         if (!coords) {
           isConnected = false;
           lastError = `Could not resolve location "${location}". Use coordinates (lat,lon), a US zip code, or a city name.`;
+          lastChecked = new Date();
           return;
         }
 
@@ -120,10 +120,12 @@ export function createOpenMeteoWeatherService(
         });
         isConnected = !!response;
         lastError = undefined;
+        lastChecked = new Date();
       }
       catch (error) {
         isConnected = false;
         lastError = error instanceof Error ? error.message : "Failed to connect to Open-Meteo";
+        lastChecked = new Date();
       }
     },
 
@@ -156,7 +158,7 @@ export function createOpenMeteoWeatherService(
     async getStatus(): Promise<IntegrationStatus> {
       return {
         isConnected,
-        lastChecked: new Date(),
+        lastChecked: lastChecked ?? new Date(0),
         error: lastError,
       };
     },
@@ -165,6 +167,7 @@ export function createOpenMeteoWeatherService(
       if (!location) {
         isConnected = false;
         lastError = "Location is required";
+        lastChecked = new Date();
         return false;
       }
 
@@ -173,6 +176,7 @@ export function createOpenMeteoWeatherService(
         if (!coords) {
           isConnected = false;
           lastError = `Could not resolve location "${location}". Use coordinates (lat,lon), a US zip code, or a city name.`;
+          lastChecked = new Date();
           return false;
         }
 
@@ -182,11 +186,13 @@ export function createOpenMeteoWeatherService(
         });
         isConnected = !!response;
         lastError = undefined;
+        lastChecked = new Date();
         return true;
       }
       catch (error) {
         isConnected = false;
         lastError = error instanceof Error ? error.message : "Failed to connect to Open-Meteo";
+        lastChecked = new Date();
         return false;
       }
     },
