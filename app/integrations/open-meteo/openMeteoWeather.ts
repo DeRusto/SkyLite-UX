@@ -50,12 +50,15 @@ async function resolveLocationToCoords(location: string): Promise<ResolvedCoords
       },
     );
 
-    if (response.results && response.results.length > 0) {
-      const result = response.results[0];
-      return {
-        lat: result.latitude,
-        lon: result.longitude,
-      };
+    const result = response.results?.[0];
+    if (!result) {
+      return null;
+    }
+
+    return {
+      lat: result.latitude,
+      lon: result.longitude,
+    };
     }
 
     return null;
