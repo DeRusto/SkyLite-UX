@@ -1,15 +1,29 @@
 <script setup lang="ts">
+import { consola } from "consola";
+
 import GlobalAppLoading from "~/components/global/globalAppLoading.vue";
 import GlobalDock from "~/components/global/globalDock.vue";
 
 const dock = false;
 const { isLoading, loadingMessage, setLoading } = useGlobalLoading();
-const { startIdleDetection, stopIdleDetection } = useScreensaver();
+const { startIdleDetection, stopIdleDetection, setIdleTimeout } = useScreensaver();
 
 setLoading(true);
 
-onNuxtReady(() => {
+onNuxtReady(async () => {
   setLoading(false);
+
+  // Load screensaver settings and apply idle timeout before starting detection
+  try {
+    const settings = await $fetch<{ idleTimeoutMinutes: number; enabled: boolean }>("/api/screensaver/settings");
+    if (settings.enabled && settings.idleTimeoutMinutes) {
+      setIdleTimeout(settings.idleTimeoutMinutes * 60 * 1000);
+    }
+  }
+  catch (err) {
+    consola.warn("app.vue: Failed to load screensaver settings, using default idle timeout:", err);
+  }
+
   // Start screensaver idle detection when app is ready
   startIdleDetection();
 });
