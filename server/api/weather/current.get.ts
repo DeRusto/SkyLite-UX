@@ -83,11 +83,11 @@ async function geocodeLocation(location: string): Promise<{ lat: number; lon: nu
         },
       },
     );
-    if (response.results && response.results.length > 0) {
-      const result = response.results[0];
-      return { lat: result.latitude, lon: result.longitude };
+    const result = response.results?.[0];
+    if (!result) {
+      return null;
     }
-    return null;
+    return { lat: result.latitude, lon: result.longitude };
   }
   catch {
     return null;
