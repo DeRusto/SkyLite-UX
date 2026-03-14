@@ -14,18 +14,22 @@ onNuxtReady(async () => {
   setLoading(false);
 
   // Load screensaver settings and apply idle timeout before starting detection
+  let screensaverEnabled = false;
   try {
     const settings = await $fetch<{ idleTimeoutMinutes: number; enabled: boolean }>("/api/screensaver/settings");
-    if (settings.enabled && settings.idleTimeoutMinutes) {
+    screensaverEnabled = settings.enabled;
+    if (settings.enabled && settings.idleTimeoutMinutes > 0) {
       setIdleTimeout(settings.idleTimeoutMinutes * 60 * 1000);
     }
   }
   catch (err) {
-    consola.warn("app.vue: Failed to load screensaver settings, using default idle timeout:", err);
+    consola.warn("app.vue: Failed to load screensaver settings, screensaver will remain disabled:", err);
   }
 
-  // Start screensaver idle detection when app is ready
-  startIdleDetection();
+  // Only start idle detection if screensaver is enabled
+  if (screensaverEnabled) {
+    startIdleDetection();
+  }
 });
 
 onUnmounted(() => {
