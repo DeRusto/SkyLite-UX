@@ -6,6 +6,7 @@ import type { DialogField } from "~/types/ui";
 import type { GooglePhotosSettings } from "./google-photos/googlePhotos";
 import type { HomeAssistantWeatherSettings } from "./home-assistant/homeAssistantWeather";
 import type { ImmichSettings } from "./immich/immichPhotos";
+import type { OpenMeteoWeatherSettings } from "./open-meteo/openMeteoWeather";
 
 import { createGoogleCalendarService } from "./google-calendar/googleCalendar";
 import { createGooglePhotosService } from "./google-photos/googlePhotos";
@@ -13,6 +14,7 @@ import { createHomeAssistantWeatherService } from "./home-assistant/homeAssistan
 import { createICalService } from "./iCal/iCalendar";
 import { createImmichService } from "./immich/immichPhotos";
 import { createMealieService, getMealieFieldsForItem } from "./mealie/mealieShoppingLists";
+import { createOpenMeteoWeatherService } from "./open-meteo/openMeteoWeather";
 import { createTandoorService, getTandoorFieldsForItem } from "./tandoor/tandoorShoppingLists";
 
 export const integrationConfigs: IntegrationConfig[] = [
@@ -367,6 +369,9 @@ const serviceFactoryMap = {
     return createICalService(_id, baseUrl, eventColor, user, useUserColors);
   },
   "calendar:google-calendar": (id: string, _apiKey: string, _baseUrl: string, _settings?: unknown, accessToken?: string | null, refreshToken?: string | null, tokenExpiry?: Date | null) => createGoogleCalendarService(id, accessToken, refreshToken, tokenExpiry),
+  "weather:open-meteo": (_id: string, _apiKey: string, _baseUrl: string, settings?: OpenMeteoWeatherSettings) => {
+    return createOpenMeteoWeatherService(_id, settings);
+  },
   "weather:home-assistant": (id: string, apiKey: string, baseUrl: string, settings?: HomeAssistantWeatherSettings) => {
     return createHomeAssistantWeatherService(id, apiKey, baseUrl, settings);
   },

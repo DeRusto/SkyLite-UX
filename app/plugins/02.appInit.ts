@@ -17,28 +17,26 @@ export default defineNuxtPlugin(async () => {
   const config = useRuntimeConfig();
   const browserTimezone = config.public.tz;
 
+  // Phase 1: Timezone registration (non-blocking, UTC fallback on failure or timeout)
   try {
     const apiUrl = `https://tz.add-to-calendar-technology.com/api/${encodeURIComponent(browserTimezone)}.ics`;
-    const { data: vtimezoneBlock, error } = await useFetch(apiUrl, {
-      key: `timezone-${browserTimezone}`,
-      server: true,
-      default: () => null,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    if (error.value) {
-      throw new Error(`Failed to fetch timezone data: ${error.value.statusCode || "Unknown error"}`);
+    let vtimezoneBlock: string | null = null;
+    try {
+      vtimezoneBlock = await $fetch<string>(apiUrl, { signal: controller.signal });
+    }
+    finally {
+      clearTimeout(timeoutId);
     }
 
-    if (!vtimezoneBlock.value) {
+    if (!vtimezoneBlock) {
       throw new Error("No timezone data received");
     }
 
-    const timezoneComponent = new ical.Component(ical.parse(vtimezoneBlock.value as string));
-    const timezone = new ical.Timezone({
-      tzid: browserTimezone,
-      component: timezoneComponent,
-    });
-
+    const timezoneComponent = new ical.Component(ical.parse(vtimezoneBlock));
+    const timezone = new ical.Timezone({ tzid: browserTimezone, component: timezoneComponent });
     ical.TimezoneService.register(timezone);
     consola.debug("AppInit: Successfully registered timezone:", browserTimezone, "on", import.meta.server ? "server" : "client");
 
@@ -50,12 +48,13 @@ export default defineNuxtPlugin(async () => {
     setTimezoneRegistered(false);
   }
 
-  integrationConfigs.forEach((config) => {
-    registerIntegration(config);
+  integrationConfigs.forEach((integrationConfig) => {
+    registerIntegration(integrationConfig);
   });
   consola.debug(`AppInit: Registered ${integrationConfigs.length} integrations`);
 
   try {
+    // Phase 2: Core data loading (users, integrations — must succeed; 1 retry on failure)
     const [_usersResult, _currentUserResult, integrationsResult] = await Promise.all([
       useAsyncData("users", () => $fetch<User[]>("/api/users"), {
         server: true,
@@ -73,32 +72,59 @@ export default defineNuxtPlugin(async () => {
       }),
     ]);
 
+    if (_usersResult.error.value || integrationsResult.error.value) {
+      consola.warn("AppInit: Core data load failed, retrying...");
+      // Note: useAsyncData.refresh() stores failures in error.value rather than
+      // throwing, so errors must be re-checked explicitly after the await.
+      await Promise.all([
+        _usersResult.error.value ? _usersResult.refresh() : Promise.resolve(),
+        integrationsResult.error.value ? integrationsResult.refresh() : Promise.resolve(),
+      ]);
+
+      if (_usersResult.error.value || integrationsResult.error.value) {
+        const details = [
+          _usersResult.error.value ? `users: ${_usersResult.error.value.message}` : null,
+          integrationsResult.error.value ? `integrations: ${integrationsResult.error.value.message}` : null,
+        ].filter(Boolean).join(", ");
+        consola.error("AppInit: Core data unavailable after retry — app will render with missing data:", details);
+        throw new Error(`Core data load failed after retry: ${details}`);
+      }
+
+      consola.debug("AppInit: Core data retry succeeded");
+    }
+
     consola.debug("AppInit: Core dependencies loaded successfully");
 
-    const [_localCalendarResult, _localTodosResult, _localShoppingResult, _todoColumnsResult] = await Promise.all([
-      useAsyncData("calendar-events", () => $fetch<CalendarEvent[]>("/api/calendar-events"), {
-        server: true,
-        lazy: false,
-      }),
+    // Phase 3: Extended data loading (events, todos, shopping — can fail gracefully)
+    try {
+      await Promise.all([
+        useAsyncData("calendar-events", () => $fetch<CalendarEvent[]>("/api/calendar-events"), {
+          server: true,
+          lazy: false,
+        }),
 
-      useAsyncData("todos", () => $fetch<TodoWithUser[]>("/api/todos"), {
-        server: true,
-        lazy: false,
-      }),
+        useAsyncData("todos", () => $fetch<TodoWithUser[]>("/api/todos"), {
+          server: true,
+          lazy: false,
+        }),
 
-      useAsyncData("native-shopping-lists", () => $fetch<ShoppingListWithItemsAndCount[]>("/api/shopping-lists"), {
-        server: true,
-        lazy: false,
-      }),
+        useAsyncData("native-shopping-lists", () => $fetch<ShoppingListWithItemsAndCount[]>("/api/shopping-lists"), {
+          server: true,
+          lazy: false,
+        }),
 
-      useAsyncData("todo-columns", () => $fetch<TodoColumn[]>("/api/todo-columns"), {
-        server: true,
-        lazy: false,
-      }),
-    ]);
+        useAsyncData("todo-columns", () => $fetch<TodoColumn[]>("/api/todo-columns"), {
+          server: true,
+          lazy: false,
+        }),
+      ]);
+      consola.debug("AppInit: Local data loaded successfully");
+    }
+    catch (extendedError) {
+      consola.error("AppInit: Error loading extended data (app will render with partial data):", extendedError);
+    }
 
-    consola.debug("AppInit: Local data loaded successfully");
-
+    // Phase 4: Integration services initialization (best effort)
     const integrationDataPromises: ReturnType<typeof useAsyncData>[] = [];
 
     if (integrationsResult.data.value) {

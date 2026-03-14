@@ -74,10 +74,12 @@ export default defineEventHandler(async (event) => {
   const url = `${baseUrl}${path}${queryString.toString() ? `?${queryString.toString()}` : ""}`;
 
   try {
+    const { decryptApiKey } = await import("~~/server/utils/oauthCrypto");
+    const decryptedApiKey = decryptApiKey(integration.apiKey);
     const response = await fetch(url, {
       method,
       headers: {
-        "Authorization": `Bearer ${integration.apiKey}`,
+        "Authorization": `Bearer ${decryptedApiKey}`,
         "Content-Type": "application/json",
       },
       body: body ? JSON.stringify(body) : undefined,
@@ -96,7 +98,10 @@ export default defineEventHandler(async (event) => {
   catch (error: unknown) {
     consola.error("Integrations Mealie: Error proxying to Mealie:", error);
     const statusCode = error && typeof error === "object" && "statusCode" in error ? Number(error.statusCode) : 500;
-    const message = error && typeof error === "object" && "message" in error ? String(error.message) : "Failed to proxy request to Mealie";
+    const isDev = import.meta.dev;
+    const message = isDev
+      ? (error && typeof error === "object" && "message" in error ? String(error.message) : "Failed to proxy request to Mealie")
+      : "Integration request failed";
     throw createError({
       statusCode,
       message,

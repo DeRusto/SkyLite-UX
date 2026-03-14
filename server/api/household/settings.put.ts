@@ -1,10 +1,19 @@
 import prisma from "~/lib/prisma";
 
+type LinkedCalendarEntry = {
+  type: "HOLIDAY" | "FAMILY";
+  integrationId: string;
+  calendarId: string;
+};
+
 type UpdateHouseholdSettingsBody = {
   familyName?: string;
   choreCompletionMode?: "SELF_CLAIM" | "ADULT_VERIFY";
   rewardApprovalThreshold?: number | null;
-  adultPin?: string | null;
+  linkedCalendars?: LinkedCalendarEntry[];
+  holidayColor?: string;
+  familyColor?: string;
+  pinProtectionEnabled?: boolean;
 };
 
 export default defineEventHandler(async (event) => {
@@ -19,7 +28,6 @@ export default defineEventHandler(async (event) => {
         familyName: "Our Family",
         choreCompletionMode: "SELF_CLAIM",
         rewardApprovalThreshold: null,
-        adultPin: null,
       },
     });
   }
@@ -48,15 +56,11 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // Hash PIN if provided
-  let hashedPin: string | null | undefined;
-  if (body.adultPin !== undefined) {
-    if (body.adultPin === null) {
-      hashedPin = null;
-    }
-    else {
-      hashedPin = await hashPin(body.adultPin);
-    }
+  if (body.pinProtectionEnabled !== undefined && typeof body.pinProtectionEnabled !== "boolean") {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "PIN protection enabled must be a boolean",
+    });
   }
 
   // Update settings
@@ -66,16 +70,21 @@ export default defineEventHandler(async (event) => {
       ...(body.familyName !== undefined && { familyName: body.familyName.trim() }),
       ...(body.choreCompletionMode !== undefined && { choreCompletionMode: body.choreCompletionMode }),
       ...(body.rewardApprovalThreshold !== undefined && { rewardApprovalThreshold: body.rewardApprovalThreshold }),
-      ...(hashedPin !== undefined && { adultPin: hashedPin }),
+      ...(body.linkedCalendars !== undefined && { linkedCalendars: body.linkedCalendars }),
+      ...(body.holidayColor !== undefined && { holidayColor: body.holidayColor }),
+      ...(body.familyColor !== undefined && { familyColor: body.familyColor }),
+      ...(body.pinProtectionEnabled !== undefined && { pinProtectionEnabled: body.pinProtectionEnabled }),
     },
   });
 
-  // Don't expose the PIN
   return {
     id: updatedSettings.id,
     familyName: updatedSettings.familyName,
     choreCompletionMode: updatedSettings.choreCompletionMode,
     rewardApprovalThreshold: updatedSettings.rewardApprovalThreshold,
-    hasAdultPin: !!updatedSettings.adultPin,
+    linkedCalendars: updatedSettings.linkedCalendars,
+    holidayColor: updatedSettings.holidayColor,
+    familyColor: updatedSettings.familyColor,
+    pinProtectionEnabled: updatedSettings.pinProtectionEnabled,
   };
 });

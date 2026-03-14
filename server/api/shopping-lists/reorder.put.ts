@@ -1,9 +1,15 @@
+import { z } from "zod";
+
 import prisma from "~/lib/prisma";
+
+const reorderSchema = z.object({
+  listIds: z.array(z.string().cuid()).max(1000),
+});
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
-    const { listIds } = body;
+    const { listIds } = await reorderSchema.parseAsync(body);
 
     const updatePromises = listIds.map((id: string, index: number) =>
       prisma.shoppingList.update({
