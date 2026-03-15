@@ -21,7 +21,7 @@ async function main() {
   consola.info(`Found ${users.length} users.`);
 
   for (const user of users) {
-    consola.info(`User ${user.name}:`, JSON.stringify(user.linkedCalendars));
+    consola.info(`User ${user.name}: calendarId=${user.calendarId}, calendarIntegrationId=${user.calendarIntegrationId}, calendarService=${user.calendarService}`);
   }
 }
 

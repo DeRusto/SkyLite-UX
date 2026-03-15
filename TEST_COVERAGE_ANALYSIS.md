@@ -10,6 +10,7 @@
 ## Executive Summary
 
 **SkyLite-UX has ZERO test coverage.** The project is configured for Playwright E2E testing but has:
+
 - No test files (`tests/` directory is empty)
 - No test suite run on CI/CD
 - No unit tests for composables, utilities, or business logic
@@ -23,6 +24,7 @@ This is a **high-risk situation** for a production family management application
 ## Test Infrastructure Status
 
 ### Playwright Configuration
+
 - **Status:** ✅ Configured
 - **Location:** `playwright.config.ts`
 - **Test Directory:** `./tests/` (currently empty)
@@ -32,6 +34,7 @@ This is a **high-risk situation** for a production family management application
 - **CI Settings:** Retries=2, Sequential execution, forbidOnly=true
 
 ### NPM Test Commands
+
 ```bash
 npm test                              # playwright test (no tests found)
 npm run test:ui                       # Playwright UI runner
@@ -48,6 +51,7 @@ npm run test:settings                 # Run specific regression test (doesn't ex
 ### Frontend (Vue 3 + Nuxt 4)
 
 #### Pages (50 Vue components)
+
 1. **Calendar** (`app/pages/calendar.vue`)
    - Two-way Google Calendar sync
    - iCal imports
@@ -101,6 +105,7 @@ npm run test:settings                 # Run specific regression test (doesn't ex
    - No tests for permission checks or integration configuration
 
 #### Composables (18 composables, ~2,000+ lines)
+
 Critical state management composables with **zero tests:**
 
 1. **useCalendarEvents** - Manages all calendar event state, syncing, and optimistic updates
@@ -123,6 +128,7 @@ Critical state management composables with **zero tests:**
 18. **useTodoHandlers** - Todo UI event handlers
 
 **Gap:** No tests for:
+
 - State initialization
 - Error handling in data fetching
 - Optimistic update rollback
@@ -134,6 +140,7 @@ Critical state management composables with **zero tests:**
 #### API Route Coverage (96 routes total)
 
 **Calendar Events (11 routes)**
+
 - GET, POST, PUT, DELETE calendar events
 - Event export (iCal)
 - Get calendars list
@@ -141,18 +148,21 @@ Critical state management composables with **zero tests:**
 - **No tests for:** Date validation, timezone handling, conflict resolution, sync failures, orphaned events
 
 **Chores (11 routes)**
+
 - CRUD operations
 - Completion workflow (`claim`, `complete`, `verify`)
 - History tracking
 - **No tests for:** State transitions, permission validation, points allocation correctness, incomplete workflows
 
 **Rewards (8 routes)**
+
 - CRUD operations
 - Redemption workflow (`redeem`, `approve`, `reject`)
 - Redemption history
 - **No tests for:** Approval logic, point deductions, duplicate redemptions, race conditions
 
 **Shopping Lists & Items (14 routes)**
+
 - List CRUD
 - Item CRUD
 - Reordering (items and lists)
@@ -161,12 +171,14 @@ Critical state management composables with **zero tests:**
 - **No tests for:** Reorder index validation, list isolation, integration sync conflicts
 
 **Todo Lists & Columns (12 routes)**
+
 - Column CRUD and reordering
 - Todo CRUD and reordering
 - Clear completed todos
 - **No tests for:** Orphaned todos after column deletion, reorder index conflicts, race conditions
 
 **Users (7 routes)**
+
 - CRUD operations
 - Points history
 - Reordering
@@ -174,6 +186,7 @@ Critical state management composables with **zero tests:**
 - **No tests for:** Permission checks, PIN security, concurrent updates
 
 **Integrations (25+ routes)**
+
 - Integration CRUD
 - Google Calendar OAuth flow
 - Google Photos OAuth flow
@@ -186,11 +199,13 @@ Critical state management composables with **zero tests:**
 - **No tests for:** OAuth token handling, token refresh, expired tokens, rate limiting, sync failures
 
 **Household Settings (3 routes)**
+
 - Get/update settings
 - PIN verification
 - **No tests for:** PIN security, settings validation, concurrent updates
 
 **Sync/SSE (4 routes)**
+
 - Client registration
 - Event streaming
 - Sync trigger
@@ -198,11 +213,13 @@ Critical state management composables with **zero tests:**
 - **No tests for:** Connection handling, message ordering, client cleanup, reconnection logic
 
 **Weather (2 routes)**
+
 - Current weather
 - Forecast
 - **No tests for:** Cache invalidation, provider failover, error handling
 
 **Screensaver (2 routes)**
+
 - Get photos
 - Get settings
 - **No tests for:** Photo rotation logic, cache efficiency
@@ -212,10 +229,13 @@ Critical state management composables with **zero tests:**
 ## Critical User Paths Without Test Coverage
 
 ### 1. Calendar Event Lifecycle (CRITICAL)
+
 **User Path:**
+
 1. Create event → 2. Assign users → 3. Sync to Google Calendar → 4. Edit event → 5. Delete event
 
 **Gaps:**
+
 - Date/time validation (UTC conversion, timezones)
 - Google Calendar sync conflicts
 - Orphaned events on integration disconnection
@@ -223,10 +243,13 @@ Critical state management composables with **zero tests:**
 - iCal import conflict resolution
 
 ### 2. Chore Completion Workflow (CRITICAL)
+
 **User Path:**
+
 1. Child views chore → 2. Clicks "Mark Complete" → 3. Adult verifies → 4. Points awarded
 
 **Gaps:**
+
 - State validation (can't verify before completion)
 - Points calculation (multiple points, bonuses)
 - Duplicate submissions
@@ -234,10 +257,13 @@ Critical state management composables with **zero tests:**
 - History tracking accuracy
 
 ### 3. Reward Redemption Workflow (CRITICAL)
+
 **User Path:**
+
 1. Child views rewards → 2. Requests redemption → 3. Adult approves/rejects → 4. Points deducted
 
 **Gaps:**
+
 - Insufficient points check
 - Concurrent redemptions (race condition)
 - Approval authorization
@@ -245,10 +271,13 @@ Critical state management composables with **zero tests:**
 - Duplicate approval/rejection
 
 ### 4. Shopping List Sync (HIGH)
+
 **User Path:**
+
 1. Add item to list → 2. Sync with Mealie → 3. Modify in Mealie → 4. Refresh to see changes
 
 **Gaps:**
+
 - Bidirectional sync conflicts
 - Item ID mapping
 - Deleted items handling
@@ -256,10 +285,13 @@ Critical state management composables with **zero tests:**
 - Race conditions during sync
 
 ### 5. Todo Kanban Workflow (HIGH)
+
 **User Path:**
+
 1. Create column → 2. Add todo to column → 3. Drag todo to new column → 4. Mark complete → 5. Delete column
 
 **Gaps:**
+
 - Reorder index consistency
 - Orphaned todos after column deletion
 - Drag-and-drop state corruption
@@ -267,10 +299,13 @@ Critical state management composables with **zero tests:**
 - Column visibility permissions
 
 ### 6. Google OAuth Integration Setup (CRITICAL)
+
 **User Path:**
+
 1. Click "Connect Google" → 2. OAuth popup → 3. Grant permissions → 4. Callback → 5. Token stored
 
 **Gaps:**
+
 - Token encryption/decryption
 - Token refresh logic
 - Expired token handling
@@ -279,10 +314,13 @@ Critical state management composables with **zero tests:**
 - Redirect URI validation
 
 ### 7. Screensaver Auto-Rotation (MEDIUM)
+
 **User Path:**
+
 1. Configure photos source → 2. Select album → 3. Auto-rotate display → 4. Handle network errors
 
 **Gaps:**
+
 - Photo fetch failure handling
 - Album permission changes
 - Rotation interval correctness
@@ -290,10 +328,13 @@ Critical state management composables with **zero tests:**
 - Concurrent requests
 
 ### 8. Household Settings with PIN (CRITICAL)
+
 **User Path:**
+
 1. Adult updates household settings → 2. Child tries to access → 3. PIN dialog appears → 4. PIN validated
 
 **Gaps:**
+
 - PIN strength validation
 - PIN rate limiting (brute force)
 - PIN clearing on logout
@@ -305,6 +346,7 @@ Critical state management composables with **zero tests:**
 ## Test Structure Recommendations
 
 ### 1. Unit Tests (Missing - HIGH PRIORITY)
+
 Create `app/__tests__/` directory with:
 
 ```
@@ -327,6 +369,7 @@ app/__tests__/
 **Scope:** Test composable logic with Vitest, no DOM/network
 
 ### 2. API Route Tests (Missing - CRITICAL)
+
 Create `server/api/__tests__/` directory with:
 
 ```
@@ -355,6 +398,7 @@ server/api/__tests__/
 **Scope:** Test with h3-test-utils or vitest, mock database with Prisma
 
 ### 3. E2E Tests (Missing - CRITICAL)
+
 Create `tests/` directory (currently empty) with:
 
 ```
@@ -394,7 +438,9 @@ tests/
 ## Test Configuration Improvements Needed
 
 ### playwright.config.ts Issues
+
 1. **Web server is commented out** - Can't run tests without manual server start
+
    ```typescript
    // Should be:
    webServer: {
@@ -406,6 +452,7 @@ tests/
    ```
 
 2. **Only Chromium browser** - Should test Firefox/Safari for family compatibility
+
    ```typescript
    // Uncomment for multi-browser testing:
    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
@@ -413,6 +460,7 @@ tests/
    ```
 
 3. **No mobile testing** - App is designed for tablets/touch
+
    ```typescript
    // Add:
    { name: "iPad", use: { ...devices["iPad (gen 7)"] } },
@@ -428,27 +476,28 @@ tests/
 
 ## Coverage Gap Analysis by Feature
 
-| Feature | Pages | Composables | API Routes | Unit Tests | Integration Tests | E2E Tests |
-|---------|-------|-------------|-----------|------------|------------------|-----------|
-| **Calendar** | 1 | 3 | 11 | ❌ | ❌ | ❌ |
-| **Chores** | 1 | 1 | 11 | ❌ | ❌ | ❌ |
-| **Rewards** | 1 | 1 | 8 | ❌ | ❌ | ❌ |
-| **Shopping Lists** | 1 | 2 | 14 | ❌ | ❌ | ❌ |
-| **To-Do Lists** | 1 | 3 | 12 | ❌ | ❌ | ❌ |
-| **Screensaver** | 1 | 1 | 2 | ❌ | ❌ | ❌ |
-| **Meal Planner** | 1 | 0 | 0 | ❌ | ❌ | ❌ |
-| **Settings** | 1 | 2 | 28 | ❌ | ❌ | ❌ |
-| **Users** | 0 | 1 | 7 | ❌ | ❌ | ❌ |
-| **Weather** | 0 | 1 | 2 | ❌ | ❌ | ❌ |
-| **Auth/Integrations** | 0 | 2 | 25+ | ❌ | ❌ | ❌ |
-| **Real-time Sync** | 0 | 1 | 4 | ❌ | ❌ | ❌ |
-| **Total** | **10** | **18** | **96** | **0/18** | **0/96** | **0** |
+| Feature               | Pages  | Composables | API Routes | Unit Tests | Integration Tests | E2E Tests |
+| --------------------- | ------ | ----------- | ---------- | ---------- | ----------------- | --------- |
+| **Calendar**          | 1      | 3           | 11         | ❌         | ❌                | ❌        |
+| **Chores**            | 1      | 1           | 11         | ❌         | ❌                | ❌        |
+| **Rewards**           | 1      | 1           | 8          | ❌         | ❌                | ❌        |
+| **Shopping Lists**    | 1      | 2           | 14         | ❌         | ❌                | ❌        |
+| **To-Do Lists**       | 1      | 3           | 12         | ❌         | ❌                | ❌        |
+| **Screensaver**       | 1      | 1           | 2          | ❌         | ❌                | ❌        |
+| **Meal Planner**      | 1      | 0           | 0          | ❌         | ❌                | ❌        |
+| **Settings**          | 1      | 2           | 28         | ❌         | ❌                | ❌        |
+| **Users**             | 0      | 1           | 7          | ❌         | ❌                | ❌        |
+| **Weather**           | 0      | 1           | 2          | ❌         | ❌                | ❌        |
+| **Auth/Integrations** | 0      | 2           | 25+        | ❌         | ❌                | ❌        |
+| **Real-time Sync**    | 0      | 1           | 4          | ❌         | ❌                | ❌        |
+| **Total**             | **10** | **18**      | **96**     | **0/18**   | **0/96**          | **0**     |
 
 ---
 
 ## Specific Bugs Likely to Be Caught by Tests
 
 ### Timezone-Related Bugs
+
 ```typescript
 // Example: Calendar event with timezone issues
 // UTC stored correctly? Display in user TZ? Google sync?
@@ -456,6 +505,7 @@ tests/
 ```
 
 ### Race Conditions
+
 ```typescript
 // Concurrent reward redemptions could double-deduct points
 // REORDER: Multiple users dragging simultaneously could corrupt indices
@@ -463,6 +513,7 @@ tests/
 ```
 
 ### Permission Escalation
+
 ```typescript
 // Child could access adult-only settings without PIN
 // Child could increase own points
@@ -470,6 +521,7 @@ tests/
 ```
 
 ### State Corruption
+
 ```typescript
 // Delete column → todos become orphaned
 // Integration disconnect → cached data stale
@@ -477,6 +529,7 @@ tests/
 ```
 
 ### OAuth Issues
+
 ```typescript
 // Token expiration → silent failures
 // Refresh token invalid → no recovery
@@ -488,6 +541,7 @@ tests/
 ## Quick Start: Implementing Tests
 
 ### Step 1: Setup (1 hour)
+
 ```bash
 # Already installed: @playwright/test
 # Add for unit tests:
@@ -500,9 +554,11 @@ mkdir tests
 ```
 
 ### Step 2: Write First Unit Test (1 hour)
+
 ```typescript
 // app/__tests__/composables/useUsers.test.ts
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+
 import { useUsers } from "~/composables/useUsers";
 
 describe("useUsers", () => {
@@ -521,9 +577,11 @@ describe("useUsers", () => {
 ```
 
 ### Step 3: Write First API Test (2 hours)
+
 ```typescript
 // server/api/__tests__/chores/[id]/verify.post.test.ts
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { prismaMock } from "../test-utils";
 
 describe("POST /api/chores/[id]/verify", () => {
@@ -541,15 +599,16 @@ describe("POST /api/chores/[id]/verify", () => {
 ```
 
 ### Step 4: Write First E2E Test (3 hours)
+
 ```typescript
 // tests/chores/chore-completion-workflow.spec.ts
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test("Child completes chore and gets points", async ({ page }) => {
   await page.goto("/chores");
-  await page.click('[data-testid="chore-item"]');
-  await page.click('[data-testid="mark-complete-btn"]');
-  await expect(page.locator('[data-testid="success-toast"]'))
+  await page.click("[data-testid=\"chore-item\"]");
+  await page.click("[data-testid=\"mark-complete-btn\"]");
+  await expect(page.locator("[data-testid=\"success-toast\"]"))
     .toContainText("Chore marked complete");
 });
 ```
@@ -559,6 +618,7 @@ test("Child completes chore and gets points", async ({ page }) => {
 ## Risk Assessment
 
 ### Without Tests, These Are Likely:
+
 - **Data corruption:** Concurrent operations race conditions
 - **Silent failures:** Network errors mask bad state
 - **Privilege escalation:** Missing permission checks
@@ -566,6 +626,7 @@ test("Child completes chore and gets points", async ({ page }) => {
 - **User frustration:** Unpredictable workflows (rewards don't approve, points don't update)
 
 ### Impact on Features:
+
 - **Calendar:** Two-way sync conflicts, orphaned events
 - **Chores/Rewards:** Points miscalculation, race conditions
 - **Shopping Lists:** Sync failures with external services
@@ -576,6 +637,7 @@ test("Child completes chore and gets points", async ({ page }) => {
 ## Recommendations Priority
 
 ### 🔴 CRITICAL (This Sprint)
+
 1. Create E2E test for chore completion workflow (most complex state change)
 2. Create E2E test for reward redemption workflow
 3. Create unit tests for timezone/date handling
@@ -583,6 +645,7 @@ test("Child completes chore and gets points", async ({ page }) => {
 5. Create test data fixtures
 
 ### 🟡 HIGH (Next Sprint)
+
 1. Unit tests for all composables (18 files)
 2. API route tests for critical paths (25+ routes)
 3. Integration tests for OAuth flows
@@ -590,6 +653,7 @@ test("Child completes chore and gets points", async ({ page }) => {
 5. Add mobile viewport testing
 
 ### 🟢 MEDIUM (Future)
+
 1. Performance tests (reordering with 1000 items)
 2. Load tests (multiple concurrent users)
 3. Accessibility tests (WCAG compliance)
@@ -604,6 +668,7 @@ test("Child completes chore and gets points", async ({ page }) => {
 With 96 API routes, 18 composables, and 50 Vue components handling complex state (calendar sync, points, redemptions, integrations), **zero test coverage is unsustainable.**
 
 **Estimated effort to full coverage:**
+
 - Unit tests: 40-50 hours
 - API tests: 30-40 hours
 - E2E tests: 20-30 hours

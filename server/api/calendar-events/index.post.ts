@@ -1,6 +1,7 @@
 import prisma from "~/lib/prisma";
 
 import { broadcastNativeDataChange } from "../../plugins/02.syncManager";
+import { createServerError, createValidationError } from "../../utils/apiErrors";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -9,27 +10,18 @@ export default defineEventHandler(async (event) => {
 
     // Validate required fields
     if (!title || typeof title !== "string" || title.trim() === "") {
-      throw createError({
-        statusCode: 400,
-        message: "Event title is required",
-      });
+      throw createValidationError("title", "Event title is required");
     }
 
     if (!start || !end) {
-      throw createError({
-        statusCode: 400,
-        message: "Start and end times are required",
-      });
+      throw createValidationError("start", "Start and end times are required");
     }
 
     const utcStart = new Date(start);
     const utcEnd = new Date(end);
 
     if (utcEnd < utcStart) {
-      throw createError({
-        statusCode: 400,
-        message: "End time must be after start time",
-      });
+      throw createValidationError("end", "End time must be after start time");
     }
 
     const calendarEvent = await prisma.calendarEvent.create({
@@ -81,13 +73,9 @@ export default defineEventHandler(async (event) => {
     };
   }
   catch (error: unknown) {
-    // Re-throw if it's already an H3 error (validation error)
-    if (error && typeof error === "object" && "statusCode" in error) {
+    if (isError(error)) {
       throw error;
     }
-    throw createError({
-      statusCode: 500,
-      message: `Failed to create calendar event: ${error}`,
-    });
+    throw createServerError("create calendar event", error);
   }
 });

@@ -1,3 +1,4 @@
+import { encryptApiKey } from "~~/server/utils/oauthCrypto";
 import { encryptToken as encryptCalendarToken } from "~~/server/integrations/google-calendar/oauth";
 import { encryptToken as encryptPhotosToken } from "~~/server/integrations/google-photos/oauth";
 import { consola } from "consola";
@@ -122,7 +123,7 @@ export default defineEventHandler(async (event) => {
         name,
         type,
         service,
-        apiKey,
+        apiKey: apiKey ? encryptApiKey(apiKey) : null,
         baseUrl,
         icon,
         enabled,

@@ -9,6 +9,7 @@
 ## Executive Summary
 
 The SkyLite-UX codebase demonstrates **good foundational security practices** with several commendable features:
+
 - ✅ Uses Prisma ORM (prevents SQL injection)
 - ✅ No `v-html` or dangerous HTML injection patterns in Vue templates
 - ✅ Proper use of Nuxt runtime config (avoids direct `process.env` access)
@@ -26,6 +27,7 @@ However, **critical security concerns** have been identified that require immedi
 
 **Severity:** CRITICAL
 **Location:**
+
 - `/server/api/integrations/google-calendar/oauth/callback.get.ts` (lines 39-43)
 - `/server/api/integrations/google-photos/oauth/callback.get.ts` (lines 37-41)
 
@@ -42,6 +44,7 @@ return sendRedirect(event, redirectUrl);
 ```
 
 **Security Impact:**
+
 - Tokens appear in browser history, referrer headers, and server logs
 - A malicious actor who gains access to logs or browser history can impersonate the user
 - Tokens are transmitted unencrypted (even over HTTPS, they're exposed in URL)
@@ -74,6 +77,7 @@ return sendRedirect(event, redirectUrl);
 - `/server/api/integrations/index.post.ts` - Saves OAuth credentials without auth
 
 **Security Impact:**
+
 - **Complete takeover possible** - anyone with network access can create, update, or delete all data
 - Unauthenticated users can add integrations and harvest API keys
 - In a family/household context, any device on the network can modify all data
@@ -85,16 +89,16 @@ return sendRedirect(event, redirectUrl);
 // Create middleware at: /server/middleware/01.auth.ts
 export default defineEventHandler((event) => {
   // Skip auth for public routes
-  const publicRoutes = ['/api/integrations/google-calendar/oauth/authorize', '/api/integrations/google-photos/oauth/authorize'];
+  const publicRoutes = ["/api/integrations/google-calendar/oauth/authorize", "/api/integrations/google-photos/oauth/authorize"];
   if (publicRoutes.some(route => event.node.req.url?.startsWith(route))) {
     return;
   }
 
   // All other routes require authentication
   // For a single-household app, implement session-based auth or a simple shared secret
-  const authToken = getHeader(event, 'authorization');
+  const authToken = getHeader(event, "authorization");
   if (!authToken) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' });
+    throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
   // Validate token (implement your strategy)
@@ -103,6 +107,7 @@ export default defineEventHandler((event) => {
 ```
 
 **Note:** Since SkyLite-UX is a family app without traditional user authentication, consider:
+
 - Simple session-based auth for the household
 - Device-based authentication
 - Shared secret approach (password per household)
@@ -116,22 +121,25 @@ export default defineEventHandler((event) => {
 **Location:** `/server/api/sync/events.get.ts` (line 12)
 
 **Issue:**
+
 ```typescript
 setResponseHeaders(event, {
   "Content-Type": "text/event-stream",
   "Cache-Control": "no-cache",
   "Connection": "keep-alive",
-  "Access-Control-Allow-Origin": "*",  // ← Allows any origin
+  "Access-Control-Allow-Origin": "*", // ← Allows any origin
   "Access-Control-Allow-Headers": "Cache-Control",
 });
 ```
 
 **Security Impact:**
+
 - Any website can open a connection to your SkyLite instance and receive real-time sync updates
 - Enables CSRF attacks to your API endpoints
 - Exposes integration sync data to external origins
 
 **Fix:** Restrict to localhost or specific domains
+
 ```typescript
 setResponseHeaders(event, {
   "Access-Control-Allow-Origin": "http://localhost:3000", // or your actual domain
@@ -155,8 +163,8 @@ setResponseHeaders(event, {
 ```typescript
 const integration = await prisma.integration.create({
   data: {
-    apiKey,         // ← Stored plaintext
-    baseUrl,        // ← Stored plaintext
+    apiKey, // ← Stored plaintext
+    baseUrl, // ← Stored plaintext
     // ...
   },
 });
@@ -165,6 +173,7 @@ const integration = await prisma.integration.create({
 While OAuth tokens are encrypted (Google Calendar, Google Photos), third-party API keys for Tandoor, Mealie, Immich, and OpenWeatherMap are stored as plaintext.
 
 **Security Impact:**
+
 - Database compromise exposes all third-party credentials
 - Attacker can access user's Tandoor recipes, shopping lists, photo library, etc.
 - No protection if database backup is leaked
@@ -227,10 +236,12 @@ if (!isValid && settings.adultPin === pin) {
 This suggests some PINs may still be stored plaintext in existing deployments.
 
 **Security Impact:**
+
 - Database compromise exposes household PINs
 - Adult PINs can be extracted without hashing
 
 **Fix:**
+
 1. Enforce that ALL PINs are hashed at database schema level
 2. Ensure migration script runs on startup to hash any plaintext PINs
 3. Add validation that prevents plaintext PIN storage
@@ -265,6 +276,7 @@ const tokenExpiry = tokenExpiryHeader
 While headers are preferred (good!), fallback to query parameters is a security weakness.
 
 **Security Impact:**
+
 - Tokens in query parameters are logged in server logs, browser history, CDN caches
 - Referrer headers expose tokens to third-party sites
 
@@ -291,6 +303,7 @@ if (!accessToken || !refreshToken || !tokenExpiryHeader) {
 **Location:** `/server/api/users/verifyPin.post.ts` (line 8)
 
 **Issue:**
+
 ```typescript
 const verifyPinSchema = z.object({
   userId: z.string().cuid(),
@@ -299,11 +312,13 @@ const verifyPinSchema = z.object({
 ```
 
 PIN validation only checks:
+
 - Exactly 4 digits
 - No rate limiting on verification attempts
 - No lockout after failed attempts
 
 **Security Impact:**
+
 - Brute force attack: only 10,000 possible PINs (0000-9999)
 - No protection against automated attacks
 - In theory, 4-digit PIN can be cracked in seconds with 10 requests/second
@@ -352,22 +367,26 @@ export default defineEventHandler(async (event) => {
 
 **Severity:** MEDIUM
 **Location:**
+
 - `/server/api/shopping-list-items/reorder.post.ts`
 - `/server/api/todos/reorder.post.ts`
 - `/server/api/calendar-events/[id].put.ts`
 
 **Issue:** Reorder operations accept arrays of items with order positions but don't validate:
+
 - User owns these items
 - Order indices are sequential and non-negative
 - Array is not excessively large
 
 **Example from `/server/api/todos/reorder.post.ts`:**
+
 ```typescript
 const { updates } = body; // No validation on structure or count
 await prisma.$transaction(updates);
 ```
 
 **Security Impact:**
+
 - Potential integer overflow with large order values
 - Possible to update items belonging to other users
 - No protection against bulk manipulation
@@ -393,6 +412,7 @@ const { updates } = await reorderSchema.parseAsync(body);
 **Location:** `/server/api/integrations/tandoor/[...path].ts` (lines 57-79)
 
 **Issue:**
+
 ```typescript
 const path = Array.isArray(pathParts) ? pathParts.join("/") : pathParts;
 const url = `${baseUrl}/api/${path}${Object.keys(restQuery).length ? `?${new URLSearchParams(restQuery as Record<string, string>).toString()}` : ""}`;
@@ -406,6 +426,7 @@ const response = await fetch(fixedUrl, {
 ```
 
 **Security Impact:**
+
 - No validation on path parameters - can potentially access unintended Tandoor endpoints
 - Query parameters passed directly - possibility of parameter injection
 - Entire request body proxied without validation
@@ -494,6 +515,7 @@ NUXT_OAUTH_ENCRYPTION_KEY="a1b2c3d4e5f6..."
 ## Environment Variable Configuration Review
 
 ### ✅ Strengths:
+
 1. **Proper use of `NUXT_` prefix** - All sensitive config uses runtime config
 2. **No hardcoded secrets** - No secrets found in source code
 3. **`.env` properly gitignored** - `.env*` excluded, `.env.example` included
@@ -501,6 +523,7 @@ NUXT_OAUTH_ENCRYPTION_KEY="a1b2c3d4e5f6..."
 5. **Nuxt config properly structured** - Sensitive vars in `runtimeConfig`, public vars in `runtimeConfig.public`
 
 ### Example of Good Practice:
+
 ```typescript
 // nuxt.config.ts
 runtimeConfig: {
@@ -517,11 +540,13 @@ runtimeConfig: {
 ## Database Security Review
 
 ### ✅ Strengths:
+
 1. **Prisma ORM prevents SQL injection** - No raw queries found (`queryRaw`, `executeRaw`)
 2. **Parameterized queries** - All database access uses Prisma's type-safe API
 3. **Foreign key constraints** - Schema enforces relationships
 
 ### ⚠️ Areas for Improvement:
+
 1. **Missing field-level encryption** - Sensitive integration credentials not encrypted (see Issue #4)
 2. **No audit logging** - No tracking of who accessed what data
 3. **No soft deletes** - Deleted data is permanently removed (consider adding `deletedAt` for audit trail)
@@ -531,16 +556,19 @@ runtimeConfig: {
 ## Recommendations Summary
 
 ### Immediate (Critical):
+
 1. **Remove OAuth tokens from URL parameters** - Use POST body or one-time token approach
 2. **Implement API authentication middleware** - Protect all routes with auth verification
 3. **Fix CORS configuration** - Remove `Access-Control-Allow-Origin: "*"`
 
 ### High Priority:
+
 4. **Encrypt all API keys** - Apply AES-256-GCM encryption to Tandoor, Mealie, Immich keys
 5. **Ensure PINs are always hashed** - Add schema validation and migration
 6. **Remove query parameter token fallback** - Headers-only for sensitive data
 
 ### Medium Priority:
+
 7. **Implement PIN rate limiting** - Prevent brute force attacks
 8. **Add input validation to reorder operations** - Validate ownership and array bounds
 9. **Whitelist Tandoor proxy endpoints** - Prevent unintended API access
@@ -599,9 +627,9 @@ runtimeConfig: {
 ---
 
 **Next Steps:**
+
 1. Address critical issues immediately
 2. Schedule review of high-priority items
 3. Implement testing recommendations
 4. Document security procedures for team
 5. Schedule quarterly security audits
-

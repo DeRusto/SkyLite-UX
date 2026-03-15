@@ -9,9 +9,10 @@ This document provides concrete, copy-paste-ready test examples for SkyLite-UX's
 **File:** `app/__tests__/composables/useUsers.test.ts`
 
 ```typescript
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useUsers } from "~/composables/useUsers";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryHistory, createRouter } from "vue-router";
+
+import { useUsers } from "~/composables/useUsers";
 
 // Mock data
 const mockUsers = [
@@ -195,7 +196,8 @@ describe("useUsers Composable", () => {
 **File:** `server/api/__tests__/chores/[id]/verify.post.test.ts`
 
 ```typescript
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { prismaMock } from "../../test-utils";
 
 // Mock Prisma
@@ -362,7 +364,7 @@ describe("POST /api/chores/[id]/verify", () => {
 **File:** `tests/chores/chore-completion-workflow.spec.ts`
 
 ```typescript
-import { test, expect, Page } from "@playwright/test";
+import { expect, Page, test } from "@playwright/test";
 
 // Fixtures for test data
 const testData = {
@@ -418,7 +420,7 @@ test.describe("Chore Completion Workflow", () => {
     await expect(pendingChore).toBeVisible();
 
     // STEP 6: Adult verifies chore
-    await adultPage.click("[data-testid='pending-verification-badge']").first();
+    await adultPage.locator("[data-testid='pending-verification-badge']").first().click();
     await adultPage.click("[data-testid='verify-chore-btn']");
     const verifyConfirm = adultPage.locator("[data-testid='confirm-verify-btn']");
     await expect(verifyConfirm).toBeVisible();
@@ -488,7 +490,7 @@ test.describe("Chore Completion Workflow", () => {
     // Verify error is shown
     const errorToast = adultPage.locator("[data-testid='error-toast']");
     await expect(errorToast).toBeVisible();
-    await expect(errorToast).toContainText("network" || "offline");
+    await expect(errorToast).toContainText(/network|offline/);
 
     // Bring connection back
     await adultPage.context().setOffline(false);
@@ -521,7 +523,7 @@ test.describe("Chore Completion Workflow", () => {
 
     // Chore should still show as completed/pending verification
     const status = childPage.locator("[data-testid='chore-status']");
-    await expect(status).toContainText("PENDING_VERIFICATION" || "COMPLETED");
+    await expect(status).toContainText(/PENDING_VERIFICATION|COMPLETED/);
   });
 
   test("should handle adult declining chore verification", async () => {
@@ -568,6 +570,8 @@ async function setupChoreAndMarkComplete(
   await adultPage.click("[data-testid='create-chore-btn']");
   await adultPage.fill("[data-testid='chore-title-input']", chore.title);
   await adultPage.fill("[data-testid='chore-points-input']", chore.points.toString());
+  await adultPage.click("[data-testid='assign-child-btn']");
+  await adultPage.click(`[data-testid='user-${testData.childUser.name}']`);
   await adultPage.click("[data-testid='save-chore-btn']");
 
   // Child marks complete
@@ -585,7 +589,7 @@ async function setupChoreAndMarkComplete(
 **File:** `tests/rewards/concurrent-redemption.spec.ts`
 
 ```typescript
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("Reward Redemption - Race Conditions", () => {
   test("should handle simultaneous redemptions correctly", async ({ browser, baseURL }) => {
@@ -623,13 +627,13 @@ test.describe("Reward Redemption - Race Conditions", () => {
     // - Both can't have 50 points deducted (100 - 50 - 50 = 0, not negative)
 
     const successCount = (
-      (await page1.locator("[data-testid='success-toast']").isVisible() ? 1 : 0) +
-      (await page2.locator("[data-testid='success-toast']").isVisible() ? 1 : 0)
+      (await page1.locator("[data-testid='success-toast']").isVisible() ? 1 : 0)
+      + (await page2.locator("[data-testid='success-toast']").isVisible() ? 1 : 0)
     );
 
     const insufficientCount = (
-      (await page1.locator("[data-testid='error-toast']:has-text('sufficient')").isVisible() ? 1 : 0) +
-      (await page2.locator("[data-testid='error-toast']:has-text('sufficient')").isVisible() ? 1 : 0)
+      (await page1.locator("[data-testid='error-toast']:has-text('sufficient')").isVisible() ? 1 : 0)
+      + (await page2.locator("[data-testid='error-toast']:has-text('sufficient')").isVisible() ? 1 : 0)
     );
 
     // Verify only one succeeded
@@ -740,8 +744,9 @@ async function setupRewardTest(baseURL: string | undefined, config: { childStart
 **File:** `server/api/__tests__/test-utils.ts`
 
 ```typescript
-import { vi } from "vitest";
 import type { PrismaClient } from "@prisma/client";
+
+import { vi } from "vitest";
 
 /**
  * Mock Prisma for API route testing
@@ -785,9 +790,9 @@ export const prismaMock: Partial<PrismaClient> = {
  * Reset all mocks between tests
  */
 export function resetPrismaMocks() {
-  Object.values(prismaMock).forEach(model => {
+  Object.values(prismaMock).forEach((model) => {
     if (model && typeof model === "object") {
-      Object.values(model).forEach(fn => {
+      Object.values(model).forEach((fn) => {
         if (typeof fn === "function" && fn.mockClear) {
           fn.mockClear();
         }
@@ -801,7 +806,7 @@ export function resetPrismaMocks() {
  */
 export function createMockUser(overrides = {}) {
   return {
-    id: "user-" + Math.random().toString(36).substr(2, 9),
+    id: `user-${Math.random().toString(36).substr(2, 9)}`,
     name: "Test User",
     role: "CHILD",
     color: "#FF6B6B",
@@ -816,7 +821,7 @@ export function createMockUser(overrides = {}) {
  */
 export function createMockChore(overrides = {}) {
   return {
-    id: "chore-" + Math.random().toString(36).substr(2, 9),
+    id: `chore-${Math.random().toString(36).substr(2, 9)}`,
     title: "Test Chore",
     description: null,
     points: 10,
@@ -832,7 +837,7 @@ export function createMockChore(overrides = {}) {
  */
 export function createMockReward(overrides = {}) {
   return {
-    id: "reward-" + Math.random().toString(36).substr(2, 9),
+    id: `reward-${Math.random().toString(36).substr(2, 9)}`,
     name: "Test Reward",
     points: 50,
     description: null,
@@ -846,7 +851,7 @@ export function createMockReward(overrides = {}) {
  */
 export function createMockCalendarEvent(overrides = {}) {
   return {
-    id: "event-" + Math.random().toString(36).substr(2, 9),
+    id: `event-${Math.random().toString(36).substr(2, 9)}`,
     title: "Test Event",
     description: null,
     start: new Date("2026-02-21T10:00:00Z"),
@@ -931,7 +936,7 @@ async function globalSetup(config: FullConfig) {
   // Optional: Setup test data before running tests
   // E.g., seed database with test users
   const browser = await chromium.launch();
-  const context = await browser.createContext();
+  const context = await browser.newContext();
   const page = await context.newPage();
 
   // Navigate to app
@@ -945,7 +950,8 @@ async function globalSetup(config: FullConfig) {
         choreMode: "POINTS",
       },
     });
-  } catch (error) {
+  }
+  catch (error) {
     console.warn("Could not setup test household:", error);
   }
 
@@ -998,4 +1004,3 @@ These examples provide a complete testing foundation for SkyLite-UX:
 5. **Configuration** for Playwright and test framework setup
 
 Start with the chore completion E2E test (it's the most complex workflow) and expand from there.
-

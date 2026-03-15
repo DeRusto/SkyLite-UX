@@ -6,7 +6,7 @@ import { createOAuth2Client, exchangeCodeForTokens } from "../../../../integrati
 /**
  * Handle OAuth2 callback from Google for Photos API
  * Exchanges authorization code for access and refresh tokens
- * Redirects to settings page with encrypted tokens in URL params
+ * Stores tokens server-side and redirects with a one-time session token
  */
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
@@ -32,15 +32,15 @@ export default defineEventHandler(async (event) => {
     // Exchange code for tokens
     const tokenInfo = await exchangeCodeForTokens(oauth2Client, code);
 
-    // Tokens are now passed in plaintext to the frontend and will be encrypted
-    // before database persistence in the integration API handlers.
-    const redirectUrl = `/settings?oauth_success=true`
-      + `&service=google-photos`
-      + `&access_token=${encodeURIComponent(tokenInfo.accessToken)}`
-      + `&refresh_token=${encodeURIComponent(tokenInfo.refreshToken)}`
-      + `&token_expiry=${tokenInfo.expiryDate}`;
+    const { storeOAuthSession } = await import("../../../../utils/oauthSessionStore");
+    const sessionToken = storeOAuthSession({
+      accessToken: tokenInfo.accessToken,
+      refreshToken: tokenInfo.refreshToken,
+      expiryDate: tokenInfo.expiryDate,
+      service: "google-photos",
+    });
 
-    return sendRedirect(event, redirectUrl);
+    return sendRedirect(event, `/settings?oauth_success=true&service=google-photos&session_token=${sessionToken}`);
   }
   catch (err) {
     consola.error("Google Photos OAuth callback error:", err);

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { consola } from "consola";
-
 import GlobalFloatingActionButton from "~/components/global/globalFloatingActionButton.vue";
 import RewardDialog from "~/components/rewards/rewardDialog.vue";
 import SettingsPinDialog from "~/components/settings/settingsPinDialog.vue";
@@ -9,19 +7,10 @@ const { showSuccess, showError, showWarning } = useAlertToast();
 
 // PIN protection for reward management
 const isPinDialogOpen = ref(false);
-const isRewardManagementUnlocked = ref(false);
-const hasAdultPin = ref(false);
-
-// Check if adult PIN is set
-async function checkAdultPin() {
-  try {
-    const settings = await $fetch<{ hasAdultPin: boolean }>("/api/household/settings");
-    hasAdultPin.value = settings.hasAdultPin;
-  }
-  catch (err) {
-    consola.warn("Rewards: Failed to check household settings:", err);
-  }
-}
+const { requiresPin, settingsLoaded, unlock: unlockPin } = usePinProtection();
+// Default to locked until settings have loaded — prevents bypassing PIN protection
+// by clicking quickly before the settings fetch completes or if it fails.
+const isRewardManagementUnlocked = computed(() => settingsLoaded.value && !requiresPin.value);
 
 type Reward = {
   id: string;
@@ -80,48 +69,39 @@ const pendingRejectRedemption = ref<Redemption | null>(null);
 const selectedUser = computed(() => users.value.find(u => u.id === selectedUserId.value));
 const isAdult = computed(() => selectedUser.value?.role === "ADULT");
 
-// Watch user selection to reset unlock state or prompt for PIN
-watch(selectedUserId, (newId, oldId) => {
-  if (newId !== oldId) {
-    isRewardManagementUnlocked.value = false;
-    // Only prompt for PIN if we already had a selected user (ignore initial set)
-    if (isAdult.value && oldId) {
-      isPinDialogOpen.value = true;
-    }
-  }
-});
-
 // PIN protection handlers
 function handleCreateReward() {
-  if (isAdult.value && !isRewardManagementUnlocked.value) {
+  if (!isAdult.value || !settingsLoaded.value) return;
+  if (requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = null;
       showCreateDialog.value = true;
     };
     isPinDialogOpen.value = true;
   }
-  else if (isAdult.value) {
+  else {
     editingReward.value = null;
     showCreateDialog.value = true;
   }
 }
 
 function handleEditReward(reward: Reward) {
-  if (isAdult.value && !isRewardManagementUnlocked.value) {
+  if (!isAdult.value || !settingsLoaded.value) return;
+  if (requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = reward;
       showCreateDialog.value = true;
     };
     isPinDialogOpen.value = true;
   }
-  else if (isAdult.value) {
+  else {
     editingReward.value = reward;
     showCreateDialog.value = true;
   }
 }
 
 function handlePinVerified() {
-  isRewardManagementUnlocked.value = true;
+  unlockPin();
   if (pendingRewardAction.value) {
     pendingRewardAction.value();
     pendingRewardAction.value = null;
@@ -331,7 +311,6 @@ onMounted(async () => {
     fetchRewards(),
     fetchUsers(),
     fetchPendingRedemptions(),
-    checkAdultPin(),
   ]);
   await fetchUserPoints();
   loading.value = false;
@@ -450,8 +429,8 @@ onMounted(async () => {
             class="mt-4"
             @click="handleCreateReward"
           >
-            <UIcon :name="hasAdultPin && !isRewardManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'" class="w-4 h-4 mr-1" />
-            {{ hasAdultPin && !isRewardManagementUnlocked ? 'Unlock to Create Reward' : 'Create First Reward' }}
+            <UIcon :name="!isRewardManagementUnlocked ? 'i-lucide-lock' : 'i-lucide-plus'" class="w-4 h-4 mr-1" />
+            {{ !isRewardManagementUnlocked ? 'Unlock to Create Reward' : 'Create First Reward' }}
           </UButton>
         </div>
 

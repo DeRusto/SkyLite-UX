@@ -154,11 +154,18 @@ definePageMeta({
     @keydown.space="handleDismiss"
     @keydown.enter="handleDismiss"
   >
-    <!-- Photo background -->
+    <!-- Photo background: blurred fill layer to eliminate black bars -->
     <div
-      class="absolute inset-0 bg-cover bg-center transition-opacity duration-500"
+      class="absolute inset-0 bg-center bg-cover transition-opacity duration-500 scale-110 blur-xl"
       :class="{ 'opacity-0': isTransitioning, 'opacity-100': !isTransitioning }"
       :style="{ backgroundImage: `url(${currentPhoto})` }"
+    />
+    <!-- Photo: contained so portrait/landscape images are never cropped -->
+    <img
+      :src="currentPhoto"
+      :alt="formattedDate"
+      class="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
+      :class="{ 'opacity-0': isTransitioning, 'opacity-100': !isTransitioning }"
     />
 
     <!-- Dark overlay for better text readability -->

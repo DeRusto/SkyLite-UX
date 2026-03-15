@@ -2,7 +2,7 @@
 const props = defineProps<{
   isOpen: boolean;
   title?: string;
-  userId?: string | null;
+  userId: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -34,8 +34,13 @@ watch(() => props.isOpen, (open) => {
 });
 
 async function handleVerify() {
-  if (!pin.value) {
-    error.value = "Please enter a PIN";
+  if (!/^\d{4}$/.test(pin.value)) {
+    error.value = "Enter a 4-digit PIN";
+    return;
+  }
+
+  if (!props.userId) {
+    error.value = "No user selected";
     return;
   }
 
@@ -43,12 +48,9 @@ async function handleVerify() {
   error.value = "";
 
   try {
-    const endpoint = props.userId ? "/api/users/verifyPin" : "/api/household/verifyPin";
-    const body = props.userId ? { userId: props.userId, pin: pin.value } : { pin: pin.value };
-
-    const result = await $fetch<{ valid: boolean }>(endpoint, {
+    const result = await $fetch<{ valid: boolean }>("/api/users/verifyPin", {
       method: "POST",
-      body,
+      body: { userId: props.userId, pin: pin.value },
     });
 
     if (result.valid) {
@@ -68,15 +70,7 @@ async function handleVerify() {
     }
   }
   catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Verification failed";
-    if (errorMessage.includes("No adult PIN")) {
-      // No PIN set - allow access
-      emit("verified");
-      emit("close");
-    }
-    else {
-      error.value = errorMessage;
-    }
+    error.value = err instanceof Error ? err.message : "Verification failed";
   }
   finally {
     isVerifying.value = false;
@@ -101,7 +95,7 @@ function handleKeydown(event: KeyboardEvent) {
   >
     <div class="space-y-4">
       <p class="text-muted mb-4">
-        Enter the adult PIN to access this section.
+        Enter your adult profile PIN to access this section. If you haven't set a PIN, enter any 4 digits.
       </p>
 
       <UFormField label="PIN" :error="error">
@@ -111,6 +105,9 @@ function handleKeydown(event: KeyboardEvent) {
           type="password"
           placeholder="Enter PIN"
           :disabled="isVerifying"
+          inputmode="numeric"
+          maxlength="4"
+          pattern="\d{4}"
           autocomplete="off"
           @keydown="handleKeydown"
         />

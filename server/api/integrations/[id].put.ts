@@ -1,3 +1,4 @@
+import { encryptApiKey } from "~~/server/utils/oauthCrypto";
 import { encryptToken as encryptCalendarToken } from "~~/server/integrations/google-calendar/oauth";
 import { encryptToken as encryptPhotosToken } from "~~/server/integrations/google-photos/oauth";
 import { consola } from "consola";
@@ -66,7 +67,7 @@ export default defineEventHandler(async (event) => {
         ...(name && { name }),
         ...(type && { type }),
         ...(service && { service }),
-        ...(apiKey && { apiKey }),
+        ...(apiKey && { apiKey: encryptApiKey(apiKey) }),
         ...(baseUrl && { baseUrl }),
         ...(icon !== undefined && { icon }),
         ...(enabled !== undefined && { enabled }),
@@ -151,7 +152,7 @@ export default defineEventHandler(async (event) => {
         ...(name && { name }),
         ...(type && { type }),
         ...(service && { service }),
-        ...(apiKey && { apiKey }),
+        ...(apiKey && { apiKey: encryptApiKey(apiKey) }),
         ...(baseUrl && { baseUrl }),
         ...(icon !== undefined && { icon }),
         ...(enabled !== undefined && { enabled }),

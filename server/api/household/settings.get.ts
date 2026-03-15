@@ -10,17 +10,18 @@ export default defineEventHandler(async () => {
         familyName: "Our Family",
         choreCompletionMode: "SELF_CLAIM",
         rewardApprovalThreshold: null,
-        adultPin: null,
       },
     });
   }
 
-  // Don't expose the PIN
   return {
     id: settings.id,
     familyName: settings.familyName,
     choreCompletionMode: settings.choreCompletionMode,
     rewardApprovalThreshold: settings.rewardApprovalThreshold,
-    hasAdultPin: !!settings.adultPin,
+    linkedCalendars: settings.linkedCalendars,
+    holidayColor: settings.holidayColor,
+    familyColor: settings.familyColor,
+    pinProtectionEnabled: settings.pinProtectionEnabled,
   };
 });

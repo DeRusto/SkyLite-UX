@@ -51,6 +51,7 @@ settings_page.html
 # Playwright artifacts
 .playwright-mcp/
 test-results/
+test-results.json
 playwright-report/
 .claude/settings.local.json
 .claude/worktrees/

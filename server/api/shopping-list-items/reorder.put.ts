@@ -1,16 +1,15 @@
+import { z } from "zod";
+
 import prisma from "~/lib/prisma";
+
+const reorderSchema = z.object({
+  itemIds: z.array(z.string().cuid()).max(1000),
+});
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
-    const { itemIds } = body;
-
-    if (!itemIds || !Array.isArray(itemIds)) {
-      throw createError({
-        statusCode: 400,
-        message: "Item IDs array is required",
-      });
-    }
+    const { itemIds } = await reorderSchema.parseAsync(body);
 
     const updatePromises = itemIds.map((id: string, index: number) =>
       prisma.shoppingListItem.update({
