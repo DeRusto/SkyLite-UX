@@ -349,7 +349,7 @@ Critical state management composables with **zero tests:**
 
 Create `app/__tests__/` directory with:
 
-```
+```text
 app/__tests__/
 ├── composables/
 │   ├── useCalendarEvents.test.ts      [100+ lines]
@@ -372,7 +372,7 @@ app/__tests__/
 
 Create `server/api/__tests__/` directory with:
 
-```
+```text
 server/api/__tests__/
 ├── calendar-events/
 │   ├── index.post.test.ts             [Validation, timezone)
@@ -401,7 +401,7 @@ server/api/__tests__/
 
 Create `tests/` directory (currently empty) with:
 
-```
+```text
 tests/
 ├── auth/
 │   ├── pin-verification.spec.ts

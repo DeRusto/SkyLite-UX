@@ -113,7 +113,7 @@ This directory contains a comprehensive test coverage analysis for the SkyLite-U
 
 ## 📊 Key Statistics
 
-```
+```text
 Total Codebase:
   • 96 API routes
   • 50 Vue components
