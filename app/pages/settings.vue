@@ -235,6 +235,5 @@ function handleTriggerSync() {
         </div>
       </div>
     </div>
-
   </div>
 </template>

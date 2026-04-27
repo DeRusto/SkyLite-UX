@@ -25,7 +25,8 @@ const isAdult = computed(() => selectedUser.value?.role === "ADULT");
 const isChoreManagementUnlocked = computed(() => settingsLoaded.value && !requiresPin.value);
 
 function handleCreateChore() {
-  if (!isAdult.value || !settingsLoaded.value) return;
+  if (!isAdult.value || !settingsLoaded.value)
+    return;
   if (requiresPin.value) {
     pendingChoreAction.value = () => {
       editingChore.value = null;
@@ -40,7 +41,8 @@ function handleCreateChore() {
 }
 
 function handleEditChore(chore: Chore) {
-  if (!isAdult.value || !settingsLoaded.value) return;
+  if (!isAdult.value || !settingsLoaded.value)
+    return;
   if (requiresPin.value) {
     pendingChoreAction.value = () => {
       editingChore.value = chore;
