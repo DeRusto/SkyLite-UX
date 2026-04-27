@@ -17,13 +17,8 @@ export default defineEventHandler(async (event) => {
         location: true,
         ical_event: true,
         users: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+          select: {
+            userId: true,
           },
         },
       },
@@ -31,6 +26,37 @@ export default defineEventHandler(async (event) => {
         start: "asc",
       },
     });
+
+    // Collect unique user IDs from the fetched events to perform a targeted query
+    const uniqueUserIds = new Set<string>();
+    for (const dbEvent of events) {
+      for (const assignment of dbEvent.users) {
+        uniqueUserIds.add(assignment.userId);
+      }
+    }
+
+    // Create a Map for O(1) attendee data lookup and pre-calculate iCal properties
+    const userAttendeeMap = new Map<string, { mailto: string, cn: string }>();
+
+    // Only fetch users that are actually assigned to the exported events
+    if (uniqueUserIds.size > 0) {
+      const users = await prisma.user.findMany({
+        where: {
+          id: { in: Array.from(uniqueUserIds) },
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      for (const user of users) {
+        userAttendeeMap.set(user.id, {
+          mailto: `mailto:${user.name.toLowerCase().replace(/\s+/g, ".")}@skylite-ux.local`,
+          cn: user.name,
+        });
+      }
+    }
 
     // Create a new iCalendar component
     const calendar = new ical.Component(["vcalendar", [], []]);
@@ -92,13 +118,14 @@ export default defineEventHandler(async (event) => {
       // Add timestamp (DTSTAMP - required by iCal spec)
       vevent.updatePropertyWithValue("dtstamp", dtstamp);
 
-      // Add attendees (users assigned to the event)
+      // Add attendees (users assigned to the event) using pre-calculated Map
       if (dbEvent.users && dbEvent.users.length > 0) {
         for (const assignment of dbEvent.users) {
-          if (assignment.user) {
+          const userData = userAttendeeMap.get(assignment.userId);
+          if (userData) {
             const attendee = new ical.Property("attendee");
-            attendee.setValue(`mailto:${assignment.user.name.toLowerCase().replace(/\s+/g, ".")}@skylite-ux.local`);
-            attendee.setParameter("cn", assignment.user.name);
+            attendee.setValue(userData.mailto);
+            attendee.setParameter("cn", userData.cn);
             attendee.setParameter("partstat", "ACCEPTED");
             vevent.addProperty(attendee);
           }
