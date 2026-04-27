@@ -1,8 +1,8 @@
+import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 import { consola } from "consola";
 import { createError, defineEventHandler, getQuery } from "h3";
 
 import prisma from "~/lib/prisma";
-import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 
 /**
  * Immich Person type from Immich API

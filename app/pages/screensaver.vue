@@ -166,7 +166,7 @@ definePageMeta({
       :alt="formattedDate"
       class="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
       :class="{ 'opacity-0': isTransitioning, 'opacity-100': !isTransitioning }"
-    />
+    >
 
     <!-- Dark overlay for better text readability -->
     <div class="absolute inset-0 bg-black/20" />

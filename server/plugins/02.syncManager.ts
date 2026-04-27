@@ -62,19 +62,24 @@ async function initializeIntegrationSync() {
       where: { enabled: true },
     });
 
-    let successCount = 0;
-    let failureCount = 0;
+    const results = await Promise.all(
+      integrations.map(async (integration) => {
+        try {
+          await setupIntegrationSync(integration as Integration);
+          return { success: true };
+        }
+        catch (error) {
+          consola.warn(
+            `Sync Manager: Skipping integration ${integration.name} (${integration.id}) due to initialization error:`,
+            error,
+          );
+          return { success: false };
+        }
+      }),
+    );
 
-    for (const integration of integrations) {
-      try {
-        await setupIntegrationSync(integration as Integration);
-        successCount++;
-      }
-      catch (error) {
-        failureCount++;
-        consola.warn(`Sync Manager: Skipping integration ${integration.name} (${integration.id}) due to initialization error:`, error);
-      }
-    }
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.filter(r => !r.success).length;
 
     consola.debug(`Sync Manager: Initialized sync for ${successCount} integrations (${failureCount} failed/skipped)`);
   }

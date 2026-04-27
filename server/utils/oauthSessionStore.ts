@@ -32,9 +32,11 @@ export function storeOAuthSession(session: Omit<OAuthSession, "createdAt">): str
 export function consumeOAuthSession(token: string): OAuthSession | null {
   pruneExpired();
   const session = sessionStore.get(token);
-  if (!session) return null;
+  if (!session)
+    return null;
   // One-time use - delete immediately after consumption
   sessionStore.delete(token);
-  if (Date.now() - session.createdAt > SESSION_TTL_MS) return null;
+  if (Date.now() - session.createdAt > SESSION_TTL_MS)
+    return null;
   return session;
 }
