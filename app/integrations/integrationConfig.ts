@@ -355,9 +355,13 @@ export const integrationConfigs: IntegrationConfig[] = [
   },
   // ================================================
   // TODO integration configs can support the following list-level capabilities:
+  // - get_todos: Can get todos from the integration
+  // - add_todos: Can add new todos to the integration
+  // - edit_todos: Can edit existing todos in the integration
+  // - complete_todos: Can complete/uncomplete todos in the integration
+  // - delete_todos: Can delete todos from the integration
   // ================================================
   // TODO: Add TODO integration configs
-  // TODO: Define TODO capabilities
   // ================================================
 ];
 
