@@ -355,9 +355,13 @@ export const integrationConfigs: IntegrationConfig[] = [
   },
   // ================================================
   // TODO integration configs can support the following list-level capabilities:
+  // - get_todos: Can get tasks from the integration
+  // - add_todos: Can add new tasks to the integration
+  // - edit_todos: Can edit existing tasks in the integration
+  // - complete_todos: Can toggle task completion status
+  // - delete_todos: Can delete tasks from the integration
   // ================================================
   // TODO: Add TODO integration configs
-  // TODO: Define TODO capabilities
   // ================================================
 ];
 
