@@ -45,6 +45,7 @@ export default defineEventHandler(async (event) => {
           calendarId: body.calendarId !== undefined ? body.calendarId : undefined,
           calendarIntegrationId: body.calendarIntegrationId !== undefined ? body.calendarIntegrationId : undefined,
           calendarService: body.calendarService !== undefined ? body.calendarService : undefined,
+          defaultPage: body.defaultPage !== undefined ? body.defaultPage : undefined,
         },
       }),
       ...(body.name

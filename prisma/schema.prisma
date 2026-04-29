@@ -79,6 +79,7 @@ model User {
   pin       String?
   role      UserRole @default(CHILD)
   todoOrder Int      @default(0)
+  defaultPage String   @default("/calendar")
   calendarId           String?
   calendarIntegrationId String?
   calendarIntegration   Integration? @relation(fields: [calendarIntegrationId], references: [id], onDelete: SetNull)

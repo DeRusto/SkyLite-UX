@@ -21,6 +21,7 @@ const color = ref("#3b82f6");
 const avatar = ref("");
 const role = ref<"ADULT" | "CHILD">("CHILD");
 const pin = ref("");
+const defaultPage = ref("/calendar");
 const calendarId = ref<string | null>(null);
 const calendarIntegrationId = ref<string | null>(null);
 const calendarService = ref<string | null>(null);
@@ -55,6 +56,7 @@ watch(() => props.user, (newUser) => {
     avatar.value = newUser.avatar && !newUser.avatar.startsWith("https://ui-avatars.com/api/") ? newUser.avatar : "";
     role.value = newUser.role;
     pin.value = ""; // Don't populate PIN for security
+    defaultPage.value = newUser.defaultPage || "/calendar";
     calendarId.value = newUser.calendarId || null;
     calendarIntegrationId.value = newUser.calendarIntegrationId || null;
     calendarService.value = newUser.calendarService || null;
@@ -101,6 +103,7 @@ function resetForm() {
   avatar.value = "";
   role.value = "CHILD";
   pin.value = "";
+  defaultPage.value = "/calendar";
   calendarId.value = null;
   calendarIntegrationId.value = null;
   calendarService.value = null;
@@ -129,6 +132,7 @@ function handleSave() {
     avatar: avatar.value || getDefaultAvatarUrl(),
     role: role.value,
     pin: role.value === "CHILD" ? undefined : (pin.value || undefined),
+    defaultPage: defaultPage.value,
     calendarId: calendarId.value,
     calendarIntegrationId: calendarIntegrationId.value,
     calendarService: calendarService.value,
@@ -162,6 +166,26 @@ function handleDelete() {
           class="w-full"
           :ui="{ base: 'w-full' }"
         />
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-highlighted">Default Page</label>
+        <USelect
+          v-model="defaultPage"
+          :items="[
+            { label: 'Calendar', value: '/calendar' },
+            { label: 'Chores', value: '/chores' },
+            { label: 'Rewards', value: '/rewards' },
+            { label: 'Lists', value: '/lists' },
+            { label: 'Meal Planner', value: '/mealplanner' },
+            { label: 'Settings', value: '/settings' },
+          ]"
+          placeholder="Select default page"
+          class="w-full"
+        />
+        <p class="text-xs text-muted">
+          The page this user will be redirected to after logging in.
+        </p>
       </div>
 
       <div class="space-y-2">

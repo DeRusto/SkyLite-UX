@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
           calendarId: body.calendarId || null,
           calendarIntegrationId: body.calendarIntegrationId || null,
           calendarService: body.calendarService || null,
+          defaultPage: body.defaultPage || "/calendar",
         },
       });
 

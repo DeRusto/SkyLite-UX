@@ -6,6 +6,7 @@ export type User = Prisma.UserGetPayload<Record<string, never>> & {
   calendarId?: string | null;
   calendarIntegrationId?: string | null;
   calendarService?: string | null;
+  defaultPage?: string;
 };
 export type UserWithTodos = Prisma.UserGetPayload<{
   include: {
