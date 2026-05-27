@@ -1,6 +1,6 @@
-import { encryptApiKey } from "~~/server/utils/oauthCrypto";
 import { encryptToken as encryptCalendarToken } from "~~/server/integrations/google-calendar/oauth";
 import { encryptToken as encryptPhotosToken } from "~~/server/integrations/google-photos/oauth";
+import { encryptApiKey } from "~~/server/utils/oauthCrypto";
 import { consola } from "consola";
 import { createError, defineEventHandler, readBody } from "h3";
 

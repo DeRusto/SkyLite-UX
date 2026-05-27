@@ -62,7 +62,7 @@ export default defineEventHandler((event) => {
     });
   }
 
-  //Origin present but no Host header - cannot validate, reject defensively
+  // Origin present but no Host header - cannot validate, reject defensively
   consola.warn(`CSRF: Origin present (${origin}) but no Host header for ${method} ${url}`);
   throw createError({
     statusCode: 403,

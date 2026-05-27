@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
         "Vary": "Origin",
       });
     }
-    
+
     syncManager.registerClient(event);
 
     const initialEvent = {
