@@ -11,14 +11,14 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event);
     const { todoIds } = await reorderSchema.parseAsync(body);
 
-    const updatePromises = todoIds.map((id: string, index: number) =>
-      prisma.todo.update({
-        where: { id },
-        data: { order: index },
-      }),
+    await prisma.$transaction(
+      todoIds.map((id: string, index: number) =>
+        prisma.todo.update({
+          where: { id },
+          data: { order: index },
+        }),
+      ),
     );
-
-    await Promise.all(updatePromises);
 
     return { success: true };
   }
