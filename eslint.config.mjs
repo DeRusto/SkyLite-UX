@@ -13,19 +13,9 @@ export default withNuxt(antfu({
     semi: true,
     quotes: "double",
   },
-  ignores: [
-    ".pnpm-store/**",
-    "**/migrations/*",
-    ".gitignore",
-    ".devcontainer/**",
-    ".github/**",
-    "docker-compose-example.yaml",
-    "docs/**",
-    ".playwright-cli/**",
-    "**/*.md",
-    "tests/**",
-    "test-results.json",
-  ],
+  // Ignores: union of upstream's list and the fork's additions (fork-only
+  // docs, markdown, Playwright artifacts, and the fork's tests/ directory).
+  ignores: [".pnpm-store/**", "**/migrations/*", ".gitignore", ".devcontainer/**", ".github/**", "docker-compose-example.yaml", "docker-compose-dev.yaml", "./docs/**", "test/**", "docs/**", ".playwright-cli/**", "**/*.md", "tests/**", "test-results.json"],
 }, {
   rules: {
     "vue/max-attributes-per-line": ["error", {
@@ -37,6 +27,7 @@ export default withNuxt(antfu({
       },
     }],
     "ts/no-redeclare": "off",
+    "ts/no-explicit-any": "error",
     "ts/consistent-type-definitions": ["error", "type"],
     "no-console": ["warn"],
     "antfu/no-top-level-await": ["off"],

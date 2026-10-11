@@ -74,13 +74,16 @@ function isValidLocationFormat(location: string): boolean {
 
   // lat,lon coordinate format
   const coordMatch = trimmed.match(/^(-?\d+(?:\.\d*)?),\s*(-?\d+(?:\.\d*)?)$/);
-  if (coordMatch) return true;
+  if (coordMatch)
+    return true;
 
   // 5-digit US zip code
-  if (/^\d{5}$/.test(trimmed)) return true;
+  if (/^\d{5}$/.test(trimmed))
+    return true;
 
   // City name or "city, state" — at least 2 characters
-  if (trimmed.length >= 2) return true;
+  if (trimmed.length >= 2)
+    return true;
 
   return false;
 }

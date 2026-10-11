@@ -1,10 +1,21 @@
 import type { CalendarEvent } from "~/types/calendar";
-import type { ShoppingListWithItemsAndCount, TodoWithUser } from "~/types/database";
+import type {
+  ShoppingListWithItemsAndCount,
+  TodoWithUser,
+} from "~/types/database";
 
-export type SyncData = CalendarEvent[] | ShoppingListWithItemsAndCount[] | TodoWithUser[];
+export type SyncData
+  = | CalendarEvent[]
+    | ShoppingListWithItemsAndCount[]
+    | TodoWithUser[];
 
 export type SyncEvent = {
-  type: "integration_sync" | "connection_established" | "sync_status" | "heartbeat" | "native_data_change";
+  type:
+    | "integration_sync"
+    | "connection_established"
+    | "sync_status"
+    | "heartbeat"
+    | "native_data_change";
   integrationId?: string;
   integrationType?: string;
   service?: string;
@@ -29,7 +40,11 @@ export type IntegrationSyncData = {
   };
 };
 
-export type SyncConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
+export type SyncConnectionStatus
+  = | "connecting"
+    | "connected"
+    | "disconnected"
+    | "error";
 
 export type EventSourceStatus = "CONNECTING" | "OPEN" | "CLOSED";
 
@@ -38,12 +53,15 @@ export type SyncStatus = {
   successfulSyncs: number;
   failedSyncs: number;
   lastSyncTime: Date | null;
-  integrations: Record<string, {
-    lastSync: Date;
-    success: boolean;
-    error?: string;
-    hasData: boolean;
-  }>;
+  integrations: Record<
+    string,
+    {
+      lastSync: Date;
+      success: boolean;
+      error?: string;
+      hasData: boolean;
+    }
+  >;
 };
 
 export type SyncInterval = {

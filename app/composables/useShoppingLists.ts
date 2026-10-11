@@ -24,7 +24,9 @@ export function useShoppingLists() {
     error.value = null;
     try {
       await refreshNuxtData("native-shopping-lists");
-      consola.debug("Use Shopping Lists: Shopping lists refreshed successfully");
+      consola.debug(
+        "Use Shopping Lists: Shopping lists refreshed successfully",
+      );
     }
     catch (err) {
       error.value = getErrorMessage(err, "Failed to fetch shopping lists");
@@ -287,7 +289,9 @@ export function useShoppingLists() {
   const reorderShoppingList = async (listId: string, direction: "up" | "down") => {
     const previousLists = structuredClone(shoppingLists.value ?? []);
     try {
-      const sortedLists = [...currentShoppingLists.value].sort((a, b) => (a.order || 0) - (b.order || 0));
+      const sortedLists = [...currentShoppingLists.value].sort(
+        (a, b) => (a.order || 0) - (b.order || 0),
+      );
       const currentIndex = sortedLists.findIndex(list => list.id === listId);
 
       if (currentIndex === -1)
@@ -297,7 +301,10 @@ export function useShoppingLists() {
       if (direction === "up" && currentIndex > 0) {
         targetIndex = currentIndex - 1;
       }
-      else if (direction === "down" && currentIndex < sortedLists.length - 1) {
+      else if (
+        direction === "down"
+        && currentIndex < sortedLists.length - 1
+      ) {
         targetIndex = currentIndex + 1;
       }
       else {
@@ -382,7 +389,10 @@ export function useShoppingLists() {
       if (direction === "up" && currentIndex > 0) {
         targetIndex = currentIndex - 1;
       }
-      else if (direction === "down" && currentIndex < sortedItems.length - 1) {
+      else if (
+        direction === "down"
+        && currentIndex < sortedItems.length - 1
+      ) {
         targetIndex = currentIndex + 1;
       }
       else {

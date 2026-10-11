@@ -71,7 +71,8 @@ const isAdult = computed(() => selectedUser.value?.role === "ADULT");
 
 // PIN protection handlers
 function handleCreateReward() {
-  if (!isAdult.value || !settingsLoaded.value) return;
+  if (!isAdult.value || !settingsLoaded.value)
+    return;
   if (requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = null;
@@ -86,7 +87,8 @@ function handleCreateReward() {
 }
 
 function handleEditReward(reward: Reward) {
-  if (!isAdult.value || !settingsLoaded.value) return;
+  if (!isAdult.value || !settingsLoaded.value)
+    return;
   if (requiresPin.value) {
     pendingRewardAction.value = () => {
       editingReward.value = reward;

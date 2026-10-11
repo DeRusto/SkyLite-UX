@@ -1,6 +1,11 @@
 import { consola } from "consola";
 
-import type { IntegrationSyncData, SyncConnectionStatus, SyncStatus } from "~/types/sync";
+import type { CalendarEvent } from "~/types/calendar";
+import type {
+  IntegrationSyncData,
+  SyncConnectionStatus,
+  SyncStatus,
+} from "~/types/sync";
 
 type IntegrationMinimal = {
   id: string;
@@ -24,7 +29,9 @@ export function useSyncManager() {
   const nuxtApp = useNuxtApp();
 
   const syncData = useState<IntegrationSyncData>("sync-data");
-  const connectionStatus = useState<SyncConnectionStatus>("sync-connection-status");
+  const connectionStatus = useState<SyncConnectionStatus>(
+    "sync-connection-status",
+  );
   const lastHeartbeat = useState<Date | null>("sync-last-heartbeat");
 
   const getSyncData = (integrationId: string) => {
@@ -52,7 +59,10 @@ export function useSyncManager() {
   };
 
   const reconnect = () => {
-    if (nuxtApp.$reconnectSync && typeof nuxtApp.$reconnectSync === "function") {
+    if (
+      nuxtApp.$reconnectSync
+      && typeof nuxtApp.$reconnectSync === "function"
+    ) {
       nuxtApp.$reconnectSync();
     }
   };
@@ -157,7 +167,9 @@ export function useSyncManager() {
     const cacheKey = getIntegrationCacheKey(integrationType, integrationId);
     if (nuxtApp.payload.data[cacheKey] !== undefined) {
       delete nuxtApp.payload.data[cacheKey];
-      consola.debug(`Use Sync Manager: Purged cache for ${integrationType} integration ${integrationId}`);
+      consola.debug(
+        `Use Sync Manager: Purged cache for ${integrationType} integration ${integrationId}`,
+      );
     }
   };
 
@@ -174,9 +186,48 @@ export function useSyncManager() {
     consola.debug(`Use Sync Manager: Updated cache for ${integrationType} integration ${integrationId}`);
   };
 
-  const triggerImmediateSync = async (integrationType: string, integrationId: string) => {
+  const purgeCalendarEvents = (
+    integrationId: string,
+    calendarIds: string[],
+  ) => {
+    const cacheKey = `calendar-events-${integrationId}`;
+    const cachedData = nuxtApp.payload.data[cacheKey];
+
+    if (!cachedData || !Array.isArray(cachedData)) {
+      consola.debug(
+        `Use Sync Manager: No cache found for calendar integration ${integrationId}`,
+      );
+      return;
+    }
+
+    const calendarIdSet = new Set(calendarIds);
+    const filteredEvents = cachedData.filter((event: CalendarEvent) => {
+      return !event.calendarId || !calendarIdSet.has(event.calendarId);
+    });
+
+    const removedCount = cachedData.length - filteredEvents.length;
+
+    if (removedCount > 0) {
+      nuxtApp.payload.data[cacheKey] = filteredEvents;
+      const { data: integrationEventsData }
+        = useNuxtData<CalendarEvent[]>(cacheKey);
+      if (integrationEventsData) {
+        integrationEventsData.value = filteredEvents;
+      }
+      consola.debug(
+        `Use Sync Manager: Purged ${removedCount} events from ${calendarIds.length} disabled calendar(s) in integration ${integrationId}`,
+      );
+    }
+  };
+
+  const triggerImmediateSync = async (
+    integrationType: string,
+    integrationId: string,
+  ) => {
     try {
-      consola.debug(`Use Sync Manager: Triggering immediate sync for ${integrationType} integration ${integrationId}`);
+      consola.debug(
+        `Use Sync Manager: Triggering immediate sync for ${integrationType} integration ${integrationId}`,
+      );
 
       const response = await $fetch("/api/sync/trigger", {
         method: "POST" as any,
@@ -187,11 +238,16 @@ export function useSyncManager() {
         },
       });
 
-      consola.debug(`Use Sync Manager: Immediate sync triggered successfully for ${integrationType} integration ${integrationId}`);
+      consola.debug(
+        `Use Sync Manager: Immediate sync triggered successfully for ${integrationType} integration ${integrationId}`,
+      );
       return response;
     }
     catch (error) {
-      consola.error(`Use Sync Manager: Failed to trigger immediate sync for ${integrationType} integration ${integrationId}:`, error);
+      consola.error(
+        `Use Sync Manager: Failed to trigger immediate sync for ${integrationType} integration ${integrationId}:`,
+        error,
+      );
       throw error;
     }
   };
@@ -219,6 +275,7 @@ export function useSyncManager() {
     checkIntegrationCache,
     purgeIntegrationCache,
     updateIntegrationCache,
+    purgeCalendarEvents,
     triggerImmediateSync,
   };
 }

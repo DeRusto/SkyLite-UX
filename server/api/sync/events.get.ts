@@ -1,11 +1,11 @@
 import { consola } from "consola";
-import { createError, defineEventHandler, getHeader, setResponseHeaders } from "h3";
+import { createError, defineEventHandler, getHeader, getQuery, setResponseHeaders } from "h3";
 
-import { syncManager } from "../../plugins/02.syncManager";
+import { sendCachedSyncData, syncManager } from "../../plugins/02.syncManager";
 
 export default defineEventHandler(async (event) => {
   try {
-    // Restrict CORS to same-origin requests only for SSE stream
+    // Restrict CORS to same-origin requests only for SSE stream (fork hardening)
     setResponseHeaders(event, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -19,7 +19,22 @@ export default defineEventHandler(async (event) => {
         "Vary": "Origin",
       });
     }
-    
+
+    const query = getQuery(event);
+    const clientLastSync: Record<string, Date> = {};
+
+    Object.keys(query).forEach((integrationId) => {
+      const timestamp = query[integrationId];
+      if (typeof timestamp === "string") {
+        try {
+          clientLastSync[integrationId] = new Date(timestamp);
+        }
+        catch {
+          consola.warn(`Sync Events: Invalid timestamp for integration ${integrationId}: ${timestamp}`);
+        }
+      }
+    });
+
     syncManager.registerClient(event);
 
     const initialEvent = {
@@ -39,6 +54,16 @@ export default defineEventHandler(async (event) => {
     };
 
     event.node.res.write(`data: ${JSON.stringify(statusEvent)}\n\n`);
+
+    const syncIntervals = syncManager.getSyncIntervals();
+    for (const [integrationId, syncInterval] of syncIntervals) {
+      const clientTimestamp = clientLastSync[integrationId];
+      const serverLastSync = syncInterval.lastSync;
+
+      if (!clientTimestamp || serverLastSync > clientTimestamp) {
+        await sendCachedSyncData(event, integrationId, syncInterval);
+      }
+    }
 
     const heartbeatInterval = setInterval(() => {
       try {

@@ -33,7 +33,9 @@ export function useCalendarEvents() {
     error.value = null;
     try {
       await refreshNuxtData("calendar-events");
-      consola.debug("Use Calendar Events: Calendar events refreshed successfully");
+      consola.debug(
+        "Use Calendar Events: Calendar events refreshed successfully",
+      );
       return currentEvents.value;
     }
     catch (err) {
@@ -166,7 +168,7 @@ export function useCalendarEvents() {
     }
   };
 
-  const updateEvent = async (event: CalendarEvent) => {
+  const updateEventObject = async (event: CalendarEvent) => {
     try {
       if (event.integrationId) {
         const integration = typedIntegrations.value.find(i => i.id === event.integrationId);
@@ -258,6 +260,55 @@ export function useCalendarEvents() {
     }
   };
 
+  // Upstream-compatible native CRUD (upstream calendar page calls these
+  // signatures; the fork's object-based addEvent/updateEventObject above
+  // handle integration-routed events).
+  const createEvent = async (eventData: Omit<CalendarEvent, "id">) => {
+    try {
+      const newEvent = await $fetch<CalendarEvent>("/api/calendar-events", {
+        method: "POST",
+        body: eventData,
+      });
+
+      await refreshNuxtData("calendar-events");
+
+      return newEvent;
+    }
+    catch (err) {
+      error.value = "Failed to create calendar event";
+      consola.error("Use Calendar Events: Error creating calendar event:", err);
+      throw err;
+    }
+  };
+
+  const updateEvent = async (
+    eventOrId: CalendarEvent | string,
+    updates?: Partial<CalendarEvent>,
+  ) => {
+    if (typeof eventOrId === "string") {
+      try {
+        const updatedEvent = await $fetch<CalendarEvent>(
+          `/api/calendar-events/${eventOrId}`,
+          {
+            method: "PUT",
+            body: updates,
+          },
+        );
+
+        await refreshNuxtData("calendar-events");
+
+        return updatedEvent;
+      }
+      catch (err) {
+        error.value = "Failed to update calendar event";
+        consola.error("Use Calendar Events: Error updating calendar event:", err);
+        throw err;
+      }
+    }
+
+    return updateEventObject(eventOrId);
+  };
+
   const deleteEvent = async (eventId: string) => {
     try {
       const event = allEvents.value.find(e => e.id === eventId) as CalendarEvent | undefined;
@@ -338,6 +389,7 @@ export function useCalendarEvents() {
     error: readonly(error),
     fetchEvents,
     addEvent,
+    createEvent,
     updateEvent,
     deleteEvent,
   };

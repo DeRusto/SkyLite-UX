@@ -56,7 +56,9 @@ watch(() => [props.isOpen, props.item], ([isOpen, item]) => {
     if (item && typeof item === "object") {
       props.fields.forEach((field) => {
         const fieldKey = field.key;
-        const fieldValue = (item as unknown as Record<string, unknown>)[fieldKey];
+        const fieldValue = (item as ShoppingListItem)[
+          fieldKey as keyof ShoppingListItem
+        ];
         if (fieldValue !== undefined) {
           if (field.type === "number") {
             formData.value[fieldKey] = Number(fieldValue);

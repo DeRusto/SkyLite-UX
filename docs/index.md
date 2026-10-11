@@ -10,11 +10,11 @@ permalink: /
 **Life, Organized.**
 
 <div class="badges">
-  <a href="https://github.com/wetzel402/SkyLite-UX/releases">
-    <img alt="GitHub Release" src="https://img.shields.io/github/v/release/wetzel402/SkyLite-UX?include_prereleases&style=for-the-badge&label=Latest%20Release">
+  <a href="https://github.com/wetzel402/Skylite-UX/releases">
+    <img alt="GitHub Release" src="https://img.shields.io/github/v/release/wetzel402/Skylite-UX?include_prereleases&style=for-the-badge&label=Latest%20Release">
   </a>
-  <a href="https://github.com/wetzel402/SkyLite-UX">
-    <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/wetzel402/SkyLite-UX?style=for-the-badge">
+  <a href="https://github.com/wetzel402/Skylite-UX">
+    <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/wetzel402/Skylite-UX?style=for-the-badge">
   </a>
   <a href="https://hub.docker.com/r/wetzel402/skylite-ux">
     <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/wetzel402/skylite-ux?style=for-the-badge">
@@ -43,6 +43,13 @@ permalink: /
   <a href="https://www.postgresql.org/docs/">
     <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
   </a>
+  <a href="https://cursor.com/home">
+    <img src="https://img.shields.io/badge/Cursor-black?style=for-the-badge&logo=cursor" alt="Cursor" />
+  </a>
+  <a href="https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FWetzel402%2FSkylite-UX">
+    <img src="https://img.shields.io/badge/Home_Assistant-App-blue?style=for-the-badge&logo=homeassistant&color=%2318BCF2" alt="Add Skylite-UX repository to Home Assistant" />
+  </a>
+
 </div>
 
 ## About
@@ -92,7 +99,7 @@ Skylite UX was conceived as an open source, self-hosted alternative to commercia
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](https://github.com/wetzel402/SkyLite-UX/blob/main/LICENSE.md) for more information.
+Distributed under the MIT License. See [LICENSE](https://github.com/wetzel402/Skylite-UX/blob/main/LICENSE.md) for more information.
 
 ## Special Thanks
 

@@ -17,7 +17,7 @@ const name = ref("");
 const description = ref("");
 const pointCost = ref(10);
 const quantityAvailable = ref<number | null>(null);
-const expiresAt = ref<string | null>(null);
+const expiresAt = ref<string | undefined>(undefined);
 const icon = ref<string | null>(null);
 
 const error = ref<string | null>(null);
@@ -28,7 +28,7 @@ function resetForm() {
   description.value = "";
   pointCost.value = 10;
   quantityAvailable.value = null;
-  expiresAt.value = null;
+  expiresAt.value = undefined;
   icon.value = null;
   error.value = null;
   isSubmitting.value = false;
@@ -127,8 +127,7 @@ watch(() => props.isOpen, (isOpen) => {
       description.value = props.reward.description || "";
       pointCost.value = props.reward.pointCost;
       quantityAvailable.value = props.reward.quantityAvailable;
-      // @ts-expect-error - expiresAt might be undefined in reward object
-      expiresAt.value = props.reward.expiresAt ? new Date(props.reward.expiresAt).toISOString().split("T")[0] : null;
+      expiresAt.value = props.reward.expiresAt ? new Date(props.reward.expiresAt).toISOString().split("T")[0] : undefined;
       icon.value = props.reward.icon || null;
     }
     else {

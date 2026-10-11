@@ -7,6 +7,8 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    // Carried over from the fork: OAuth credentials used by the fork's
+    // Google Calendar / Photos integration endpoints.
     oauthEncryptionKey: "", // NUXT_OAUTH_ENCRYPTION_KEY
     googleClientId: "", // NUXT_GOOGLE_CLIENT_ID
     googleClientSecret: "", // NUXT_GOOGLE_CLIENT_SECRET
@@ -21,7 +23,48 @@ export default defineNuxtConfig({
     },
   },
 
-  modules: ["@nuxt/ui", "@nuxt/eslint", "@nuxtjs/html-validator"],
+  modules: [
+    "@nuxt/ui",
+    "@nuxt/fonts",
+    "@nuxt/eslint",
+    "@nuxtjs/html-validator",
+    "@nuxt/test-utils/module",
+  ],
+
+  fonts: {
+    families: [
+      {
+        name: "Inclusive Sans",
+        provider: "google",
+        global: true,
+      },
+      {
+        name: "Noto Sans",
+        provider: "google",
+        global: true,
+      },
+      {
+        name: "EB Garamond",
+        provider: "google",
+        global: true,
+      },
+      {
+        name: "IBM Plex Mono",
+        provider: "google",
+        global: true,
+      },
+      {
+        name: "Ovo",
+        provider: "google",
+        global: true,
+      },
+      {
+        name: "Handlee",
+        provider: "google",
+        global: true,
+      },
+    ],
+  },
 
   components: {
     dirs: [
@@ -30,24 +73,27 @@ export default defineNuxtConfig({
         pathPrefix: false,
         // work around to fix global components not being in their own chunk
         // /app/app/components/global/globalAppLoading.vue is dynamically imported by /app/app/components/global/globalAppLoading.vue?nuxt_component=async&nuxt_component_name=GlobalAppLoading&nuxt_component_export=default but also statically imported by /app/app/app.vue?vue&type=script&setup=true&lang.ts, dynamic import will not move module into another chunk.
-        ignore: ["**/global/globalAppLoading.vue", "**/global/globalSideBar.vue", "**/global/globalDock.vue"],
+        ignore: [
+          "**/global/globalAppLoading.vue",
+          "**/global/globalSideBar.vue",
+          "**/global/globalDock.vue",
+        ],
       },
     ],
   },
 
   app: {
+    baseURL: "/",
     head: {
       htmlAttrs: {
         lang: "en",
       },
-      title: "SkyLite UX",
+      title: "Skylite UX",
+      // Carried over from the fork: mobile viewport for the wall-display UI.
+      // (The fork's Google Fonts <link> for Ovo is superseded by upstream's
+      // @nuxt/fonts families, which include Ovo.)
       meta: [
         { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      ],
-      link: [
-        { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },
-        { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Ovo&display=swap" },
       ],
     },
   },
@@ -56,10 +102,7 @@ export default defineNuxtConfig({
     logLevel: "warning",
     failOnError: false,
     options: {
-      extends: [
-        "html-validate:document",
-        "html-validate:recommended",
-      ],
+      extends: ["html-validate:document", "html-validate:recommended"],
       rules: {
         "no-unknown-elements": "error",
         "element-permitted-content": "error",
@@ -70,6 +113,7 @@ export default defineNuxtConfig({
         "element-required-attributes": "off",
         "element-required-content": "off",
         "valid-id": "off",
+        "no-missing-references": "off",
         "prefer-native-element": "off",
         "void-style": "off",
         "no-trailing-whitespace": "off",
@@ -89,10 +133,7 @@ export default defineNuxtConfig({
 
   vite: {
     optimizeDeps: {
-      include: [
-        "date-fns",
-        "@internationalized/date",
-      ],
+      include: ["date-fns", "@internationalized/date"],
     },
   },
 
@@ -109,6 +150,7 @@ export default defineNuxtConfig({
     "~/plugins/01.logging.ts",
     "~/plugins/02.appInit.ts",
     "~/plugins/03.syncManager.client.ts",
+    "~/plugins/04.clientPreferences.client.ts",
   ],
 
   future: {

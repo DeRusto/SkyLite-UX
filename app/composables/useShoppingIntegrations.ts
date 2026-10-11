@@ -1,7 +1,15 @@
 import { consola } from "consola";
 
-import type { CreateShoppingListItemInput, Integration, ShoppingList, ShoppingListItem, UpdateShoppingListItemInput } from "~/types/database";
-import type { IntegrationService } from "~/types/integrations";
+import type {
+  CreateShoppingListItemInput,
+  Integration,
+  ShoppingList,
+  ShoppingListItem,
+  UpdateShoppingListItemInput,
+} from "~/types/database";
+import type {
+  IntegrationService,
+} from "~/types/integrations";
 
 import { getErrorMessage } from "~/utils/error";
 import { performOptimisticUpdate } from "~/utils/optimistic";
@@ -16,10 +24,16 @@ export function useShoppingIntegrations() {
   const { showError } = useAlertToast();
 
   const allShoppingLists = computed(() => {
-    const lists: (ShoppingList & { source: "integration"; integrationId?: string; integrationName?: string })[] = [];
+    const lists: (ShoppingList & {
+      source: "integration";
+      integrationId?: string;
+      integrationName?: string;
+    })[] = [];
 
-    const shoppingIntegrations = (integrations.value as readonly Integration[] || []).filter(integration =>
-      integration.type === "shopping" && integration.enabled,
+    const shoppingIntegrations = (
+      (integrations.value as readonly Integration[]) || []
+    ).filter(
+      integration => integration.type === "shopping" && integration.enabled,
     );
 
     shoppingIntegrations.forEach((integration) => {
@@ -36,7 +50,10 @@ export function useShoppingIntegrations() {
         }
       }
       catch (error) {
-        consola.warn(`Use Shopping Integrations: Failed to get shopping lists for integration ${integration.id}:`, error);
+        consola.warn(
+          `Use Shopping Integrations: Failed to get shopping lists for integration ${integration.id}:`,
+          error,
+        );
       }
     });
 
@@ -44,8 +61,8 @@ export function useShoppingIntegrations() {
   });
 
   const shoppingIntegrations = computed(() => {
-    return (integrations.value as readonly Integration[] || []).filter(integration =>
-      integration.type === "shopping" && integration.enabled,
+    return ((integrations.value as readonly Integration[]) || []).filter(
+      integration => integration.type === "shopping" && integration.enabled,
     );
   });
 
@@ -266,7 +283,11 @@ export function useShoppingIntegrations() {
     await updateShoppingListItem(integrationId, itemId, { checked });
   };
 
-  const clearCompletedItems = async (integrationId: string, listId: string, completedItemIds?: string[]): Promise<void> => {
+  const clearCompletedItems = async (
+    integrationId: string,
+    listId: string,
+    completedItemIds?: string[],
+  ): Promise<void> => {
     const service = shoppingServices.value.get(integrationId);
     if (!service) {
       throw new Error(`Integration service not found for ${integrationId}`);

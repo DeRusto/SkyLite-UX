@@ -24,7 +24,7 @@ const description = ref("");
 const pointValue = ref(10);
 const recurrence = ref("NONE");
 const assignedUserId = ref<string | null>(null);
-const dueDate = ref<string | null>(null);
+const dueDate = ref<string | undefined>(undefined);
 const icon = ref<string | null>(null);
 
 const error = ref<string | null>(null);
@@ -55,7 +55,7 @@ function resetForm() {
   pointValue.value = 10;
   recurrence.value = "NONE";
   assignedUserId.value = null;
-  dueDate.value = null;
+  dueDate.value = undefined;
   icon.value = null;
   error.value = null;
   isSubmitting.value = false;
@@ -164,8 +164,7 @@ watch(() => props.isOpen, (isOpen) => {
       pointValue.value = props.chore.pointValue;
       recurrence.value = props.chore.recurrence;
       assignedUserId.value = props.chore.assignedUserId;
-      // @ts-expect-error - dueDate might be undefined in chore object
-      dueDate.value = props.chore.dueDate ? new Date(props.chore.dueDate).toISOString().split("T")[0] : null;
+      dueDate.value = props.chore.dueDate ? new Date(props.chore.dueDate).toISOString().split("T")[0] : undefined;
       icon.value = props.chore.icon || null;
     }
     else {

@@ -1,11 +1,14 @@
-import { encryptApiKey } from "~~/server/utils/oauthCrypto";
 import { encryptToken as encryptCalendarToken } from "~~/server/integrations/google-calendar/oauth";
 import { encryptToken as encryptPhotosToken } from "~~/server/integrations/google-photos/oauth";
+import { encryptApiKey } from "~~/server/utils/oauthCrypto";
 import { consola } from "consola";
 import { createError, defineEventHandler, readBody } from "h3";
 
 import prisma from "~/lib/prisma";
-import { integrationRegistry } from "~/types/integrations";
+import { createIntegrationService, integrationRegistry } from "~/types/integrations";
+
+import { normalizeWebcalUrl } from "../../utils/icalUrl";
+import { sanitizeIntegration } from "../../utils/sanitizeIntegration";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -18,22 +21,14 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await readBody(event);
-    const {
-      name,
-      type,
-      service,
-      apiKey,
-      baseUrl,
-      icon,
-      enabled,
-      settings,
-      accessToken,
-      refreshToken,
-      tokenExpiry,
-      tokenType,
-    } = body;
+    const { name, type, service, apiKey, icon, enabled, settings, accessToken, refreshToken, tokenExpiry, tokenType } = body;
+    let baseUrl = body.baseUrl;
+    if (baseUrl && typeof baseUrl === "string") {
+      baseUrl = normalizeWebcalUrl(baseUrl);
+    }
+    let preservedSettings = settings;
 
-    // Encrypt tokens if provided (Google Calendar/Photos)
+    // Encrypt tokens if provided (Google Calendar/Photos) — fork addition
     let finalAccessToken = accessToken;
     let finalRefreshToken = refreshToken;
 
@@ -50,7 +45,7 @@ export default defineEventHandler(async (event) => {
         finalRefreshToken = encryptPhotosToken(refreshToken);
     }
 
-    if (apiKey || baseUrl || accessToken || refreshToken) {
+    if (apiKey || baseUrl || settings || accessToken || refreshToken) {
       const currentIntegration = await prisma.integration.findUnique({
         where: { id },
       });
@@ -78,11 +73,24 @@ export default defineEventHandler(async (event) => {
         ...(tokenType && { tokenType }),
       };
 
-      if (type || service) {
-        const integrationKey = `${updatedData.type}:${updatedData.service}`;
-        const integrationConfig = integrationRegistry.get(integrationKey);
+      if (settings && typeof settings === "object") {
+        const currentSettings = currentIntegration.settings as Record<string, unknown> | null;
+        const newSettings = settings as Record<string, unknown>;
 
-        if (integrationConfig) {
+        if (!newSettings.clientSecret && currentSettings?.clientSecret) {
+          preservedSettings = {
+            ...newSettings,
+            clientSecret: currentSettings.clientSecret,
+          };
+          updatedData.settings = preservedSettings;
+        }
+      }
+
+      const integrationKey = `${updatedData.type}:${updatedData.service}`;
+      const integrationConfig = integrationRegistry.get(integrationKey);
+
+      if (integrationConfig) {
+        if (type || service) {
           const missingFields = integrationConfig.settingsFields
             .filter(field => field.required)
             .filter((field) => {
@@ -107,42 +115,45 @@ export default defineEventHandler(async (event) => {
             });
           }
         }
-      }
 
-      const { createIntegrationService } = await import("~/types/integrations");
-      const tempIntegration = {
-        id: "temp",
-        type: updatedData.type,
-        service: updatedData.service,
-        apiKey: updatedData.apiKey,
-        baseUrl: updatedData.baseUrl,
-        enabled: true,
-        name: updatedData.name || "Temp",
-        icon: updatedData.icon || null,
-        settings: updatedData.settings || {},
-        accessToken: updatedData.accessToken || null,
-        refreshToken: updatedData.refreshToken || null,
-        tokenExpiry: updatedData.tokenExpiry ? new Date(updatedData.tokenExpiry) : null,
-        tokenType: updatedData.tokenType || null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+        const hasOAuth = integrationConfig.capabilities.includes("oauth");
 
-      const integrationService = await createIntegrationService(tempIntegration);
-      if (!integrationService) {
-        throw createError({
-          statusCode: 400,
-          message: `Unsupported integration type: ${updatedData.type}:${updatedData.service}`,
-        });
-      }
+        if (!hasOAuth) {
+          const tempIntegration = {
+            id: "temp",
+            type: updatedData.type,
+            service: updatedData.service,
+            apiKey: updatedData.apiKey,
+            baseUrl: updatedData.baseUrl,
+            enabled: true,
+            name: updatedData.name || "Temp",
+            icon: updatedData.icon || null,
+            settings: updatedData.settings || {},
+            accessToken: updatedData.accessToken || null,
+            refreshToken: updatedData.refreshToken || null,
+            tokenExpiry: updatedData.tokenExpiry ? new Date(updatedData.tokenExpiry) : null,
+            tokenType: updatedData.tokenType || null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
 
-      const connectionSuccess = await integrationService.testConnection?.();
-      if (!connectionSuccess) {
-        const status = await integrationService.getStatus();
-        throw createError({
-          statusCode: 400,
-          message: `Connection test failed: ${status.error || "Unknown error"}`,
-        });
+          const integrationService = await createIntegrationService(tempIntegration);
+          if (!integrationService) {
+            throw createError({
+              statusCode: 400,
+              message: `Unsupported integration type: ${updatedData.type}:${updatedData.service}`,
+            });
+          }
+
+          const connectionSuccess = await integrationService.testConnection?.();
+          if (!connectionSuccess) {
+            const status = await integrationService.getStatus();
+            throw createError({
+              statusCode: 400,
+              message: `Connection test failed: ${status.error || "Unknown error"}`,
+            });
+          }
+        }
       }
     }
 
@@ -156,7 +167,7 @@ export default defineEventHandler(async (event) => {
         ...(baseUrl && { baseUrl }),
         ...(icon !== undefined && { icon }),
         ...(enabled !== undefined && { enabled }),
-        ...(settings && { settings }),
+        ...(preservedSettings && { settings: preservedSettings }),
         ...(finalAccessToken && { accessToken: finalAccessToken }),
         ...(finalRefreshToken && { refreshToken: finalRefreshToken }),
         ...(tokenExpiry && { tokenExpiry: new Date(tokenExpiry) }),
@@ -164,19 +175,7 @@ export default defineEventHandler(async (event) => {
       },
     });
 
-    // Remove sensitive fields before sending to client
-    return {
-      id: integration.id,
-      name: integration.name,
-      type: integration.type,
-      service: integration.service,
-      icon: integration.icon,
-      enabled: integration.enabled,
-      settings: integration.settings,
-      createdAt: integration.createdAt,
-      updatedAt: integration.updatedAt,
-      // Explicitly exclude apiKey and baseUrl for security
-    };
+    return sanitizeIntegration(integration);
   }
   catch (error: unknown) {
     consola.error("Integrations id put: Error updating integration:", error);

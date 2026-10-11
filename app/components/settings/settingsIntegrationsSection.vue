@@ -66,7 +66,6 @@ watch(() => (integrations.value as Integration[]).filter(i => i.enabled).map(i =
   }
 }, { deep: true });
 
-
 const activeIntegrationTab = ref<string>("");
 
 const availableIntegrationTypes = computed(() => {

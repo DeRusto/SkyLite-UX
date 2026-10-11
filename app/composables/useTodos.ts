@@ -6,6 +6,14 @@ import { useAlertToast } from "~/composables/useAlertToast";
 import { getErrorMessage } from "~/utils/error";
 import { performOptimisticUpdate } from "~/utils/optimistic";
 
+function getClientDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}T00:00:00`;
+}
+
 export function useTodos() {
   const loading = useState<boolean>("todos-loading", () => false);
   const error = useState<string | null>("todos-error", () => null);
@@ -50,6 +58,8 @@ export function useTodos() {
       dueDate: todoData.dueDate ? (todoData.dueDate instanceof Date ? todoData.dueDate.toISOString() : todoData.dueDate) : null,
       completed: todoData.completed ?? false,
       order: todoData.order ?? 0,
+      recurringGroupId: null,
+      rrule: null,
       todoColumnId: todoData.todoColumnId ?? null,
       todoColumn: null, // Minimal stub for optimistic item
       createdAt: new Date().toISOString(),
@@ -60,7 +70,9 @@ export function useTodos() {
       const createdTodo = await performOptimisticUpdate(
         () => $fetch<TodoWithOrderResponse>("/api/todos", {
           method: "POST",
-          body: todoData,
+          // clientDate: upstream recurring-todo support (server computes
+          // recurrence occurrences against the client's local date)
+          body: { ...todoData, clientDate: getClientDateString() },
         }),
         () => {
           if (todos.value && Array.isArray(todos.value)) {
@@ -97,7 +109,7 @@ export function useTodos() {
       const updatedTodoFromResponse = await performOptimisticUpdate(
         () => $fetch<TodoWithOrderResponse>(`/api/todos/${id}`, {
           method: "PUT",
-          body: updates,
+          body: { ...updates, clientDate: getClientDateString() },
         }),
         () => {
           if (todos.value && Array.isArray(todos.value)) {
@@ -135,13 +147,19 @@ export function useTodos() {
     return updateTodo(id, { completed });
   };
 
-  const deleteTodo = async (id: string) => {
+  const deleteTodo = async (id: string, stopRecurrence = false) => {
     const previousTodos = structuredClone(todos.value ?? []);
 
     try {
       return await performOptimisticUpdate(
         async () => {
-          await $fetch<void>(`/api/todos/${id}`, {
+          const params = new URLSearchParams();
+          if (stopRecurrence) {
+            params.append("stopRecurrence", "true");
+          }
+          params.append("clientDate", getClientDateString());
+
+          await $fetch<void>(`/api/todos/${id}?${params.toString()}`, {
             method: "DELETE",
           });
           return true;
@@ -245,7 +263,11 @@ export function useTodos() {
     }
   };
 
-  const clearCompleted = async (columnId: string) => {
+  const clearCompleted = async (columnId: string, completedTodos?: TodoWithOrder[]) => {
+    // Upstream callers may pass the completed set explicitly; an explicit
+    // empty set means there is nothing to clear.
+    if (completedTodos && completedTodos.length === 0)
+      return;
     const previousTodos = structuredClone(todos.value ?? []);
 
     try {
