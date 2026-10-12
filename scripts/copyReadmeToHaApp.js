@@ -1,3 +1,4 @@
+import { consola } from "consola";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -7,4 +8,4 @@ const dest = path.join(root, "ha-app", "README.md");
 
 const content = fs.readFileSync(src, "utf8");
 fs.writeFileSync(dest, content);
-console.warn("Copied README.md to ha-app/README.md");
+consola.success("Copied README.md to ha-app/README.md");

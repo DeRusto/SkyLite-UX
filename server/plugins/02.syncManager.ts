@@ -20,6 +20,9 @@ import { createIntegrationService, registerIntegration } from "../../app/types/i
 const syncIntervals = new Map<string, SyncInterval>();
 const connectedClients = new Set<ConnectedClient>();
 const integrationServices = new Map<string, ServerTypedIntegrationService>();
+// Last successful sync payload per integration, replayed to new SSE clients
+// so each connection does not refetch from the external service.
+const lastSyncPayloads = new Map<string, ServerSyncEvent>();
 
 export default defineNitroPlugin(async (nitroApp) => {
   consola.start("Sync Manager: Initializing...");
@@ -191,6 +194,10 @@ async function performIntegrationSync(
       error,
     };
 
+    if (success) {
+      lastSyncPayloads.set(integration.id, syncEvent);
+    }
+
     broadcastToClients(syncEvent);
   }
 }
@@ -226,6 +233,7 @@ function clearIntegrationSync(integrationId: string) {
     clearInterval(syncInterval.interval);
     syncIntervals.delete(integrationId);
     integrationServices.delete(integrationId);
+    lastSyncPayloads.delete(integrationId);
     consola.debug(`Sync Manager: Cleared sync for integration ${integrationId}`);
   }
 }
@@ -236,11 +244,21 @@ function clearAllSyncIntervals() {
   });
   syncIntervals.clear();
   integrationServices.clear();
+  lastSyncPayloads.clear();
   connectedClients.clear();
   consola.debug("Sync Manager: Cleared all sync intervals");
 }
 
 export async function sendCachedSyncData(event: H3Event, integrationId: string, syncInterval: SyncInterval) {
+  const cached = lastSyncPayloads.get(integrationId);
+  if (cached) {
+    event.node.res.write(`data: ${JSON.stringify(cached)}\n\n`);
+    consola.debug(`Sync Manager: Replayed cached sync data for integration ${integrationId} to connecting client`);
+    return;
+  }
+
+  // No successful sync yet (e.g. the first one is still running): fetch once
+  // and keep the result for the next client.
   const integration = await prisma.integration.findUnique({ where: { id: integrationId } });
   const service = integrationServices.get(integrationId);
 
@@ -274,6 +292,7 @@ export async function sendCachedSyncData(event: H3Event, integrationId: string, 
         success: true,
       };
 
+      lastSyncPayloads.set(integration.id, syncEvent);
       event.node.res.write(`data: ${JSON.stringify(syncEvent)}\n\n`);
       consola.debug(`Sync Manager: Sent cached data for integration ${integration.name} (${integration.id}) to reconnecting client`);
     }

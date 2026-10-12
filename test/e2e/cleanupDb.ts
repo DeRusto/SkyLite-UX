@@ -55,8 +55,28 @@ const SHOPPING_LIST_NAMES = [
   "List to Delete",
 ] as const;
 
+// shortcut: deletes rows by fixed names, so it is limited to databases named
+// *test* (or E2E_DB_CLEANUP=true); track created IDs if tests ever share a real DB.
+function isCleanupAllowed(databaseUrl: string): boolean {
+  if (process.env.E2E_DB_CLEANUP === "true") {
+    return true;
+  }
+  try {
+    const dbName = new URL(databaseUrl).pathname.replace(/^\//, "");
+    return /test/i.test(dbName);
+  } catch {
+    return false;
+  }
+}
+
 export async function cleanupE2eDb(): Promise<void> {
   if (!process.env.DATABASE_URL) {
+    return;
+  }
+  if (!isCleanupAllowed(process.env.DATABASE_URL)) {
+    consola.warn(
+      "E2E cleanup: skipped because DATABASE_URL does not name a test database. Set E2E_DB_CLEANUP=true to allow it.",
+    );
     return;
   }
   const prisma = new PrismaClient();

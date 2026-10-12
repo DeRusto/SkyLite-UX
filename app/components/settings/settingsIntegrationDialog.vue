@@ -36,6 +36,17 @@ const isSaving = ref(false);
 
 const settingsData = ref<Record<string, string | string[] | boolean>>({});
 
+// Settings handled explicitly by handleSave (or sent as top-level fields).
+const COMMON_SETTINGS_KEYS = {
+  apiKey: true,
+  baseUrl: true,
+  user: true,
+  eventColor: true,
+  useUserColors: true,
+  clientId: true,
+  clientSecret: true,
+} as const;
+
 const isTestingConnection = computed(() => {
   return (
     props.connectionTestResult?.isLoading
@@ -190,6 +201,16 @@ watch(
         error.value = null;
 
         initializeSettingsData();
+        // Restore service-specific settings (Open-Meteo location, Immich
+        // album/people filters, ...) so they survive an edit-and-save.
+        for (const [key, value] of Object.entries(newIntegration.settings ?? {})) {
+          if (key in COMMON_SETTINGS_KEYS)
+            continue;
+          if (typeof value === "string" || typeof value === "boolean"
+            || (Array.isArray(value) && value.every(v => typeof v === "string"))) {
+            settingsData.value[key] = value as string | string[] | boolean;
+          }
+        }
         if (newIntegration.settings && newIntegration.settings.user) {
           settingsData.value.user = newIntegration.settings.user as string[];
         }
@@ -321,6 +342,13 @@ async function handleSave() {
       ? Boolean(settingsData.value.useUserColors)
       : false;
 
+    // Service-specific fields from the form; the common ones are set below.
+    const customSettings: Record<string, string | string[] | boolean> = {};
+    for (const [key, value] of Object.entries(settingsData.value)) {
+      if (!(key in COMMON_SETTINGS_KEYS) && value !== undefined && value !== "")
+        customSettings[key] = value;
+    }
+
     const integrationData: CreateIntegrationInput = {
       name: integrationName,
       type: type.value,
@@ -330,6 +358,7 @@ async function handleSave() {
       icon: null,
       enabled: enabled.value,
       settings: {
+        ...customSettings,
         user: userSelection,
         eventColor: settingsData.value.eventColor || "#06b6d4",
         useUserColors,

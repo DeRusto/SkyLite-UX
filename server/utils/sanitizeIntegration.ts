@@ -1,12 +1,18 @@
 import type { Integration } from "@prisma/client";
 
+// Settings keys holding credentials. They stay server-side: they are removed
+// from API responses and preserved by PUT /api/integrations/:id when a client
+// sends settings back without them.
+export const SECRET_SETTINGS_KEYS = ["clientSecret", "accessToken", "tokenExpiry"] as const;
+
 export function sanitizeSettings(settings: unknown) {
   if (!settings || typeof settings !== "object")
     return settings;
 
   const sanitized = { ...settings } as Record<string, unknown>;
 
-  delete sanitized.clientSecret;
+  for (const key of SECRET_SETTINGS_KEYS)
+    delete sanitized[key];
 
   return sanitized;
 }

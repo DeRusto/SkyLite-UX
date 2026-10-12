@@ -50,19 +50,14 @@ export function useTimePicker() {
     minutesToSubtract: number,
   ): { hour: number; minute: number; amPm: string } {
     const hour24 = convert12To24(hour, amPm);
-    const totalMinutes = hour24 * 60 + minute - minutesToSubtract;
+    const minutesPerDay = 24 * 60;
+    const totalMinutes
+      = (((hour24 * 60 + minute - minutesToSubtract) % minutesPerDay)
+        + minutesPerDay)
+      % minutesPerDay;
 
-    let newHour24 = Math.floor(totalMinutes / 60);
-    let newMinute = totalMinutes % 60;
-
-    if (newMinute < 0) {
-      newMinute += 60;
-      newHour24 -= 1;
-    }
-
-    if (newHour24 < 0) {
-      newHour24 += 24;
-    }
+    const newHour24 = Math.floor(totalMinutes / 60);
+    const newMinute = totalMinutes % 60;
 
     const { hour: newHour, amPm: newAmPm } = convert24To12(newHour24);
 

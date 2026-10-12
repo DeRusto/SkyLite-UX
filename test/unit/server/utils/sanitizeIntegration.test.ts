@@ -40,6 +40,16 @@ describe("sanitizeIntegration", () => {
       expect(sanitized).toHaveProperty("otherSetting", "value");
     });
 
+    it("removes Google access tokens from settings", () => {
+      const sanitized = sanitizeSettings({
+        accessToken: "ya29.token",
+        tokenExpiry: 1760000000000,
+        calendarId: "primary",
+      });
+
+      expect(sanitized).toEqual({ calendarId: "primary" });
+    });
+
     it("handles empty objects", () => {
       const sanitized = sanitizeSettings({});
       expect(sanitized).toEqual({});

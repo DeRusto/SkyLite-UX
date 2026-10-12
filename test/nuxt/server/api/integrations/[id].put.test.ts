@@ -87,7 +87,7 @@ describe("pUT /api/integrations/[id]", () => {
       expect(response.name).toBe(requestBody.name);
     });
 
-    it("preserves clientSecret when updating settings", async () => {
+    it("preserves clientSecret when the dialog sends it blank", async () => {
       const currentIntegration = {
         ...createBaseIntegration(),
         settings: {
@@ -99,6 +99,7 @@ describe("pUT /api/integrations/[id]", () => {
       const requestBody = {
         settings: {
           otherSetting: "new-value",
+          clientSecret: "",
         },
       };
 

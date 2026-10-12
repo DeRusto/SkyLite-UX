@@ -77,12 +77,18 @@ describe("useTimePicker", () => {
     expect(Math.abs(result.minute)).toBe(0);
   });
 
-  it("should hit newMinute < 0 when subtractMinutes crosses minute boundary", () => {
+  it("should wrap correctly when subtractMinutes crosses midnight and a minute boundary", () => {
     const { subtractMinutes } = useTimePicker();
-    const result = subtractMinutes(12, 0, "AM", 61);
-    expect(result.hour).toBe(9);
-    expect(result.minute).toBe(59);
-    expect(result.amPm).toBe("PM");
+    expect(subtractMinutes(12, 0, "AM", 61)).toEqual({
+      hour: 10,
+      minute: 59,
+      amPm: "PM",
+    });
+    expect(subtractMinutes(12, 15, "AM", 30)).toEqual({
+      hour: 11,
+      minute: 45,
+      amPm: "PM",
+    });
   });
 
   it("should get time in minutes", () => {

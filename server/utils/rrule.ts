@@ -287,7 +287,11 @@ function calculateFastPathApproximate(
   if (freq === "MONTHLY") {
     let nextDate = new Date(baseDate);
     const bymonthday = rrule.bymonthday?.[0];
-    const targetDay = bymonthday || nextDate.getDate();
+    // A weekday rule ("first Monday") can fall anywhere in its month, so its
+    // lower bound is the 1st and a month only counts as past once it has ended.
+    const isWeekdayRule = !bymonthday && (rrule.byday?.length ?? 0) > 0;
+    const targetDay = bymonthday || (isWeekdayRule ? 1 : nextDate.getDate());
+    const lastDayOf = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
 
     const addMonths = (date: Date, months: number): Date => {
       const newDate = new Date(date);
@@ -305,7 +309,7 @@ function calculateFastPathApproximate(
     nextDate = addMonths(nextDate, interval);
 
     let currentDate = new Date(nextDate);
-    while (currentDate < today) {
+    while ((isWeekdayRule ? lastDayOf(currentDate) : currentDate) < today) {
       currentDate = addMonths(currentDate, interval);
     }
     nextDate = currentDate;

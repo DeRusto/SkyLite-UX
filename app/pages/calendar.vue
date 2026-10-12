@@ -548,7 +548,10 @@ async function handleEventUpdate(event: CalendarEvent) {
   }
 }
 
-async function handleEventDelete(eventId: string) {
+async function handleEventDelete(
+  eventId: string,
+  selectedSourceCalendars?: SourceCalendar[],
+) {
   try {
     const baseEventId = getBaseCalendarEventId(eventId);
     const event = allEvents.value.find(e => e.id === eventId)
@@ -559,16 +562,17 @@ async function handleEventDelete(eventId: string) {
       return;
     }
 
+    // Delete only the calendars the user selected in the dialog when it
+    // passed a selection; otherwise every writable source.
+    const sourcesToDelete = selectedSourceCalendars ?? event.sourceCalendars;
     const writableSources
-      = event.sourceCalendars?.filter(source => source.canEdit) || [];
+      = sourcesToDelete?.filter(source => source.canEdit) || [];
 
     if (writableSources.length > 0) {
       const { localCalendar, integrationTargets }
         = separateLocalAndIntegrationCalendars({
           id: event.id,
-          sourceCalendars: event.sourceCalendars as
-          | SourceCalendar[]
-          | undefined,
+          sourceCalendars: writableSources,
         } as { id: string; sourceCalendars?: SourceCalendar[] });
 
       const deletePromises: Promise<void>[] = [];
