@@ -1,10 +1,6 @@
-import prisma from "~/lib/prisma";
+import type { LinkedCalendarEntry } from "~/types/database";
 
-type LinkedCalendarEntry = {
-  type: "HOLIDAY" | "FAMILY";
-  integrationId: string;
-  calendarId: string;
-};
+import prisma from "~/lib/prisma";
 
 type UpdateHouseholdSettingsBody = {
   familyName?: string;

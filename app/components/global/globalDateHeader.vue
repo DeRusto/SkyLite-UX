@@ -4,17 +4,23 @@ import type { DropdownMenuItem } from "@nuxt/ui";
 import { addDays, endOfWeek, isSameMonth, startOfWeek } from "date-fns";
 
 import type { CalendarView } from "~/types/calendar";
+import type { TodoDueRange, TodoSortMode } from "~/types/ui";
 
 import { useStableDate } from "~/composables/useStableDate";
 import { useUsers } from "~/composables/useUsers";
+import { TODO_DUE_RANGE_OPTIONS, TODO_SORT_OPTIONS } from "~/types/ui";
 
 const props = defineProps<{
   showNavigation?: boolean;
   showViewSelector?: boolean;
   showExport?: boolean;
   showUserFilter?: boolean;
+  showTodoSortSelector?: boolean;
+  showTodoFilterSelector?: boolean;
   currentDate?: Date;
   view?: CalendarView;
+  todoSortBy?: TodoSortMode;
+  todoDueRange?: TodoDueRange;
   className?: string;
   selectedUserIds?: string[];
 }>();
@@ -27,6 +33,8 @@ const emit = defineEmits<{
   (e: "dateChange", date: Date): void;
   (e: "export"): void;
   (e: "userFilterChange", userIds: string[]): void;
+  (e: "todoSortChange", mode: TodoSortMode): void;
+  (e: "todoDueRangeChange", range: TodoDueRange): void;
 }>();
 
 const isExporting = ref(false);
@@ -156,6 +164,28 @@ const items: DropdownMenuItem[][] = [
   ],
 ];
 
+const todoSortItems: DropdownMenuItem[][] = [
+  TODO_SORT_OPTIONS.map(opt => ({
+    label: opt.label,
+    onSelect: () => emit("todoSortChange", opt.value),
+  })),
+];
+
+const todoSortLabel = computed(() =>
+  TODO_SORT_OPTIONS.find(o => o.value === (props.todoSortBy ?? "date"))?.label ?? "Date",
+);
+
+const todoDueRangeItems: DropdownMenuItem[][] = [
+  TODO_DUE_RANGE_OPTIONS.map(opt => ({
+    label: opt.label,
+    onSelect: () => emit("todoDueRangeChange", opt.value),
+  })),
+];
+
+const todoDueRangeLabel = computed(() =>
+  TODO_DUE_RANGE_OPTIONS.find(o => o.value === (props.todoDueRange ?? "all"))?.label ?? "All",
+);
+
 function handlePrevious() {
   emit("previous");
 }
@@ -183,6 +213,15 @@ function handleToday() {
       >
         Today
       </UButton>
+
+      <UButton
+        icon="i-lucide-chevron-left"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        aria-label="Previous"
+        @click="handlePrevious"
+      />
 
       <h2 class="font-semibold text-base text-highlighted text-center flex-1 min-w-0 truncate">
         <NuxtTime
@@ -239,6 +278,15 @@ function handleToday() {
           year="numeric"
         />
       </h2>
+
+      <UButton
+        icon="i-lucide-chevron-right"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        aria-label="Next"
+        @click="handleNext"
+      />
 
       <div class="flex items-center gap-1">
         <UPopover
@@ -302,6 +350,43 @@ function handleToday() {
           </UButton>
         </UDropdownMenu>
       </div>
+    </div>
+
+    <!-- Todo sort/filter controls (shown on both layouts) -->
+    <div
+      v-if="showTodoSortSelector || showTodoFilterSelector"
+      class="flex flex-wrap items-center justify-end gap-2 px-2 py-1.5"
+    >
+      <UDropdownMenu
+        v-if="showTodoSortSelector"
+        :items="todoSortItems"
+      >
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="xl"
+          icon="i-lucide-arrow-down-wide-narrow"
+          trailing-icon="i-lucide-chevron-down"
+          :aria-label="`Sort todos by ${todoSortLabel}`"
+        >
+          Sort: {{ todoSortLabel }}
+        </UButton>
+      </UDropdownMenu>
+      <UDropdownMenu
+        v-if="showTodoFilterSelector"
+        :items="todoDueRangeItems"
+      >
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="xl"
+          icon="i-lucide-filter"
+          trailing-icon="i-lucide-chevron-down"
+          :aria-label="`Filter todos by due date: ${todoDueRangeLabel}`"
+        >
+          Due: {{ todoDueRangeLabel }}
+        </UButton>
+      </UDropdownMenu>
     </div>
 
     <!-- Desktop Header -->

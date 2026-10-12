@@ -1,14 +1,7 @@
 <script setup lang="ts">
-type Props = {
-  icon?: string;
-  label?: string;
-  color?: "primary" | "secondary" | "success" | "warning" | "error";
-  size?: "sm" | "md" | "lg";
-  position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
-  disabled?: boolean;
-};
+import type { GlobalFloatingActionButtonProps } from "~/types/ui";
 
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<GlobalFloatingActionButtonProps>(), {
   icon: "i-lucide-plus",
   label: "Add",
   color: "primary",
@@ -80,9 +73,6 @@ function handleClick() {
     class="p-0"
     @click="handleClick"
   >
-    <UIcon
-      :name="icon"
-      :class="iconSizeClasses"
-    />
+    <UIcon :name="icon" :class="iconSizeClasses" />
   </UButton>
 </template>

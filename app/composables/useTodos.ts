@@ -1,24 +1,26 @@
 import { consola } from "consola";
 
-import type { CreateTodoInput, TodoWithOrder, TodoWithOrderResponse, UpdateTodoInput } from "~/types/database";
+import type {
+  CreateTodoInput,
+  TodoWithOrder,
+  UpdateTodoInput,
+} from "~/types/database";
 
-import { useAlertToast } from "~/composables/useAlertToast";
-import { getErrorMessage } from "~/utils/error";
-import { performOptimisticUpdate } from "~/utils/optimistic";
+function getClientDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}T00:00:00`;
+}
 
 export function useTodos() {
-  const loading = useState<boolean>("todos-loading", () => false);
-  const error = useState<string | null>("todos-error", () => null);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
 
-  const { data: todos } = useNuxtData<TodoWithOrderResponse[]>("todos");
-  const { showError } = useAlertToast();
+  const { data: todos } = useNuxtData<TodoWithOrder[]>("todos");
 
-  const currentTodos = computed(() => (todos.value || []).map(todo => ({
-    ...todo,
-    createdAt: new Date(todo.createdAt),
-    updatedAt: new Date(todo.updatedAt),
-    dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
-  })) as TodoWithOrder[]);
+  const currentTodos = computed(() => todos.value || []);
 
   const fetchTodos = async () => {
     loading.value = true;
@@ -29,7 +31,7 @@ export function useTodos() {
       return currentTodos.value;
     }
     catch (err) {
-      error.value = getErrorMessage(err, "Failed to fetch todos");
+      error.value = "Failed to fetch todos";
       consola.error("Use Todos: Error fetching todos:", err);
       throw err;
     }
@@ -39,94 +41,49 @@ export function useTodos() {
   };
 
   const createTodo = async (todoData: CreateTodoInput) => {
-    const previousTodos = structuredClone(todos.value ?? []);
-    const tempId = crypto.randomUUID();
-
-    const newTodo: TodoWithOrderResponse = {
-      id: tempId,
-      title: todoData.title,
-      description: todoData.description ?? null,
-      priority: todoData.priority ?? "MEDIUM",
-      dueDate: todoData.dueDate ? (todoData.dueDate instanceof Date ? todoData.dueDate.toISOString() : todoData.dueDate) : null,
-      completed: todoData.completed ?? false,
-      order: todoData.order ?? 0,
-      todoColumnId: todoData.todoColumnId ?? null,
-      todoColumn: null, // Minimal stub for optimistic item
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
     try {
-      const createdTodo = await performOptimisticUpdate(
-        () => $fetch<TodoWithOrderResponse>("/api/todos", {
-          method: "POST",
-          body: todoData,
-        }),
-        () => {
-          if (todos.value && Array.isArray(todos.value)) {
-            todos.value.push(newTodo);
-          }
-        },
-        () => {
-          if (todos.value) {
-            todos.value.splice(0, todos.value.length, ...previousTodos);
-          }
-        },
-      );
+      const clientDate = getClientDateString();
 
-      if (todos.value && Array.isArray(todos.value)) {
-        const tempIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === tempId);
-        if (tempIndex !== -1) {
-          todos.value[tempIndex] = createdTodo;
-        }
-      }
+      const requestBody = {
+        ...todoData,
+        clientDate,
+      };
 
-      return createdTodo;
+      const newTodo = await $fetch<TodoWithOrder>("/api/todos", {
+        method: "POST",
+        body: requestBody,
+      });
+
+      await refreshNuxtData("todos");
+
+      return newTodo;
     }
     catch (err) {
-      const message = getErrorMessage(err, "Failed to create todo");
-      showError("Error", message);
+      error.value = "Failed to create todo";
+      consola.error("Use Todos: Error creating todo:", err);
       throw err;
     }
   };
 
   const updateTodo = async (id: string, updates: UpdateTodoInput) => {
-    const previousTodos = structuredClone(todos.value ?? []);
-
     try {
-      const updatedTodoFromResponse = await performOptimisticUpdate(
-        () => $fetch<TodoWithOrderResponse>(`/api/todos/${id}`, {
-          method: "PUT",
-          body: updates,
-        }),
-        () => {
-          if (todos.value && Array.isArray(todos.value)) {
-            const todoIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === id);
-            if (todoIndex !== -1) {
-              todos.value[todoIndex] = { ...todos.value[todoIndex], ...updates } as any;
-            }
-          }
-        },
-        () => {
-          if (todos.value) {
-            todos.value.splice(0, todos.value.length, ...previousTodos);
-          }
-        },
-      );
+      const clientDate = getClientDateString();
 
-      // Reconciliation
-      if (todos.value && Array.isArray(todos.value)) {
-        const todoIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === id);
-        if (todoIndex !== -1) {
-          todos.value[todoIndex] = updatedTodoFromResponse;
-        }
-      }
+      const updatedTodo = await $fetch<TodoWithOrder>(`/api/todos/${id}`, {
+        method: "PUT",
+        body: {
+          ...updates,
+          clientDate,
+        },
+      });
 
-      return updatedTodoFromResponse;
+      await refreshNuxtData("todos");
+
+      return updatedTodo;
     }
     catch (err) {
-      const message = getErrorMessage(err, "Failed to update todo");
-      showError("Error", message);
+      error.value = "Failed to update todo";
+      consola.error("Use Todos: Error updating todo:", err);
       throw err;
     }
   };
@@ -135,141 +92,77 @@ export function useTodos() {
     return updateTodo(id, { completed });
   };
 
-  const deleteTodo = async (id: string) => {
-    const previousTodos = structuredClone(todos.value ?? []);
-
+  const deleteTodo = async (id: string, stopRecurrence = false) => {
     try {
-      return await performOptimisticUpdate(
-        async () => {
-          await $fetch<void>(`/api/todos/${id}`, {
-            method: "DELETE",
-          });
-          return true;
-        },
-        () => {
-          if (todos.value && Array.isArray(todos.value)) {
-            const index = todos.value.findIndex(t => t.id === id);
-            if (index !== -1) {
-              todos.value.splice(index, 1);
-            }
-          }
-        },
-        () => {
-          if (todos.value) {
-            todos.value.splice(0, todos.value.length, ...previousTodos);
-          }
-        },
-      );
-    }
-    catch (err) {
-      const message = getErrorMessage(err, "Failed to delete todo");
-      showError("Error", message);
-      throw err;
-    }
-  };
+      const clientDate = getClientDateString();
 
-  const reorderTodo = async (todoId: string, direction: "up" | "down", todoColumnId: string | null) => {
-    const previousTodos = structuredClone(todos.value ?? []);
-    const currentTodo = currentTodos.value.find(t => t.id === todoId);
-    if (!currentTodo)
-      return;
-
-    try {
-      const sameSectionTodos = currentTodos.value
-        .filter(t =>
-          t.todoColumnId === todoColumnId
-          && t.completed === currentTodo.completed,
-        )
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
-
-      const currentIndex = sameSectionTodos.findIndex(t => t.id === todoId);
-      if (currentIndex === -1)
-        return;
-
-      let targetIndex;
-      if (direction === "up" && currentIndex > 0) {
-        targetIndex = currentIndex - 1;
+      const params = new URLSearchParams();
+      if (stopRecurrence) {
+        params.append("stopRecurrence", "true");
       }
-      else if (direction === "down" && currentIndex < sameSectionTodos.length - 1) {
-        targetIndex = currentIndex + 1;
-      }
-      else {
-        return;
-      }
+      params.append("clientDate", clientDate);
 
-      const targetTodo = sameSectionTodos[targetIndex];
-      if (!targetTodo)
-        return;
+      const url = `/api/todos/${id}?${params.toString()}`;
 
-      await performOptimisticUpdate(
-        () => $fetch("/api/todos/reorder", {
-          method: "POST",
-          body: { todoId, direction, todoColumnId },
-        }),
-        () => {
-          if (todos.value && Array.isArray(todos.value)) {
-            const currentTodoInCache = todos.value.find(t => t.id === todoId);
-            const targetTodoInCache = todos.value.find(t => t.id === targetTodo.id);
-            if (currentTodoInCache && targetTodoInCache) {
-              const updatedTodos = todos.value.map((t) => {
-                if (t.id === todoId)
-                  return { ...t, order: targetTodoInCache.order };
-                if (t.id === targetTodo.id)
-                  return { ...t, order: currentTodoInCache.order };
-                return t;
-              });
-              todos.value.splice(0, todos.value.length, ...updatedTodos);
-            }
-          }
-        },
-        () => {
-          if (todos.value) {
-            todos.value.splice(0, todos.value.length, ...previousTodos);
-          }
-        },
-      );
-    }
-    catch (err) {
-      const message = getErrorMessage(err, "Failed to reorder todo");
-      showError("Error", message);
-      throw err;
-    }
+      await $fetch(url, {
+        method: "DELETE",
+      });
 
-    // We still need to refresh because reorder on server might affect more than just two items
-    // but we do it after the optimistic update has finished.
-    try {
       await refreshNuxtData("todos");
     }
     catch (err) {
-      consola.error("Use Todos: Failed to refresh todos after reorder:", err);
+      error.value = "Failed to delete todo";
+      consola.error("Use Todos: Error deleting todo:", err);
+      throw err;
     }
   };
 
-  const clearCompleted = async (columnId: string) => {
-    const previousTodos = structuredClone(todos.value ?? []);
-
+  // Fork addition: up/down reordering used by the combined lists page.
+  const reorderTodo = async (todoId: string, direction: "up" | "down", todoColumnId: string | null) => {
     try {
-      await performOptimisticUpdate(
-        () => $fetch(`/api/todo-columns/${columnId}/todos/clear-completed`, {
-          method: "POST",
-          body: { action: "delete" },
-        }),
-        () => {
-          if (todos.value && Array.isArray(todos.value)) {
-            const updatedTodos = todos.value.filter((t: TodoWithOrderResponse) => !(t.todoColumnId === columnId && t.completed));
-            todos.value.splice(0, todos.value.length, ...updatedTodos);
-          }
-        },
-        () => {
-          if (todos.value) {
-            todos.value.splice(0, todos.value.length, ...previousTodos);
-          }
-        },
-      );
+      await $fetch("/api/todos/reorder", {
+        method: "POST",
+        body: { todoId, direction, todoColumnId },
+      });
+
+      await refreshNuxtData("todos");
     }
     catch (err) {
-      const message = getErrorMessage(err, "Failed to clear completed todos");
-      showError("Error", message);
+      error.value = "Failed to reorder todo";
+      consola.error("Use Todos: Error reordering todo:", err);
+      throw err;
+    }
+  };
+
+  const clearCompleted = async (
+    columnId: string,
+    completedTodos?: TodoWithOrder[],
+  ) => {
+    try {
+      let todosToDelete: TodoWithOrder[] = [];
+
+      if (completedTodos && completedTodos.length > 0) {
+        todosToDelete = completedTodos;
+      }
+      else {
+        todosToDelete = currentTodos.value.filter(
+          t => t.todoColumnId === columnId && t.completed,
+        );
+      }
+
+      if (todosToDelete.length === 0)
+        return;
+
+      await $fetch(`/api/todo-columns/${columnId}/todos/clear-completed`, {
+        method: "POST",
+        body: { action: "delete" },
+      });
+
+      await refreshNuxtData("todos");
+    }
+    catch (err) {
+      error.value = "Failed to clear completed todos";
+      consola.error("Use Todos: Error clearing completed todos:", err);
       throw err;
     }
   };

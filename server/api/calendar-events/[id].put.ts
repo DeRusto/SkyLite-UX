@@ -2,6 +2,11 @@ import prisma from "~/lib/prisma";
 
 import { broadcastNativeDataChange } from "../../plugins/02.syncManager";
 
+function getBaseCalendarEventId(id: string) {
+  const match = id.match(/^(.+)-(\d{8}(?:T\d{6}Z?)?)$/);
+  return match?.[1] || id;
+}
+
 export default defineEventHandler(async (event) => {
   try {
     const id = getRouterParam(event, "id");
@@ -15,11 +20,13 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const utcStart = new Date(start);
-    const utcEnd = new Date(end);
+    const actualId = getBaseCalendarEventId(id);
+    const shouldUpdateMasterDates = id === actualId;
+    const utcStart = shouldUpdateMasterDates ? new Date(start) : undefined;
+    const utcEnd = shouldUpdateMasterDates ? new Date(end) : undefined;
 
     const calendarEvent = await prisma.calendarEvent.update({
-      where: { id },
+      where: { id: actualId },
       data: {
         title,
         description,
@@ -27,7 +34,7 @@ export default defineEventHandler(async (event) => {
         end: utcEnd,
         allDay: allDay || false,
         color: color || null,
-        location,
+        location: location || null,
         ical_event: ical_event || null,
         users: {
           deleteMany: {},
@@ -52,7 +59,7 @@ export default defineEventHandler(async (event) => {
       },
     });
 
-    // Broadcast the change to all connected clients
+    // Broadcast the change to all connected clients (fork addition)
     broadcastNativeDataChange("calendar-events", "update", calendarEvent.id);
 
     return {
@@ -65,11 +72,11 @@ export default defineEventHandler(async (event) => {
       color: calendarEvent.color as string | string[] | undefined,
       location: calendarEvent.location,
       ical_event: calendarEvent.ical_event,
-      users: calendarEvent.users.map(ce => ce.user),
+      users: (calendarEvent.users || []).map(ce => ce.user),
     };
   }
   catch (error: unknown) {
-    // Handle record not found (deleted while viewing)
+    // Handle record not found (deleted while viewing) — fork addition
     if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
       throw createError({
         statusCode: 404,

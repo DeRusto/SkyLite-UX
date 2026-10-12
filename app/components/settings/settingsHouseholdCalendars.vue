@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { consola } from "consola";
 
-import type { Integration } from "~/types/database";
+import type { HouseholdSettingsData, Integration, LinkedCalendarEntry } from "~/types/database";
+import type { CalendarConfig } from "~/types/integrations";
 
 import { useAlertToast } from "~/composables/useAlertToast";
 
 const props = defineProps<{
-  householdSettings: any;
+  householdSettings: HouseholdSettingsData | null;
   integrations: Integration[];
 }>();
 
 const emit = defineEmits<{
-  "update:householdSettings": [settings: any];
+  "update:householdSettings": [settings: HouseholdSettingsData];
   "triggerSync": [];
 }>();
 
@@ -24,34 +25,35 @@ const availableCalendars = computed(() => {
     return calendars;
 
   for (const integration of props.integrations) {
-    if (integration.service === "google-calendar" && integration.enabled && integration.settings) {
-      let settings: unknown = integration.settings;
-      if (typeof settings === "string") {
-        try {
-          settings = JSON.parse(settings);
-        }
-        catch (e) {
-          consola.error("Failed to parse integration settings:", e);
-          continue;
-        }
-      }
+    if (integration.service !== "google" || !integration.enabled || !integration.settings)
+      continue;
 
-      if (!settings || typeof settings !== "object")
+    let settings: unknown = integration.settings;
+    if (typeof settings === "string") {
+      try {
+        settings = JSON.parse(settings);
+      }
+      catch (e) {
+        consola.error("Failed to parse integration settings:", e);
         continue;
-
-      const metadata = (settings as any).calendarMetadata || {};
-      const selectedIds = Array.isArray((settings as any).selectedCalendars)
-        ? (settings as any).selectedCalendars
-        : [];
-
-      for (const calId of selectedIds) {
-        const meta = metadata[calId];
-        calendars.push({
-          label: meta?.summary || "Unknown Calendar",
-          value: `${integration.id}:${calId}`,
-          color: meta?.color,
-        });
       }
+    }
+
+    if (!settings || typeof settings !== "object")
+      continue;
+
+    const calendarConfigs = (settings as { calendars?: CalendarConfig[] }).calendars;
+    if (!Array.isArray(calendarConfigs))
+      continue;
+
+    for (const cal of calendarConfigs) {
+      if (!cal.enabled)
+        continue;
+      calendars.push({
+        label: cal.name || "Unknown Calendar",
+        value: `${integration.id}:${cal.id}`,
+        color: cal.eventColor,
+      });
     }
   }
   return calendars;
@@ -65,8 +67,8 @@ function getLinkedCalendarsByType(type: "HOLIDAY" | "FAMILY"): string[] {
     return [];
 
   return props.householdSettings.linkedCalendars
-    .filter((l: any) => l.type === type)
-    .map((l: any) => `${l.integrationId}:${l.calendarId}`);
+    .filter((l: LinkedCalendarEntry) => l.type === type)
+    .map((l: LinkedCalendarEntry) => `${l.integrationId}:${l.calendarId}`);
 }
 
 async function toggleHouseholdCalendar(type: "HOLIDAY" | "FAMILY", value: string, checked: boolean) {
@@ -74,13 +76,16 @@ async function toggleHouseholdCalendar(type: "HOLIDAY" | "FAMILY", value: string
     return;
 
   const [integrationId, calendarId] = value.split(":");
-  let currentLinks = Array.isArray(props.householdSettings.linkedCalendars)
+  if (!integrationId || !calendarId)
+    return;
+
+  let currentLinks: LinkedCalendarEntry[] = Array.isArray(props.householdSettings.linkedCalendars)
     ? [...props.householdSettings.linkedCalendars]
     : [];
 
   if (checked) {
     const exists = currentLinks.some(
-      (l: any) => l.type === type && l.integrationId === integrationId && l.calendarId === calendarId,
+      (l: LinkedCalendarEntry) => l.type === type && l.integrationId === integrationId && l.calendarId === calendarId,
     );
     if (!exists) {
       currentLinks.push({ type, integrationId, calendarId });
@@ -88,7 +93,7 @@ async function toggleHouseholdCalendar(type: "HOLIDAY" | "FAMILY", value: string
   }
   else {
     currentLinks = currentLinks.filter(
-      (l: any) => !(l.type === type && l.integrationId === integrationId && l.calendarId === calendarId),
+      (l: LinkedCalendarEntry) => !(l.type === type && l.integrationId === integrationId && l.calendarId === calendarId),
     );
   }
 

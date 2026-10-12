@@ -42,7 +42,10 @@ onUnmounted(() => {
   <UApp>
     <div class="app-layout">
       <div class="app-container">
-        <GlobalAppLoading :is-loading="isLoading" :loading-message="loadingMessage || ''" />
+        <GlobalAppLoading
+          :is-loading="isLoading"
+          :loading-message="loadingMessage || ''"
+        />
 
         <NuxtLayout>
           <div v-if="dock" class="flex h-full">

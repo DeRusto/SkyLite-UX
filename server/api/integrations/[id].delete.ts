@@ -2,6 +2,8 @@ import { consola } from "consola";
 
 import prisma from "~/lib/prisma";
 
+import { syncManager } from "../../plugins/02.syncManager";
+
 export default defineEventHandler(async (event) => {
   try {
     const integrationId = getRouterParam(event, "id");
@@ -13,8 +15,11 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+    consola.debug(`Integrations Delete: Clearing sync for integration ${integrationId} before deletion`);
+    syncManager.clearIntegrationSync(integrationId);
+
     await prisma.$transaction([
-      // First, nullify calendar linkage for all users using this integration
+      // First, nullify calendar linkage for all users using this integration (fork addition)
       prisma.user.updateMany({
         where: { calendarIntegrationId: integrationId },
         data: {
@@ -29,10 +34,11 @@ export default defineEventHandler(async (event) => {
       }),
     ]);
 
+    consola.debug(`Integrations Delete: Successfully deleted integration ${integrationId}`);
     return { success: true };
   }
-  catch (error: any) {
-    if (error?.statusCode) {
+  catch (error: unknown) {
+    if (error && typeof error === "object" && "statusCode" in error) {
       throw error;
     }
     consola.error("Failed to delete integration:", error);

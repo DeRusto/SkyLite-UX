@@ -16,7 +16,12 @@ const emit = defineEmits<{
 }>();
 
 const { isDesktop } = useBreakpoint();
-const { isToday, handleEventClick: _handleEventClick, scrollToDate, getAgendaEventsForDay } = useCalendar();
+const {
+  isToday,
+  handleEventClick: _handleEventClick,
+  scrollToDate,
+  getAgendaEventsForDay,
+} = useCalendar();
 
 const { getStableDate } = useStableDate();
 
@@ -32,17 +37,23 @@ onMounted(() => {
   scrollToDate(getStableDate(), "agenda");
 });
 
-watch(() => props.days, () => {
-  nextTick(() => {
-    scrollToDate(getStableDate(), "agenda");
-  });
-});
+watch(
+  () => props.days,
+  () => {
+    nextTick(() => {
+      scrollToDate(getStableDate(), "agenda");
+    });
+  },
+);
 </script>
 
 <template>
   <div class="flex h-full w-full flex-col">
     <div class="flex-1 overflow-y-auto">
-      <div v-show="!hasEvents" class="flex min-h-[70svh] flex-col items-center justify-center py-16 text-center">
+      <div
+        v-show="!hasEvents"
+        class="flex min-h-[70svh] flex-col items-center justify-center py-16 text-center"
+      >
         <UIcon name="i-lucide-calendar-off" class="size-8" />
         <h2 class="text-lg font-medium text-highlighted">
           No events found
@@ -77,7 +88,12 @@ watch(() => props.days, () => {
             >
               <NuxtTime :datetime="day" day="numeric" />
             </span>
-            <span :class="{ 'font-medium text-highlighted': isToday(day), 'text-muted': !isToday(day) }">
+            <span
+              :class="{
+                'font-medium text-highlighted': isToday(day),
+                'text-muted': !isToday(day),
+              }"
+            >
               <NuxtTime
                 :datetime="day"
                 month="short"
@@ -86,11 +102,14 @@ watch(() => props.days, () => {
             </span>
           </span>
           <div class="mt-6 space-y-2">
-            <div v-show="getAgendaEventsForDay(events, day).length === 0" class="text-center py-8">
+            <div
+              v-show="getAgendaEventsForDay(events, day).length === 0"
+              class="text-center py-8"
+            >
               <div class="flex items-center justify-center gap-2 text-muted">
                 <UIcon name="i-lucide-calendar-off" class="w-6 h-6" />
                 <span class="text-md font-medium text-highlighted">
-                  {{ isToday(day) ? 'No events today' : 'No events' }}
+                  {{ isToday(day) ? "No events today" : "No events" }}
                 </span>
               </div>
             </div>

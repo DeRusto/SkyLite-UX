@@ -1,10 +1,9 @@
+import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 import { consola } from "consola";
 import { createError, defineEventHandler, getQuery, getRouterParam, setResponseHeader } from "h3";
 import { Buffer } from "node:buffer";
 
 import prisma from "~/lib/prisma";
-
-import { decryptApiKey } from "~~/server/utils/oauthCrypto";
 
 /**
  * GET /api/integrations/immich/people/:personId/thumbnail

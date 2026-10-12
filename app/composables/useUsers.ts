@@ -34,7 +34,7 @@ export function useUsers() {
   const createUser = async (userData: CreateUserInput) => {
     try {
       const newUser = await $fetch<UserWithOrder>("/api/users", {
-        method: "POST" as any,
+        method: "POST",
         body: userData,
       });
 
@@ -54,7 +54,7 @@ export function useUsers() {
   const updateUser = async (id: string, updates: Partial<User>) => {
     try {
       const updatedUser = await $fetch<User>(`/api/users/${id}`, {
-        method: "PUT" as any,
+        method: "PUT",
         body: updates,
       });
 
@@ -103,7 +103,7 @@ export function useUsers() {
   const deleteUser = async (userId: string) => {
     try {
       await $fetch(`/api/users/${userId}`, {
-        method: "DELETE" as any,
+        method: "DELETE",
       });
 
       if (currentUser.value?.id === userId) {
@@ -124,7 +124,9 @@ export function useUsers() {
 
   const reorderUser = async (userId: string, direction: "up" | "down") => {
     try {
-      const sortedUsers = [...currentUsers.value].sort((a, b) => (a.todoOrder || 0) - (b.todoOrder || 0));
+      const sortedUsers = [...currentUsers.value].sort(
+        (a, b) => (a.todoOrder || 0) - (b.todoOrder || 0),
+      );
       const currentIndex = sortedUsers.findIndex(user => user.id === userId);
 
       if (currentIndex === -1)
@@ -134,7 +136,10 @@ export function useUsers() {
       if (direction === "up" && currentIndex > 0) {
         targetIndex = currentIndex - 1;
       }
-      else if (direction === "down" && currentIndex < sortedUsers.length - 1) {
+      else if (
+        direction === "down"
+        && currentIndex < sortedUsers.length - 1
+      ) {
         targetIndex = currentIndex + 1;
       }
       else {
@@ -165,7 +170,7 @@ export function useUsers() {
         .map(user => user.id);
 
       await $fetch("/api/users/reorder", {
-        method: "POST" as any,
+        method: "POST",
         body: { userIds: newOrder },
       });
 

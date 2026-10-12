@@ -19,15 +19,6 @@ export default defineEventHandler((event) => {
     return;
   }
 
-  // Skip OAuth callback routes - they receive redirects from Google
-  const oauthRoutes = [
-    "/api/integrations/google-calendar/oauth/callback",
-    "/api/integrations/google-photos/oauth/callback",
-  ];
-  if (oauthRoutes.some(route => url.startsWith(route))) {
-    return;
-  }
-
   const origin = getHeader(event, "origin");
   const referer = getHeader(event, "referer");
   const host = getHeader(event, "host");
@@ -62,7 +53,7 @@ export default defineEventHandler((event) => {
     });
   }
 
-  //Origin present but no Host header - cannot validate, reject defensively
+  // Origin present but no Host header - cannot validate, reject defensively
   consola.warn(`CSRF: Origin present (${origin}) but no Host header for ${method} ${url}`);
   throw createError({
     statusCode: 403,

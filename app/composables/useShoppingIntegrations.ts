@@ -1,7 +1,15 @@
 import { consola } from "consola";
 
-import type { CreateShoppingListItemInput, Integration, ShoppingList, ShoppingListItem, UpdateShoppingListItemInput } from "~/types/database";
-import type { IntegrationService } from "~/types/integrations";
+import type {
+  CreateShoppingListItemInput,
+  Integration,
+  ShoppingList,
+  ShoppingListItem,
+  UpdateShoppingListItemInput,
+} from "~/types/database";
+import type {
+  IntegrationService,
+} from "~/types/integrations";
 
 import { getErrorMessage } from "~/utils/error";
 import { performOptimisticUpdate } from "~/utils/optimistic";
@@ -10,16 +18,29 @@ import { useAlertToast } from "./useAlertToast";
 import { useIntegrations } from "./useIntegrations";
 import { useSyncManager } from "./useSyncManager";
 
+// Optional item-level operations implemented by some shopping services
+// (Mealie, Tandoor). Called as methods so the services keep their `this`.
+type ShoppingItemService = IntegrationService & {
+  updateShoppingListItem?: (itemId: string, updates: UpdateShoppingListItemInput) => Promise<ShoppingListItem>;
+  deleteShoppingListItems?: (itemIds: string[]) => Promise<unknown>;
+};
+
 export function useShoppingIntegrations() {
   const { integrations, loading: integrationsLoading, error: integrationsError, getService } = useIntegrations();
   const { getShoppingSyncData, getCachedIntegrationData, updateIntegrationCache } = useSyncManager();
   const { showError } = useAlertToast();
 
   const allShoppingLists = computed(() => {
-    const lists: (ShoppingList & { source: "integration"; integrationId?: string; integrationName?: string })[] = [];
+    const lists: (ShoppingList & {
+      source: "integration";
+      integrationId?: string;
+      integrationName?: string;
+    })[] = [];
 
-    const shoppingIntegrations = (integrations.value as readonly Integration[] || []).filter(integration =>
-      integration.type === "shopping" && integration.enabled,
+    const shoppingIntegrations = (
+      (integrations.value as readonly Integration[]) || []
+    ).filter(
+      integration => integration.type === "shopping" && integration.enabled,
     );
 
     shoppingIntegrations.forEach((integration) => {
@@ -36,7 +57,10 @@ export function useShoppingIntegrations() {
         }
       }
       catch (error) {
-        consola.warn(`Use Shopping Integrations: Failed to get shopping lists for integration ${integration.id}:`, error);
+        consola.warn(
+          `Use Shopping Integrations: Failed to get shopping lists for integration ${integration.id}:`,
+          error,
+        );
       }
     });
 
@@ -44,8 +68,8 @@ export function useShoppingIntegrations() {
   });
 
   const shoppingIntegrations = computed(() => {
-    return (integrations.value as readonly Integration[] || []).filter(integration =>
-      integration.type === "shopping" && integration.enabled,
+    return ((integrations.value as readonly Integration[]) || []).filter(
+      integration => integration.type === "shopping" && integration.enabled,
     );
   });
 
@@ -201,10 +225,10 @@ export function useShoppingIntegrations() {
     try {
       const updatedItem = await performOptimisticUpdate(
         async () => {
-          const fn = (service as any).updateShoppingListItem;
-          if (!fn)
+          const itemService = service as ShoppingItemService;
+          if (!itemService.updateShoppingListItem)
             throw new Error(`Integration service ${integrationId} does not support updating items`);
-          const result = await fn(itemId, updates);
+          const result = await itemService.updateShoppingListItem(itemId, updates);
           if (!result)
             throw new Error(`Failed to update item in integration ${integrationId}: empty response`);
           return result;
@@ -217,8 +241,8 @@ export function useShoppingIntegrations() {
               if (itemIndex !== -1 && list.items) {
                 itemFound = true;
                 const updatedItems = [...list.items];
-                updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates } as any;
-                return { ...list, items: updatedItems } as any;
+                updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates } as ShoppingListItem;
+                return { ...list, items: updatedItems };
               }
               return list;
             });
@@ -266,7 +290,11 @@ export function useShoppingIntegrations() {
     await updateShoppingListItem(integrationId, itemId, { checked });
   };
 
-  const clearCompletedItems = async (integrationId: string, listId: string, completedItemIds?: string[]): Promise<void> => {
+  const clearCompletedItems = async (
+    integrationId: string,
+    listId: string,
+    completedItemIds?: string[],
+  ): Promise<void> => {
     const service = shoppingServices.value.get(integrationId);
     if (!service) {
       throw new Error(`Integration service not found for ${integrationId}`);
@@ -294,11 +322,11 @@ export function useShoppingIntegrations() {
     try {
       await performOptimisticUpdate(
         async () => {
-          const fn = (service as any).deleteShoppingListItems;
-          if (typeof fn !== "function") {
+          const itemService = service as ShoppingItemService;
+          if (typeof itemService.deleteShoppingListItems !== "function") {
             throw new TypeError(`Integration service ${integrationId} does not implement deleteShoppingListItems. Cannot clear items: ${itemsToDelete.join(", ")}`);
           }
-          await fn(itemsToDelete);
+          await itemService.deleteShoppingListItems(itemsToDelete);
         },
         () => {
           if (integrationLists && Array.isArray(integrationLists)) {

@@ -1,7 +1,18 @@
 <script setup lang="ts">
+type EditableChore = {
+  id: string;
+  name: string;
+  description: string | null;
+  pointValue: number;
+  recurrence: string;
+  assignedUserId: string | null;
+  dueDate: string | null;
+  icon: string | null;
+};
+
 const props = defineProps<{
   isOpen: boolean;
-  chore?: any | null;
+  chore?: EditableChore | null;
 }>();
 
 const emit = defineEmits<{
@@ -24,7 +35,7 @@ const description = ref("");
 const pointValue = ref(10);
 const recurrence = ref("NONE");
 const assignedUserId = ref<string | null>(null);
-const dueDate = ref<string | null>(null);
+const dueDate = ref<string | undefined>(undefined);
 const icon = ref<string | null>(null);
 
 const error = ref<string | null>(null);
@@ -55,7 +66,7 @@ function resetForm() {
   pointValue.value = 10;
   recurrence.value = "NONE";
   assignedUserId.value = null;
-  dueDate.value = null;
+  dueDate.value = undefined;
   icon.value = null;
   error.value = null;
   isSubmitting.value = false;
@@ -78,8 +89,8 @@ async function handleSave() {
     error.value = null;
 
     if (props.chore?.id) {
-      await $fetch(`/api/chores/${props.chore.id}`, {
-        method: "PUT" as any,
+      await $fetch(`/api/chores/${props.chore.id}` as string, {
+        method: "PUT",
         body: {
           name: name.value.trim(),
           description: description.value.trim() || undefined,
@@ -136,8 +147,8 @@ async function handleDelete() {
     isSubmitting.value = true;
     error.value = null;
 
-    await $fetch(`/api/chores/${props.chore.id}`, {
-      method: "DELETE" as any,
+    await $fetch(`/api/chores/${props.chore.id}` as string, {
+      method: "DELETE",
     });
 
     showSuccess("Chore Deleted", `"${name.value}" has been removed.`);
@@ -164,8 +175,7 @@ watch(() => props.isOpen, (isOpen) => {
       pointValue.value = props.chore.pointValue;
       recurrence.value = props.chore.recurrence;
       assignedUserId.value = props.chore.assignedUserId;
-      // @ts-expect-error - dueDate might be undefined in chore object
-      dueDate.value = props.chore.dueDate ? new Date(props.chore.dueDate).toISOString().split("T")[0] : null;
+      dueDate.value = props.chore.dueDate ? new Date(props.chore.dueDate).toISOString().split("T")[0] : undefined;
       icon.value = props.chore.icon || null;
     }
     else {

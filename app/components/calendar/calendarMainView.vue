@@ -1,55 +1,49 @@
 <script setup lang="ts">
-import { addDays, addMonths, addWeeks, isSameMonth, subMonths, subWeeks } from "date-fns";
+import {
+  addDays,
+  addMonths,
+  addWeeks,
+  format,
+  isSameMonth,
+  subMonths,
+  subWeeks,
+} from "date-fns";
 
-import type { CalendarEvent, CalendarView } from "~/types/calendar";
+import type { CalendarEvent, CalendarView, SourceCalendar } from "~/types/calendar";
+import type { Integration } from "~/types/database";
 
 import GlobalDateHeader from "~/components/global/globalDateHeader.vue";
 import GlobalFloatingActionButton from "~/components/global/globalFloatingActionButton.vue";
 import { useCalendar } from "~/composables/useCalendar";
+import { useCalendarIntegrations } from "~/composables/useCalendarIntegrations";
 import { useStableDate } from "~/composables/useStableDate";
+import { DEFAULT_LOCAL_EVENT_COLOR } from "~/types/global";
 
 const props = defineProps<{
   events?: CalendarEvent[];
   className?: string;
   initialView?: CalendarView;
   class?: string;
-  getIntegrationCapabilities?: (event: CalendarEvent) => { capabilities: string[]; serviceName?: string } | undefined;
+  getIntegrationCapabilities?: (
+    event: CalendarEvent,
+  ) => { capabilities: string[]; serviceName?: string } | undefined;
   initialUserFilter?: string[];
 }>();
 
 const emit = defineEmits<{
   (e: "eventAdd", event: CalendarEvent): void;
   (e: "eventUpdate", event: CalendarEvent): void;
-  (e: "eventDelete", eventId: string): void;
+  (e: "eventDelete", eventId: string, sourceCalendars?: SourceCalendar[]): void;
   (e: "userFilterChange", userIds: string[]): void;
+  (e: "viewChange", view: CalendarView): void;
 }>();
 
-const { getStableDate } = useStableDate();
+const { getStableDate, stableDate } = useStableDate();
 const { getEventsForDateRange, scrollToDate } = useCalendar();
-const currentDate = useState<Date>("calendar-current-date", () => getStableDate());
-const STORAGE_KEY = "skylite-calendar-view";
-const validViews: CalendarView[] = ["month", "week", "day", "agenda"];
-
-function getDefaultView(): CalendarView {
-  if (import.meta.client) {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && validViews.includes(saved as CalendarView)) {
-      return saved as CalendarView;
-    }
-  }
-  if (import.meta.client && window.innerWidth < 640) {
-    return "agenda";
-  }
-  return "month";
-}
-
-const view = ref<CalendarView>(getDefaultView());
-
-watch(view, (newView) => {
-  if (import.meta.client) {
-    localStorage.setItem(STORAGE_KEY, newView);
-  }
-});
+const { calendarIntegrations } = useCalendarIntegrations();
+const currentDate = useState<Date>("calendar-current-date", () =>
+  getStableDate());
+const view = ref<CalendarView>(props.initialView || "week");
 const isEventDialogOpen = ref(false);
 const selectedEvent = ref<CalendarEvent | null>(null);
 const selectedUserIds = ref<string[]>(props.initialUserFilter || []);
@@ -89,15 +83,19 @@ onMounted(() => {
     switch (e.key.toLowerCase()) {
       case "m":
         view.value = "month";
+        emit("viewChange", view.value);
         break;
       case "w":
         view.value = "week";
+        emit("viewChange", view.value);
         break;
       case "d":
         view.value = "day";
+        emit("viewChange", view.value);
         break;
       case "a":
         view.value = "agenda";
+        emit("viewChange", view.value);
         break;
     }
   };
@@ -146,6 +144,35 @@ function handleToday() {
   });
 }
 
+function getDayString(date: Date): string {
+  return format(date, "yyyy-MM-dd");
+}
+
+const lastDay = ref(getDayString(getStableDate()));
+let dayChangeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+watch(stableDate, (newDate) => {
+  const newDay = getDayString(newDate);
+  if (newDay !== lastDay.value) {
+    lastDay.value = newDay;
+
+    if (dayChangeTimeout) {
+      clearTimeout(dayChangeTimeout);
+    }
+
+    dayChangeTimeout = setTimeout(() => {
+      handleToday();
+      dayChangeTimeout = null;
+    }, 1000);
+  }
+});
+
+onUnmounted(() => {
+  if (dayChangeTimeout) {
+    clearTimeout(dayChangeTimeout);
+  }
+});
+
 function handleEventSelect(event: CalendarEvent) {
   selectedEvent.value = event;
   isEventDialogOpen.value = true;
@@ -159,7 +186,7 @@ function handleEventCreate(date: Date) {
     start: date,
     end: addDays(date, 1),
     allDay: false,
-    color: "sky",
+    color: DEFAULT_LOCAL_EVENT_COLOR,
   };
   isEventDialogOpen.value = true;
 }
@@ -175,8 +202,8 @@ function handleEventSave(event: CalendarEvent) {
   selectedEvent.value = null;
 }
 
-function handleEventDelete(eventId: string) {
-  emit("eventDelete", eventId);
+function handleEventDelete(eventId: string, sourceCalendars?: SourceCalendar[]) {
+  emit("eventDelete", eventId, sourceCalendars);
   isEventDialogOpen.value = false;
   selectedEvent.value = null;
 }
@@ -264,7 +291,9 @@ function getDaysForAgenda(date: Date) {
 
 <template>
   <div class="flex h-[calc(100vh-2rem)] w-full flex-col rounded-lg">
-    <div class="py-5 sm:px-4 sticky top-0 z-40 bg-default border-b border-default">
+    <div
+      class="py-5 sm:px-4 sticky top-0 z-40 bg-default border-b border-default"
+    >
       <GlobalDateHeader
         :show-navigation="true"
         :show-view-selector="true"
@@ -276,8 +305,8 @@ function getDaysForAgenda(date: Date) {
         @previous="handlePrevious"
         @next="handleNext"
         @today="handleToday"
-        @view-change="(newView) => view = newView"
-        @date-change="(newDate) => currentDate = newDate"
+        @view-change="(newView) => { view = newView; emit('viewChange', newView); }"
+        @date-change="(newDate) => (currentDate = newDate)"
         @user-filter-change="handleUserFilterChange"
       />
     </div>
@@ -305,7 +334,7 @@ function getDaysForAgenda(date: Date) {
         :show-all-day-section="true"
         @event-click="handleEventSelect"
         @event-create="handleEventCreate"
-        @date-select="(date) => currentDate = date"
+        @date-select="(date) => (currentDate = date)"
       />
       <GlobalAgendaView
         v-if="view === 'agenda'"
@@ -326,8 +355,21 @@ function getDaysForAgenda(date: Date) {
   <CalendarEventDialog
     :event="selectedEvent"
     :is-open="isEventDialogOpen"
-    :integration-capabilities="selectedEvent && props.getIntegrationCapabilities ? props.getIntegrationCapabilities(selectedEvent)?.capabilities : undefined"
-    :integration-service-name="selectedEvent && props.getIntegrationCapabilities ? props.getIntegrationCapabilities(selectedEvent)?.serviceName : undefined"
+    :integrations="
+      calendarIntegrations && calendarIntegrations.length > 0
+        ? (calendarIntegrations as Integration[])
+        : undefined
+    "
+    :integration-capabilities="
+      selectedEvent && props.getIntegrationCapabilities
+        ? props.getIntegrationCapabilities(selectedEvent)?.capabilities
+        : undefined
+    "
+    :integration-service-name="
+      selectedEvent && props.getIntegrationCapabilities
+        ? props.getIntegrationCapabilities(selectedEvent)?.serviceName
+        : undefined
+    "
     @close="isEventDialogOpen = false"
     @save="handleEventSave"
     @delete="handleEventDelete"

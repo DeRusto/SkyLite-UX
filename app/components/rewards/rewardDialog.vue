@@ -1,7 +1,17 @@
 <script setup lang="ts">
+type EditableReward = {
+  id: string;
+  name: string;
+  description: string | null;
+  pointCost: number;
+  quantityAvailable: number | null;
+  expiresAt: string | null;
+  icon: string | null;
+};
+
 const props = defineProps<{
   isOpen: boolean;
-  reward?: any | null;
+  reward?: EditableReward | null;
 }>();
 
 const emit = defineEmits<{
@@ -17,7 +27,7 @@ const name = ref("");
 const description = ref("");
 const pointCost = ref(10);
 const quantityAvailable = ref<number | null>(null);
-const expiresAt = ref<string | null>(null);
+const expiresAt = ref<string | undefined>(undefined);
 const icon = ref<string | null>(null);
 
 const error = ref<string | null>(null);
@@ -28,7 +38,7 @@ function resetForm() {
   description.value = "";
   pointCost.value = 10;
   quantityAvailable.value = null;
-  expiresAt.value = null;
+  expiresAt.value = undefined;
   icon.value = null;
   error.value = null;
   isSubmitting.value = false;
@@ -59,8 +69,8 @@ async function handleSave() {
     };
 
     if (props.reward?.id) {
-      await $fetch(`/api/rewards/${props.reward.id}`, {
-        method: "PUT" as any,
+      await $fetch(`/api/rewards/${props.reward.id}` as string, {
+        method: "PUT",
         body: payload,
       });
       showSuccess("Reward Updated", `"${name.value}" has been updated.`);
@@ -96,8 +106,8 @@ async function handleDelete() {
     isSubmitting.value = true;
     error.value = null;
 
-    await $fetch(`/api/rewards/${props.reward.id}`, {
-      method: "DELETE" as any,
+    await $fetch(`/api/rewards/${props.reward.id}` as string, {
+      method: "DELETE",
     });
 
     showSuccess("Reward Deleted", `"${name.value}" has been removed.`);
@@ -127,8 +137,7 @@ watch(() => props.isOpen, (isOpen) => {
       description.value = props.reward.description || "";
       pointCost.value = props.reward.pointCost;
       quantityAvailable.value = props.reward.quantityAvailable;
-      // @ts-expect-error - expiresAt might be undefined in reward object
-      expiresAt.value = props.reward.expiresAt ? new Date(props.reward.expiresAt).toISOString().split("T")[0] : null;
+      expiresAt.value = props.reward.expiresAt ? new Date(props.reward.expiresAt).toISOString().split("T")[0] : undefined;
       icon.value = props.reward.icon || null;
     }
     else {

@@ -14,11 +14,15 @@ import type {
 import type { ConnectedClient, ServerSyncEvent, SyncInterval } from "../../app/types/sync";
 
 import { integrationConfigs } from "../../app/integrations/integrationConfig";
+import prisma from "../../app/lib/prisma";
 import { createIntegrationService, registerIntegration } from "../../app/types/integrations";
 
 const syncIntervals = new Map<string, SyncInterval>();
 const connectedClients = new Set<ConnectedClient>();
 const integrationServices = new Map<string, ServerTypedIntegrationService>();
+// Last successful sync payload per integration, replayed to new SSE clients
+// so each connection does not refetch from the external service.
+const lastSyncPayloads = new Map<string, ServerSyncEvent>();
 
 export default defineNitroPlugin(async (nitroApp) => {
   consola.start("Sync Manager: Initializing...");
@@ -57,7 +61,6 @@ export default defineNitroPlugin(async (nitroApp) => {
 
 async function initializeIntegrationSync() {
   try {
-    const prisma = await import("../../app/lib/prisma").then(m => m.default);
     const integrations = await prisma.integration.findMany({
       where: { enabled: true },
     });
@@ -191,6 +194,10 @@ async function performIntegrationSync(
       error,
     };
 
+    if (success) {
+      lastSyncPayloads.set(integration.id, syncEvent);
+    }
+
     broadcastToClients(syncEvent);
   }
 }
@@ -226,6 +233,7 @@ function clearIntegrationSync(integrationId: string) {
     clearInterval(syncInterval.interval);
     syncIntervals.delete(integrationId);
     integrationServices.delete(integrationId);
+    lastSyncPayloads.delete(integrationId);
     consola.debug(`Sync Manager: Cleared sync for integration ${integrationId}`);
   }
 }
@@ -236,8 +244,62 @@ function clearAllSyncIntervals() {
   });
   syncIntervals.clear();
   integrationServices.clear();
+  lastSyncPayloads.clear();
   connectedClients.clear();
   consola.debug("Sync Manager: Cleared all sync intervals");
+}
+
+export async function sendCachedSyncData(event: H3Event, integrationId: string, syncInterval: SyncInterval) {
+  const cached = lastSyncPayloads.get(integrationId);
+  if (cached) {
+    event.node.res.write(`data: ${JSON.stringify(cached)}\n\n`);
+    consola.debug(`Sync Manager: Replayed cached sync data for integration ${integrationId} to connecting client`);
+    return;
+  }
+
+  // No successful sync yet (e.g. the first one is still running): fetch once
+  // and keep the result for the next client.
+  const integration = await prisma.integration.findUnique({ where: { id: integrationId } });
+  const service = integrationServices.get(integrationId);
+
+  if (!integration || !service) {
+    return;
+  }
+
+  try {
+    let data: CalendarEvent[] | ShoppingListWithItemsAndCount[] | TodoWithUser[] | null = null;
+
+    switch (integration.type) {
+      case "calendar":
+        data = await (service as ServerCalendarIntegrationService).getEvents();
+        break;
+      case "shopping":
+        data = await (service as ServerShoppingIntegrationService).getShoppingLists();
+        break;
+      case "todo":
+        data = await (service as ServerTodoIntegrationService).getTodos();
+        break;
+    }
+
+    if (data) {
+      const syncEvent: ServerSyncEvent = {
+        type: "integration_sync",
+        integrationId: integration.id,
+        integrationType: integration.type,
+        service: integration.service,
+        data,
+        timestamp: syncInterval.lastSync,
+        success: true,
+      };
+
+      lastSyncPayloads.set(integration.id, syncEvent);
+      event.node.res.write(`data: ${JSON.stringify(syncEvent)}\n\n`);
+      consola.debug(`Sync Manager: Sent cached data for integration ${integration.name} (${integration.id}) to reconnecting client`);
+    }
+  }
+  catch (error) {
+    consola.error(`Sync Manager: Failed to send cached data for ${integrationId}:`, error);
+  }
 }
 
 export function registerClient(event: H3Event) {
@@ -283,5 +345,9 @@ export const syncManager = {
   unregisterClient,
   getConnectedClientsCount: () => connectedClients.size,
   getActiveSyncIntervals: () => Array.from(syncIntervals.keys()),
+  getSyncIntervals: () => syncIntervals,
+  getIntegrationById: async (id: string) => {
+    return prisma.integration.findUnique({ where: { id } });
+  },
   broadcastNativeDataChange,
 };

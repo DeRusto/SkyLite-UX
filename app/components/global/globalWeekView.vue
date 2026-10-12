@@ -32,7 +32,13 @@ if (import.meta.client) {
   });
 }
 
-const { isToday, getAllEventsForDay, handleEventClick: _handleEventClick, getLocalWeekDays, getEventsForDateRange } = useCalendar();
+const {
+  isToday,
+  getAllEventsForDay,
+  handleEventClick: _handleEventClick,
+  getLocalWeekDays,
+  getEventsForDateRange,
+} = useCalendar();
 
 const weekDays = computed(() => {
   const start = props.startDate || getStableDate();
@@ -64,7 +70,9 @@ const nextWeekEvents = computed(() => {
   const dayOfWeek = sunday.getDay();
   sunday.setDate(sunday.getDate() - dayOfWeek);
   const nextWeekSunday = new Date(sunday.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const nextWeekSaturday = new Date(nextWeekSunday.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const nextWeekSaturday = new Date(
+    nextWeekSunday.getTime() + 6 * 24 * 60 * 60 * 1000,
+  );
 
   return getEventsForDateRange(nextWeekSunday, nextWeekSaturday);
 });
@@ -137,10 +145,10 @@ function handleAddEvent(day: Date) {
           </div>
           <div
             class="overflow-y-auto px-2 py-1 space-y-1 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex flex-col"
-            style="height: 240px;"
+            style="height: 240px"
           >
             <div
-              v-for="(event) in getAllEventsForDay(events, day)"
+              v-for="event in getAllEventsForDay(events, day)"
               :key="event.id"
               class="rounded"
             >
