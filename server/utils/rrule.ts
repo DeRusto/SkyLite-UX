@@ -310,6 +310,13 @@ function calculateFastPathApproximate(
     }
     nextDate = currentDate;
 
+    // A weekday rule ("first Monday") can land anywhere in the target month,
+    // including before the previous due date's day of month, so the lower
+    // bound is the start of that month.
+    if (!bymonthday && rrule.byday && rrule.byday.length > 0) {
+      nextDate.setDate(1);
+    }
+
     return capAtUntil(nextDate);
   }
 

@@ -116,6 +116,25 @@ describe("calculateNextDueDate", () => {
       expect(result).not.toBeNull();
       expect(result!.toISOString().split("T")[0]).toBe("2025-01-23");
     });
+
+    it("should not skip a monthly weekday occurrence that falls before the same day of month", () => {
+      const rrule: ICalEvent["rrule"] = { freq: "MONTHLY", interval: 1, byday: ["1MO"] };
+      const originalDTSTART = new Date("2026-10-05T00:00:00");
+      const previousDueDate = new Date("2026-10-05T23:59:59.999");
+      const referenceDate = new Date("2026-10-05T00:00:00");
+
+      const result = calculateNextDueDate(
+        rrule,
+        originalDTSTART,
+        previousDueDate,
+        referenceDate,
+      );
+
+      expect(result).not.toBeNull();
+      expect(result!.getFullYear()).toBe(2026);
+      expect(result!.getMonth()).toBe(10);
+      expect(result!.getDate()).toBe(2);
+    });
   });
 
   describe("daily recurrence", () => {

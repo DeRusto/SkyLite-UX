@@ -325,6 +325,7 @@ E2E tests are configured as a separate Vitest project in `vitest.config.ts`. The
 - **Global Setup** (`test/e2e/globalSetup.ts`): Uses `createTest()` to initialize the Nuxt test environment and `exposeContextToEnv()` to make the context available to test files
 - **Setup Files** (`test/e2e/setup.ts`): Each test file calls `recoverContextFromEnv()` to restore the shared context
 - **Vitest Project**: Configured with `testTimeout: 60_000`, `hookTimeout: 180_000`, and `pool: "forks"`
+- **Database cleanup** (`test/e2e/cleanupDb.ts`): After the run, test records are deleted by name. This only happens when the database named in `DATABASE_URL` contains `test` (for example `skylite_test`), or when `E2E_DB_CLEANUP=true` is set. Run e2e tests against a separate test database, never your household data.
 
 **Example e2e test structure:**
 

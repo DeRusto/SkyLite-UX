@@ -55,8 +55,29 @@ const SHOPPING_LIST_NAMES = [
   "List to Delete",
 ] as const;
 
+// Cleanup deletes rows by fixed names, so it only runs against a database
+// that is clearly a test database (name contains "test") or when explicitly
+// allowed with E2E_DB_CLEANUP=true. This keeps teardown away from real data.
+function isCleanupAllowed(databaseUrl: string): boolean {
+  if (process.env.E2E_DB_CLEANUP === "true") {
+    return true;
+  }
+  try {
+    const dbName = new URL(databaseUrl).pathname.replace(/^\//, "");
+    return /test/i.test(dbName);
+  } catch {
+    return false;
+  }
+}
+
 export async function cleanupE2eDb(): Promise<void> {
   if (!process.env.DATABASE_URL) {
+    return;
+  }
+  if (!isCleanupAllowed(process.env.DATABASE_URL)) {
+    consola.warn(
+      "E2E cleanup: skipped because DATABASE_URL does not name a test database. Set E2E_DB_CLEANUP=true to allow it.",
+    );
     return;
   }
   const prisma = new PrismaClient();

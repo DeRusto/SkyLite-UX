@@ -99,7 +99,7 @@ Skylite UX was conceived as an open source, self-hosted alternative to commercia
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](https://github.com/wetzel402/Skylite-UX/blob/main/LICENSE.md) for more information.
+Distributed under the GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](https://github.com/wetzel402/Skylite-UX/blob/main/LICENSE.md) for more information.
 
 ## Special Thanks
 

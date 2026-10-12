@@ -6,7 +6,7 @@ import prisma from "~/lib/prisma";
 import { createIntegrationService, integrationRegistry } from "~/types/integrations";
 
 import { normalizeWebcalUrl } from "../../utils/icalUrl";
-import { sanitizeIntegration } from "../../utils/sanitizeIntegration";
+import { sanitizeIntegration, SECRET_SETTINGS_KEYS } from "../../utils/sanitizeIntegration";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -54,11 +54,13 @@ export default defineEventHandler(async (event) => {
         const currentSettings = currentIntegration.settings as Record<string, unknown> | null;
         const newSettings = settings as Record<string, unknown>;
 
-        if (!newSettings.clientSecret && currentSettings?.clientSecret) {
-          preservedSettings = {
-            ...newSettings,
-            clientSecret: currentSettings.clientSecret,
-          };
+        const preserved: Record<string, unknown> = {};
+        for (const key of SECRET_SETTINGS_KEYS) {
+          if (newSettings[key] === undefined && currentSettings?.[key] !== undefined)
+            preserved[key] = currentSettings[key];
+        }
+        if (Object.keys(preserved).length > 0) {
+          preservedSettings = { ...newSettings, ...preserved };
           updatedData.settings = preservedSettings;
         }
       }

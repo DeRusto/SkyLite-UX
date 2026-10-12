@@ -40,7 +40,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "save", event: CalendarEvent): void;
-  (e: "delete", eventId: string): void;
+  (e: "delete", eventId: string, sourceCalendars?: SourceCalendar[]): void;
 }>();
 
 const { users, fetchUsers } = useUsers();
@@ -92,6 +92,8 @@ const availableIntegrations = ref<
   }>
 >([]);
 const selectedEditableCalendars = ref<Set<string>>(new Set());
+// Stored start/end of a local recurring series when editing one occurrence.
+const seriesDates = ref<{ start: Date; end: Date } | null>(null);
 const calendarEventUsers = ref<
   Map<
     string,
@@ -883,6 +885,7 @@ function handleAllDayToggle() {
 watch(
   () => props.event,
   async (newEvent) => {
+    seriesDates.value = null;
     if (newEvent && newEvent.id) {
       selectedEditableCalendars.value.clear();
       const isExpandedEvent = newEvent.id.includes("-");
@@ -896,6 +899,10 @@ watch(
         );
         if (fetchedEvent) {
           const fetchedCalendarEvent = fetchedEvent;
+          seriesDates.value = {
+            start: new Date(fetchedCalendarEvent.start),
+            end: new Date(fetchedCalendarEvent.end),
+          };
           originalEvent = {
             ...fetchedCalendarEvent,
 
@@ -1016,6 +1023,19 @@ watch(
     }
     else {
       resetForm();
+
+      // A new event opened from a specific day carries that day as its start.
+      if (newEvent?.start) {
+        const start = new Date(newEvent.start);
+        const selectedDay = new CalendarDate(
+          start.getFullYear(),
+          start.getMonth() + 1,
+          start.getDate(),
+        );
+        startDate.value = selectedDay;
+        endDate.value = selectedDay;
+        allDay.value = newEvent.allDay || false;
+      }
     }
   },
   { immediate: true },
@@ -1452,6 +1472,25 @@ function adjustRecurrenceDates(
   return { start, end };
 }
 
+// Saving an occurrence of a local recurring event updates the whole series.
+// Shift the series by however far the user moved this occurrence, so a
+// title-only edit keeps the series start instead of moving it to this date.
+function mapOccurrenceEditToSeries(
+  start: Date,
+  end: Date,
+): { start: Date; end: Date } {
+  if (!seriesDates.value || !props.event?.start || !isRecurring.value) {
+    return { start, end };
+  }
+
+  const shift = start.getTime() - new Date(props.event.start).getTime();
+  const seriesStart = new Date(seriesDates.value.start.getTime() + shift);
+  return {
+    start: seriesStart,
+    end: new Date(seriesStart.getTime() + (end.getTime() - start.getTime())),
+  };
+}
+
 function buildEventData(start: Date, end: Date): CalendarEvent {
   const eventTitle = title.value.trim() ? title.value : "(no title)";
 
@@ -1528,7 +1567,11 @@ function handleSave() {
   }
 
   const adjustedDates = adjustRecurrenceDates(dates.start, dates.end);
-  const eventData = buildEventData(adjustedDates.start, adjustedDates.end);
+  const seriesAdjusted = mapOccurrenceEditToSeries(
+    adjustedDates.start,
+    adjustedDates.end,
+  );
+  const eventData = buildEventData(seriesAdjusted.start, seriesAdjusted.end);
 
   emit("save", eventData);
 }
@@ -1568,7 +1611,7 @@ function handleDelete() {
     return;
   }
 
-  emit("delete", eventId);
+  emit("delete", eventId, sourceCalendars);
 }
 </script>
 

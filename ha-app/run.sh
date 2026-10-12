@@ -38,6 +38,15 @@ if [ "$database" = "bundled" ]; then
     exit 1
   fi
   export PATH="$PG_BIN:$PATH"
+
+  wait_for_postgres() {
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      if gosu postgres pg_isready -q -h localhost -p 5432; then return 0; fi
+      sleep 1
+    done
+    echo "Bundled PostgreSQL did not become ready. See ${PGDATA}/logfile." >&2
+    exit 1
+  }
   
   if [ ! -f "$PWFILE" ]; then
     mkdir -p "$data_location"
@@ -51,24 +60,23 @@ if [ "$database" = "bundled" ]; then
     gosu postgres initdb -D $PGDATA --locale=C.UTF-8
     gosu postgres pg_ctl -D $PGDATA -l ${PGDATA}/logfile start || true
     sleep 2
-    for _ in 1 2 3 4 5 6 7 8 9 10; do
-      if gosu postgres pg_isready -D $PGDATA 2>/dev/null; then break; fi
-      sleep 1
-    done
+    wait_for_postgres
     gosu postgres psql -d postgres -c "CREATE USER skylite WITH PASSWORD '$SKYLITE_PW';"
     gosu postgres psql -d postgres -c "CREATE DATABASE skylite OWNER skylite;"
   else
     gosu postgres pg_ctl -D $PGDATA -l ${PGDATA}/logfile start || true
-    for _ in 1 2 3 4 5 6 7 8 9 10; do
-      if gosu postgres pg_isready -D $PGDATA 2>/dev/null; then break; fi
-      sleep 1
-    done
+    wait_for_postgres
   fi
 
   export DATABASE_URL="postgresql://skylite:${SKYLITE_PW}@localhost:5432/skylite"
 else
   if [ -n "$DB_HOSTNAME" ] && [ -n "$DB_USERNAME" ] && [ -n "$DB_PASSWORD" ]; then
-    export DATABASE_URL="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOSTNAME}:${DB_PORT}/${DB_DATABASE_NAME}"
+    # Percent-encode credentials so characters like / # % @ in a password
+    # do not change how the URL is parsed.
+    DB_USERNAME_ENC="$(jq -rn --arg v "$DB_USERNAME" '$v|@uri')"
+    DB_PASSWORD_ENC="$(jq -rn --arg v "$DB_PASSWORD" '$v|@uri')"
+    DB_DATABASE_NAME_ENC="$(jq -rn --arg v "$DB_DATABASE_NAME" '$v|@uri')"
+    export DATABASE_URL="postgresql://${DB_USERNAME_ENC}:${DB_PASSWORD_ENC}@${DB_HOSTNAME}:${DB_PORT}/${DB_DATABASE_NAME_ENC}"
   else
     echo "External database selected but DB_HOSTNAME, DB_USERNAME or DB_PASSWORD missing." >&2
     exit 1

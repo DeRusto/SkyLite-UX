@@ -9,7 +9,7 @@ import {
   subWeeks,
 } from "date-fns";
 
-import type { CalendarEvent, CalendarView } from "~/types/calendar";
+import type { CalendarEvent, CalendarView, SourceCalendar } from "~/types/calendar";
 import type { Integration } from "~/types/database";
 
 import GlobalDateHeader from "~/components/global/globalDateHeader.vue";
@@ -33,7 +33,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "eventAdd", event: CalendarEvent): void;
   (e: "eventUpdate", event: CalendarEvent): void;
-  (e: "eventDelete", eventId: string): void;
+  (e: "eventDelete", eventId: string, sourceCalendars?: SourceCalendar[]): void;
   (e: "userFilterChange", userIds: string[]): void;
   (e: "viewChange", view: CalendarView): void;
 }>();
@@ -202,8 +202,8 @@ function handleEventSave(event: CalendarEvent) {
   selectedEvent.value = null;
 }
 
-function handleEventDelete(eventId: string) {
-  emit("eventDelete", eventId);
+function handleEventDelete(eventId: string, sourceCalendars?: SourceCalendar[]) {
+  emit("eventDelete", eventId, sourceCalendars);
   isEventDialogOpen.value = false;
   selectedEvent.value = null;
 }

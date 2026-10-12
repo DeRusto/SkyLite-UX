@@ -18,7 +18,7 @@ export function useCalendarEvents() {
   const { data: events } = useNuxtData<CalendarEventResponse[]>("calendar-events");
   const { integrations } = useIntegrations();
   const { users } = useUsers();
-  const { getEventUserColors, allEvents } = useCalendar();
+  const { getEventUserColors } = useCalendar();
   const { showSuccess, showError, showWarning } = useAlertToast();
 
   const currentEvents = computed(() => (events.value || []).map(event => ({
@@ -309,76 +309,22 @@ export function useCalendarEvents() {
     return updateEventObject(eventOrId);
   };
 
-  const deleteEvent = async (eventId: string) => {
+  // Native delete by ID. The calendar page routes integration deletes itself
+  // and may already have removed the event from the cache, so this must not
+  // depend on finding the event locally.
+  const deleteEvent = async (id: string) => {
     try {
-      const event = allEvents.value.find(e => e.id === eventId) as CalendarEvent | undefined;
+      await $fetch(`/api/calendar-events/${id}` as string, {
+        method: "DELETE",
+      });
 
-      if (!event) {
-        showError("Event Not Found", "The event could not be found.");
-        return;
-      }
+      await refreshNuxtData("calendar-events");
 
-      if (event.integrationId) {
-        const integration = typedIntegrations.value.find(i => i.id === event.integrationId);
-        if (!integration) {
-          showError("Integration Not Found", "The linked calendar integration could not be found.");
-          return;
-        }
-
-        const config = integrationRegistry.get(`${integration.type}:${integration.service}`);
-        if (config?.capabilities.includes("delete_events")) {
-          const integrationEventId = getIntegrationEventId(event, integration);
-          if (!integrationEventId) {
-            showError("Delete Failed", "Could not determine the integration event ID.");
-            return;
-          }
-
-          await $fetch(`/api/integrations/${integration.service}/events/${integrationEventId}`, {
-            method: "DELETE",
-            query: {
-              integrationId: integration.id,
-              calendarId: event.calendarId,
-            },
-          });
-
-          await refreshNuxtData("calendar-events");
-          showSuccess("Event Deleted", "Integration event deleted successfully");
-          return;
-        }
-        else {
-          showError("Not Supported", "Deleting events from this integration is not supported");
-          return;
-        }
-      }
-
-      // Local event optimistic update
-      const previousEvents = structuredClone(events.value ?? []);
-
-      await performOptimisticUpdate(
-        () => $fetch<void>(`/api/calendar-events/${eventId}`, {
-          method: "DELETE",
-        }),
-        () => {
-          if (events.value && Array.isArray(events.value)) {
-            const index = events.value.findIndex((e: CalendarEventResponse) => e.id === eventId);
-            if (index !== -1) {
-              events.value.splice(index, 1);
-            }
-          }
-        },
-        () => {
-          if (events.value) {
-            events.value.splice(0, events.value.length, ...previousEvents);
-          }
-        },
-      );
-
-      showSuccess("Event Deleted", "Local event deleted successfully");
       return true;
     }
     catch (err) {
-      const message = getErrorMessage(err, "Failed to delete the event");
-      showError("Failed to Delete Event", message);
+      error.value = "Failed to delete calendar event";
+      consola.error("Use Calendar Events: Error deleting calendar event:", err);
       throw err;
     }
   };

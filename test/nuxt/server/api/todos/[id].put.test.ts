@@ -24,6 +24,12 @@ vi.mock("~~/server/utils/rrule", () => ({
 }));
 
 describe("pUT /api/todos/[id]", () => {
+  beforeEach(() => {
+    // The handler runs its writes in an interactive transaction; run the
+    // callback against the same mocked client.
+    prisma.$transaction.mockImplementation(((cb: (tx: typeof prisma) => unknown) => cb(prisma)) as never);
+    prisma.todo.updateMany.mockResolvedValue({ count: 1 });
+  });
 
   it("is registered as an event handler", () =>
     expect(defineEventHandler).toHaveBeenCalled());
@@ -306,6 +312,38 @@ describe("pUT /api/todos/[id]", () => {
     expect(prisma.todo.update).toHaveBeenCalled();
     expect(prisma.todo.create).not.toHaveBeenCalled();
     expect(response).toEqual(mockResponse);
+  });
+
+  it("does not create a second occurrence when another request already completed the todo", async () => {
+    const mockCurrentTodo = createBaseTodo({
+      completed: false,
+      recurringGroupId: "group-1",
+      rrule: { freq: "DAILY", interval: 1 } as ICalEvent["rrule"],
+    });
+
+    prisma.todo.findUnique.mockResolvedValue(mockCurrentTodo);
+    // A concurrent request won the completion claim.
+    prisma.todo.updateMany.mockResolvedValue({ count: 0 });
+    prisma.todo.update.mockResolvedValue(
+      createBaseTodoWithColumn({ ...mockCurrentTodo, completed: true }),
+    );
+
+    const event = createMockH3Event({
+      params: { id: "todo-1" },
+      body: {
+        ...createBaseUpdateBody(),
+        completed: true,
+        clientDate: "2025-11-25",
+      },
+    });
+
+    await handler(event);
+
+    expect(prisma.todo.updateMany).toHaveBeenCalledWith({
+      where: { id: "todo-1", completed: false },
+      data: { completed: true },
+    });
+    expect(prisma.todo.create).not.toHaveBeenCalled();
   });
 
   describe("error handling", () => {
