@@ -56,7 +56,8 @@ export default defineEventHandler(async (event) => {
 
         const preserved: Record<string, unknown> = {};
         for (const key of SECRET_SETTINGS_KEYS) {
-          if (newSettings[key] === undefined && currentSettings?.[key] !== undefined)
+          // The dialog never sees stored secrets, so it sends them blank.
+          if (!newSettings[key] && currentSettings?.[key])
             preserved[key] = currentSettings[key];
         }
         if (Object.keys(preserved).length > 0) {

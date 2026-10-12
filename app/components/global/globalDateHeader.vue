@@ -214,6 +214,15 @@ function handleToday() {
         Today
       </UButton>
 
+      <UButton
+        icon="i-lucide-chevron-left"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        aria-label="Previous"
+        @click="handlePrevious"
+      />
+
       <h2 class="font-semibold text-base text-highlighted text-center flex-1 min-w-0 truncate">
         <NuxtTime
           v-if="viewTitle === 'month'"
@@ -269,6 +278,15 @@ function handleToday() {
           year="numeric"
         />
       </h2>
+
+      <UButton
+        icon="i-lucide-chevron-right"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        aria-label="Next"
+        @click="handleNext"
+      />
 
       <div class="flex items-center gap-1">
         <UPopover
