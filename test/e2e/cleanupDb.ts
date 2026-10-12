@@ -55,9 +55,8 @@ const SHOPPING_LIST_NAMES = [
   "List to Delete",
 ] as const;
 
-// Cleanup deletes rows by fixed names, so it only runs against a database
-// that is clearly a test database (name contains "test") or when explicitly
-// allowed with E2E_DB_CLEANUP=true. This keeps teardown away from real data.
+// shortcut: deletes rows by fixed names, so it is limited to databases named
+// *test* (or E2E_DB_CLEANUP=true); track created IDs if tests ever share a real DB.
 function isCleanupAllowed(databaseUrl: string): boolean {
   if (process.env.E2E_DB_CLEANUP === "true") {
     return true;

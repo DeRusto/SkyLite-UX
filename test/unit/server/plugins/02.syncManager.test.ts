@@ -319,6 +319,47 @@ describe("sendCachedSyncData", () => {
     syncManager.clearIntegrationSync("int-send");
   });
 
+  it("replays the cached payload to the next client without refetching", async () => {
+    createIntegrationServiceMock.mockResolvedValue(mockService);
+
+    const { setupIntegrationSync, sendCachedSyncData, syncManager } = await import("../../../../server/plugins/02.syncManager");
+
+    const integration = {
+      id: "int-replay",
+      name: "Replay Test",
+      type: "calendar" as const,
+      service: "iCal" as const,
+      enabled: true,
+      apiKey: null,
+      baseUrl: null,
+      icon: null,
+      settings: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await setupIntegrationSync(integration, false);
+
+    const prisma = (await import("../../../../app/lib/prisma")).default;
+    vi.mocked(prisma.integration.findUnique).mockResolvedValue(integration as Awaited<ReturnType<typeof prisma.integration.findUnique>>);
+
+    const syncInterval = syncManager.getSyncIntervals().get("int-replay")!;
+    const makeEvent = (write: ReturnType<typeof vi.fn>) =>
+      ({ node: { res: { write } } }) as unknown as Parameters<typeof sendCachedSyncData>[0];
+
+    await sendCachedSyncData(makeEvent(vi.fn()), "int-replay", syncInterval);
+    mockService.getEvents.mockClear();
+
+    const secondWrite = vi.fn();
+    await sendCachedSyncData(makeEvent(secondWrite), "int-replay", syncInterval);
+
+    expect(mockService.getEvents).not.toHaveBeenCalled();
+    expect(secondWrite).toHaveBeenCalledTimes(1);
+    expect(secondWrite.mock.calls[0]?.[0]).toContain("int-replay");
+
+    syncManager.clearIntegrationSync("int-replay");
+  });
+
   it("catches and logs when service getEvents throws", async () => {
     const failingService = {
       initialize: vi.fn().mockResolvedValue(undefined),
