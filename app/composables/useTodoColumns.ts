@@ -98,7 +98,7 @@ export function useTodoColumns() {
           if (todoColumns.value && Array.isArray(todoColumns.value)) {
             const columnIndex = todoColumns.value.findIndex((c: TodoColumn) => c.id === columnId);
             if (columnIndex !== -1) {
-              todoColumns.value[columnIndex] = { ...todoColumns.value[columnIndex], ...updates } as any;
+              todoColumns.value[columnIndex] = { ...todoColumns.value[columnIndex], ...updates } as TodoColumn;
             }
           }
         },

@@ -1,5 +1,3 @@
-import { encryptToken as encryptCalendarToken } from "~~/server/integrations/google-calendar/oauth";
-import { encryptToken as encryptPhotosToken } from "~~/server/integrations/google-photos/oauth";
 import { encryptApiKey } from "~~/server/utils/oauthCrypto";
 import { consola } from "consola";
 import { createError, defineEventHandler, readBody } from "h3";
@@ -21,31 +19,14 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await readBody(event);
-    const { name, type, service, apiKey, icon, enabled, settings, accessToken, refreshToken, tokenExpiry, tokenType } = body;
+    const { name, type, service, apiKey, icon, enabled, settings } = body;
     let baseUrl = body.baseUrl;
     if (baseUrl && typeof baseUrl === "string") {
       baseUrl = normalizeWebcalUrl(baseUrl);
     }
     let preservedSettings = settings;
 
-    // Encrypt tokens if provided (Google Calendar/Photos) — fork addition
-    let finalAccessToken = accessToken;
-    let finalRefreshToken = refreshToken;
-
-    if (service === "google-calendar") {
-      if (accessToken)
-        finalAccessToken = encryptCalendarToken(accessToken);
-      if (refreshToken)
-        finalRefreshToken = encryptCalendarToken(refreshToken);
-    }
-    else if (service === "google-photos") {
-      if (accessToken)
-        finalAccessToken = encryptPhotosToken(accessToken);
-      if (refreshToken)
-        finalRefreshToken = encryptPhotosToken(refreshToken);
-    }
-
-    if (apiKey || baseUrl || settings || accessToken || refreshToken) {
+    if (apiKey || baseUrl || settings) {
       const currentIntegration = await prisma.integration.findUnique({
         where: { id },
       });
@@ -67,10 +48,6 @@ export default defineEventHandler(async (event) => {
         ...(icon !== undefined && { icon }),
         ...(enabled !== undefined && { enabled }),
         ...(settings && { settings }),
-        ...(finalAccessToken && { accessToken: finalAccessToken }),
-        ...(finalRefreshToken && { refreshToken: finalRefreshToken }),
-        ...(tokenExpiry && { tokenExpiry: new Date(tokenExpiry) }),
-        ...(tokenType && { tokenType }),
       };
 
       if (settings && typeof settings === "object") {
@@ -129,10 +106,6 @@ export default defineEventHandler(async (event) => {
             name: updatedData.name || "Temp",
             icon: updatedData.icon || null,
             settings: updatedData.settings || {},
-            accessToken: updatedData.accessToken || null,
-            refreshToken: updatedData.refreshToken || null,
-            tokenExpiry: updatedData.tokenExpiry ? new Date(updatedData.tokenExpiry) : null,
-            tokenType: updatedData.tokenType || null,
             createdAt: new Date(),
             updatedAt: new Date(),
           };
@@ -168,10 +141,6 @@ export default defineEventHandler(async (event) => {
         ...(icon !== undefined && { icon }),
         ...(enabled !== undefined && { enabled }),
         ...(preservedSettings && { settings: preservedSettings }),
-        ...(finalAccessToken && { accessToken: finalAccessToken }),
-        ...(finalRefreshToken && { refreshToken: finalRefreshToken }),
-        ...(tokenExpiry && { tokenExpiry: new Date(tokenExpiry) }),
-        ...(tokenType && { tokenType }),
       },
     });
 

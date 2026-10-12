@@ -1,7 +1,17 @@
 <script setup lang="ts">
+type EditableReward = {
+  id: string;
+  name: string;
+  description: string | null;
+  pointCost: number;
+  quantityAvailable: number | null;
+  expiresAt: string | null;
+  icon: string | null;
+};
+
 const props = defineProps<{
   isOpen: boolean;
-  reward?: any | null;
+  reward?: EditableReward | null;
 }>();
 
 const emit = defineEmits<{
@@ -59,8 +69,8 @@ async function handleSave() {
     };
 
     if (props.reward?.id) {
-      await $fetch(`/api/rewards/${props.reward.id}`, {
-        method: "PUT" as any,
+      await $fetch(`/api/rewards/${props.reward.id}` as string, {
+        method: "PUT",
         body: payload,
       });
       showSuccess("Reward Updated", `"${name.value}" has been updated.`);
@@ -96,8 +106,8 @@ async function handleDelete() {
     isSubmitting.value = true;
     error.value = null;
 
-    await $fetch(`/api/rewards/${props.reward.id}`, {
-      method: "DELETE" as any,
+    await $fetch(`/api/rewards/${props.reward.id}` as string, {
+      method: "DELETE",
     });
 
     showSuccess("Reward Deleted", `"${name.value}" has been removed.`);

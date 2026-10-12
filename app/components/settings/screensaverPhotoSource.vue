@@ -10,7 +10,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   photoSourceChange: [integrationId: string];
   immichAlbumsSelected: [albumIds: string[]];
-  googlePhotosAlbumsSelected: [albumIds: string[]];
   syncNow: [];
 }>();
 
@@ -26,21 +25,10 @@ const immichIntegration = computed(() => {
   return photoIntegrations.value.find(i => i.service === "immich") || null;
 });
 
-const googlePhotosIntegration = computed(() => {
-  return photoIntegrations.value.find(i => i.service === "google-photos") || null;
-});
-
 const selectedImmichAlbums = computed(() => {
   if (!immichIntegration.value?.settings)
     return [];
   const s = immichIntegration.value.settings as Record<string, unknown>;
-  return Array.isArray(s.selectedAlbums) ? s.selectedAlbums as string[] : [];
-});
-
-const selectedGooglePhotosAlbums = computed(() => {
-  if (!googlePhotosIntegration.value?.settings)
-    return [];
-  const s = googlePhotosIntegration.value.settings as Record<string, unknown>;
   return Array.isArray(s.selectedAlbums) ? s.selectedAlbums as string[] : [];
 });
 
@@ -80,7 +68,7 @@ function formatLastSync(date: Date | null): string {
         No photo integration configured.
       </p>
       <p class="text-xs text-muted mt-1">
-        Add an Immich or Google Photos integration in the Integrations section above.
+        Add an Immich integration in the Integrations section above.
       </p>
     </div>
 
@@ -109,7 +97,7 @@ function formatLastSync(date: Date | null): string {
               {{ integration.name }}
             </p>
             <p class="text-xs text-muted capitalize">
-              {{ integration.service === 'google-photos' ? 'Google Photos' : integration.service }}
+              {{ integration.service }}
             </p>
           </div>
           <div v-if="selectedPhotoIntegration?.id === integration.id">
@@ -157,32 +145,6 @@ function formatLastSync(date: Date | null): string {
         :selected-albums="selectedImmichAlbums"
         @albums-selected="(ids: string[]) => emit('immichAlbumsSelected', ids)"
       />
-
-      <!-- Google Photos Album Selector -->
-      <div v-else-if="selectedPhotoIntegration?.service === 'google-photos'" class="space-y-4">
-        <div class="flex items-center justify-between">
-          <label class="block text-sm font-medium text-highlighted">
-            Select Albums for Screensaver
-          </label>
-          <div class="flex gap-2">
-            <UButton
-              size="xs"
-              variant="ghost"
-              @click="emit('googlePhotosAlbumsSelected', [])"
-            >
-              Clear
-            </UButton>
-          </div>
-        </div>
-        <p class="text-sm text-muted">
-          Google Photos albums will appear here once you've authenticated with Google Photos.
-          <br>
-          <span class="text-xs opacity-75">Note: Album selection for Google Photos screensaver is coming soon.</span>
-        </p>
-        <div v-if="selectedGooglePhotosAlbums.length > 0" class="text-sm text-muted">
-          {{ selectedGooglePhotosAlbums.length }} {{ selectedGooglePhotosAlbums.length === 1 ? 'album' : 'albums' }} selected
-        </div>
-      </div>
     </template>
 
     <!-- Single Photo Integration Display -->
@@ -196,7 +158,7 @@ function formatLastSync(date: Date | null): string {
             {{ photoIntegrations[0]?.name }}
           </p>
           <p class="text-xs text-muted capitalize">
-            {{ photoIntegrations[0]?.service === 'google-photos' ? 'Google Photos' : photoIntegrations[0]?.service }}
+            {{ photoIntegrations[0]?.service }}
           </p>
         </div>
         <UButton
@@ -231,32 +193,6 @@ function formatLastSync(date: Date | null): string {
         :selected-albums="selectedImmichAlbums"
         @albums-selected="(ids: string[]) => emit('immichAlbumsSelected', ids)"
       />
-
-      <!-- Album Selection - Google Photos -->
-      <div v-else-if="selectedPhotoIntegration?.service === 'google-photos'" class="space-y-4">
-        <div class="flex items-center justify-between">
-          <label class="block text-sm font-medium text-highlighted">
-            Select Albums for Screensaver
-          </label>
-          <div class="flex gap-2">
-            <UButton
-              size="xs"
-              variant="ghost"
-              @click="emit('googlePhotosAlbumsSelected', [])"
-            >
-              Clear
-            </UButton>
-          </div>
-        </div>
-        <p class="text-sm text-muted">
-          Google Photos albums will appear here once you've authenticated with Google Photos.
-          <br>
-          <span class="text-xs opacity-75">Note: Album selection for Google Photos screensaver is coming soon.</span>
-        </p>
-        <div v-if="selectedGooglePhotosAlbums.length > 0" class="text-sm text-muted">
-          {{ selectedGooglePhotosAlbums.length }} {{ selectedGooglePhotosAlbums.length === 1 ? 'album' : 'albums' }} selected
-        </div>
-      </div>
     </template>
   </div>
 </template>

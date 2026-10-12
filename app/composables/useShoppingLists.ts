@@ -6,6 +6,15 @@ import { useAlertToast } from "~/composables/useAlertToast";
 import { getErrorMessage } from "~/utils/error";
 import { performOptimisticUpdate } from "~/utils/optimistic";
 
+// The cached lists are API responses: items carry the Prisma row shape, while
+// optimistic inserts and item endpoints return the app-level ShoppingListItem.
+type CachedList = ShoppingListWithOrderResponse;
+type CachedItem = CachedList["items"][number];
+
+function asCachedItem(item: ShoppingListItem): CachedItem {
+  return item as unknown as CachedItem;
+}
+
 export function useShoppingLists() {
   const loading = useState<boolean>("shopping-lists-loading", () => false);
   const error = useState<string | null>("shopping-lists-error", () => null);
@@ -98,7 +107,7 @@ export function useShoppingLists() {
           if (shoppingLists.value && Array.isArray(shoppingLists.value)) {
             const listIndex = shoppingLists.value.findIndex((l: ShoppingListWithOrderResponse) => l.id === listId);
             if (listIndex !== -1) {
-              shoppingLists.value[listIndex] = { ...shoppingLists.value[listIndex], ...updates } as any;
+              shoppingLists.value[listIndex] = { ...shoppingLists.value[listIndex], ...updates } as CachedList;
             }
           }
         },
@@ -140,11 +149,11 @@ export function useShoppingLists() {
             for (let listIndex = 0; listIndex < shoppingLists.value.length; listIndex++) {
               const list = shoppingLists.value[listIndex];
               if (list) {
-                const itemIndex = (list.items as any[])?.findIndex((i: any) => i.id === itemId);
+                const itemIndex = list.items?.findIndex(i => i.id === itemId);
                 if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
-                  const updatedItems = [...list.items] as any[];
-                  updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates };
-                  shoppingLists.value[listIndex] = { ...list, items: updatedItems } as any;
+                  const updatedItems = [...list.items];
+                  updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates } as CachedItem;
+                  shoppingLists.value[listIndex] = { ...list, items: updatedItems };
                   break;
                 }
               }
@@ -163,11 +172,11 @@ export function useShoppingLists() {
         for (let listIndex = 0; listIndex < shoppingLists.value.length; listIndex++) {
           const list = shoppingLists.value[listIndex];
           if (list) {
-            const itemIndex = (list.items as any[])?.findIndex((i: any) => i.id === itemId);
+            const itemIndex = list.items?.findIndex(i => i.id === itemId);
             if (itemIndex !== -1 && itemIndex !== undefined && list.items) {
-              const confirmedItems = [...list.items] as any[];
-              confirmedItems[itemIndex] = updatedItem;
-              shoppingLists.value[listIndex] = { ...list, items: confirmedItems } as any;
+              const confirmedItems = [...list.items];
+              confirmedItems[itemIndex] = asCachedItem(updatedItem);
+              shoppingLists.value[listIndex] = { ...list, items: confirmedItems };
               break;
             }
           }
@@ -211,9 +220,9 @@ export function useShoppingLists() {
             if (listIndex !== -1) {
               const list = shoppingLists.value[listIndex];
               if (list) {
-                const updatedItems = [...(list.items || []), newItem] as any[];
+                const updatedItems = [...(list.items || []), asCachedItem(newItem)];
                 const newCount = list._count ? { ...list._count, items: (list._count.items || 0) + 1 } : { items: 1 };
-                shoppingLists.value[listIndex] = { ...list, items: updatedItems, _count: newCount } as any;
+                shoppingLists.value[listIndex] = { ...list, items: updatedItems, _count: newCount };
               }
             }
           }
@@ -230,11 +239,11 @@ export function useShoppingLists() {
         if (listIndex !== -1) {
           const list = shoppingLists.value[listIndex];
           if (list && list.items) {
-            const tempIndex = (list.items as any[]).findIndex((i: any) => i.id === tempId);
+            const tempIndex = list.items.findIndex(i => i.id === tempId);
             if (tempIndex !== -1) {
-              const updatedItems = [...list.items] as any[];
-              updatedItems[tempIndex] = createdItem;
-              shoppingLists.value[listIndex] = { ...list, items: updatedItems } as any;
+              const updatedItems = [...list.items];
+              updatedItems[tempIndex] = asCachedItem(createdItem);
+              shoppingLists.value[listIndex] = { ...list, items: updatedItems };
             }
           }
         }
@@ -348,7 +357,7 @@ export function useShoppingLists() {
               createdAt: list.createdAt.toISOString(),
               updatedAt: list.updatedAt.toISOString(),
             }));
-            shoppingLists.value.splice(0, shoppingLists.value.length, ...updatedCache as any);
+            shoppingLists.value.splice(0, shoppingLists.value.length, ...updatedCache);
           }
         },
         () => {
@@ -369,7 +378,7 @@ export function useShoppingLists() {
     const previousLists = structuredClone(shoppingLists.value ?? []);
     try {
       const listIndex = currentShoppingLists.value.findIndex(list =>
-        (list.items as any[])?.some(item => item.id === itemId),
+        list.items?.some(item => item.id === itemId),
       );
 
       if (listIndex === -1)
@@ -379,8 +388,8 @@ export function useShoppingLists() {
       if (!list?.items)
         return;
 
-      const sortedItems = [...list.items].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-      const currentIndex = sortedItems.findIndex((item: any) => item.id === itemId);
+      const sortedItems = [...list.items].sort((a, b) => (a.order || 0) - (b.order || 0));
+      const currentIndex = sortedItems.findIndex(item => item.id === itemId);
 
       if (currentIndex === -1)
         return;
@@ -399,8 +408,8 @@ export function useShoppingLists() {
         return;
       }
 
-      const currentItem = sortedItems[currentIndex] as any;
-      const targetItem = sortedItems[targetIndex] as any;
+      const currentItem = sortedItems[currentIndex];
+      const targetItem = sortedItems[targetIndex];
 
       if (!currentItem || !targetItem)
         return;
@@ -408,7 +417,7 @@ export function useShoppingLists() {
       const currentOrder = currentItem.order || 0;
       const targetOrder = targetItem.order || 0;
 
-      const updatedItems = (list.items as any[]).map((item) => {
+      const updatedItems = list.items.map((item) => {
         if (item.id === currentItem.id) {
           return { ...item, order: targetOrder };
         }
@@ -429,7 +438,7 @@ export function useShoppingLists() {
         }),
         () => {
           if (shoppingLists.value && shoppingLists.value[listIndex]) {
-            shoppingLists.value[listIndex] = { ...list, items: updatedItems } as any;
+            shoppingLists.value[listIndex] = { ...list, items: updatedItems, createdAt: list.createdAt.toISOString(), updatedAt: list.updatedAt.toISOString() };
           }
         },
         () => {
@@ -461,12 +470,12 @@ export function useShoppingLists() {
             if (listIndex !== -1) {
               const list = shoppingLists.value[listIndex];
               if (list) {
-                const items = list.items as any[];
+                const items = list.items;
                 const itemsToDelete = completedItemIds || items.filter(item => item.checked).map(item => item.id) || [];
                 if (itemsToDelete.length > 0) {
                   const updatedItems = items.filter(item => !itemsToDelete.includes(item.id)) || [];
                   const newCount = list._count ? { ...list._count, items: Math.max(0, (list._count.items || 0) - itemsToDelete.length) } : { items: updatedItems.length };
-                  shoppingLists.value[listIndex] = { ...list, items: updatedItems, _count: newCount } as any;
+                  shoppingLists.value[listIndex] = { ...list, items: updatedItems, _count: newCount };
                 }
               }
             }

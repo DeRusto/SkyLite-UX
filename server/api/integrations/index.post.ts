@@ -1,5 +1,3 @@
-import { encryptToken as encryptCalendarToken } from "~~/server/integrations/google-calendar/oauth";
-import { encryptToken as encryptPhotosToken } from "~~/server/integrations/google-photos/oauth";
 import { encryptApiKey } from "~~/server/utils/oauthCrypto";
 import { consola } from "consola";
 import { createError, defineEventHandler, readBody } from "h3";
@@ -13,27 +11,10 @@ import { sanitizeIntegration } from "../../utils/sanitizeIntegration";
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
-    const { name, type, service, apiKey, icon, enabled, settings, accessToken, refreshToken, tokenExpiry, tokenType } = body;
+    const { name, type, service, apiKey, icon, enabled, settings } = body;
     let baseUrl = body.baseUrl;
     if (baseUrl && typeof baseUrl === "string") {
       baseUrl = normalizeWebcalUrl(baseUrl);
-    }
-
-    // Encrypt tokens if provided (Google Calendar/Photos) — fork addition
-    let finalAccessToken = accessToken;
-    let finalRefreshToken = refreshToken;
-
-    if (service === "google-calendar") {
-      if (accessToken)
-        finalAccessToken = encryptCalendarToken(accessToken);
-      if (refreshToken)
-        finalRefreshToken = encryptCalendarToken(refreshToken);
-    }
-    else if (service === "google-photos") {
-      if (accessToken)
-        finalAccessToken = encryptPhotosToken(accessToken);
-      if (refreshToken)
-        finalRefreshToken = encryptPhotosToken(refreshToken);
     }
 
     const integrationKey = `${type}:${service}`;
@@ -88,10 +69,6 @@ export default defineEventHandler(async (event) => {
         name: name || "Temp",
         icon: icon || null,
         settings: settings || {},
-        accessToken: finalAccessToken || null,
-        refreshToken: finalRefreshToken || null,
-        tokenExpiry: tokenExpiry ? new Date(tokenExpiry) : null,
-        tokenType: tokenType || null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -124,10 +101,6 @@ export default defineEventHandler(async (event) => {
         icon,
         enabled,
         settings,
-        accessToken: finalAccessToken,
-        refreshToken: finalRefreshToken,
-        tokenExpiry: tokenExpiry ? new Date(tokenExpiry) : null,
-        tokenType,
       },
     });
 

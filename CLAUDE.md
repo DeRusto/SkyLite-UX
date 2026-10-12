@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SkyLite-UX is an **open-source alternative to Skylight Calendar**, a self-hosted family management web app. Built with Nuxt 4, Vue 3, and TypeScript, deployed via Docker.
 
-**Core features**: Family calendar (Google Calendar two-way sync, iCal), chores system with points, rewards marketplace, weather (Open-Meteo, OpenWeatherMap, Home Assistant), photo screensaver (Google Photos, Immich), task lists, shopping lists (Mealie, Tandoor integration), meal planning, adult/child user roles.
+**Core features**: Family calendar (Google Calendar two-way sync, iCal), chores system with points, rewards marketplace, weather (Open-Meteo, OpenWeatherMap, Home Assistant), photo screensaver (Immich), task lists, shopping lists (Mealie, Tandoor integration), meal planning, adult/child user roles.
 
 ## Commands
 
@@ -21,11 +21,12 @@ npm run lint             # ESLint with auto-fix
 npm run format           # Prettier formatting
 npm run type-check       # TypeScript type checking
 
-# Testing (Playwright)
-npm test                 # Run all tests
+# Testing (Vitest)
+npm test                 # Run tests in watch mode
+npx vitest run --project unit --project nuxt   # Run unit + Nuxt tests once
 npm run test:ui          # Interactive test UI
-npm run test:headed      # Run tests in headed browser
-npm run test:settings    # Run settings regression tests only
+npm run test:coverage    # Coverage for unit + Nuxt projects
+npm run test:e2e         # End-to-end tests (needs a running server + DB)
 
 # Database
 npx prisma migrate dev   # Create and apply migrations
@@ -103,7 +104,7 @@ Always use `consola`, never `console.log`. Log level configured from `NUXT_PUBLI
 
 Required: `DATABASE_URL`
 
-Google OAuth (for Calendar/Photos): `NUXT_GOOGLE_CLIENT_ID`, `NUXT_GOOGLE_CLIENT_SECRET`, `NUXT_GOOGLE_REDIRECT_URI`, `NUXT_OAUTH_ENCRYPTION_KEY` (generate: `openssl rand -hex 32`)
+API key encryption: `NUXT_OAUTH_ENCRYPTION_KEY` (generate: `openssl rand -hex 32`). Google Calendar uses your own OAuth client ID and secret, entered in the Settings UI.
 
 Optional: `NUXT_PUBLIC_TZ`, `NUXT_PUBLIC_LOG_LEVEL`
 

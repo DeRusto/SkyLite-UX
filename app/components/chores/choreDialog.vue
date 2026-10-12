@@ -1,7 +1,18 @@
 <script setup lang="ts">
+type EditableChore = {
+  id: string;
+  name: string;
+  description: string | null;
+  pointValue: number;
+  recurrence: string;
+  assignedUserId: string | null;
+  dueDate: string | null;
+  icon: string | null;
+};
+
 const props = defineProps<{
   isOpen: boolean;
-  chore?: any | null;
+  chore?: EditableChore | null;
 }>();
 
 const emit = defineEmits<{
@@ -78,8 +89,8 @@ async function handleSave() {
     error.value = null;
 
     if (props.chore?.id) {
-      await $fetch(`/api/chores/${props.chore.id}`, {
-        method: "PUT" as any,
+      await $fetch(`/api/chores/${props.chore.id}` as string, {
+        method: "PUT",
         body: {
           name: name.value.trim(),
           description: description.value.trim() || undefined,
@@ -136,8 +147,8 @@ async function handleDelete() {
     isSubmitting.value = true;
     error.value = null;
 
-    await $fetch(`/api/chores/${props.chore.id}`, {
-      method: "DELETE" as any,
+    await $fetch(`/api/chores/${props.chore.id}` as string, {
+      method: "DELETE",
     });
 
     showSuccess("Chore Deleted", `"${name.value}" has been removed.`);

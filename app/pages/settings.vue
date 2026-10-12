@@ -4,6 +4,7 @@ import { consola } from "consola";
 import type {
   CreateIntegrationInput,
   CreateUserInput,
+  HouseholdSettingsData,
   Integration,
   User,
 } from "~/types/database";
@@ -61,11 +62,11 @@ async function handlePinProtectionToggle(enabled: boolean) {
 }
 
 // Household settings (needed by SettingsHouseholdCalendars) — fork addition
-const householdSettings = ref<any>(null);
+const householdSettings = ref<HouseholdSettingsData | null>(null);
 
 onMounted(async () => {
   try {
-    const settings = await $fetch<any>("/api/household/settings");
+    const settings = await $fetch<HouseholdSettingsData>("/api/household/settings");
     householdSettings.value = settings;
   }
   catch (err) {
@@ -83,7 +84,7 @@ function handleTriggerSync() {
 function handleUserSaved() {
   const calendarIntegrations = (integrations.value as Integration[] || []).filter(i => i.type === "calendar" && i.enabled);
   for (const integration of calendarIntegrations) {
-    if (integration.service === "google-calendar") {
+    if (integration.service === "google") {
       consola.debug(`Settings: Triggering sync for integration ${integration.id} to update user colors`);
       triggerImmediateSync("calendar", integration.id).catch((err) => {
         consola.warn(`Settings: Failed to trigger sync for ${integration.id}:`, err);

@@ -69,7 +69,7 @@ export function useScreensaverSettings() {
     }
   }
 
-  async function updateIntegrationAlbums(service: "immich" | "google-photos", albumIds: string[]) {
+  async function updateIntegrationAlbums(service: "immich", albumIds: string[]) {
     const integration = settings.value?.photoIntegrations.find(i => i.service === service);
     if (!integration)
       return;

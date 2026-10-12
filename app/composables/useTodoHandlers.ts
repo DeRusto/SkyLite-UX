@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 import { consola } from "consola";
 
 import type { Todo, TodoColumn, TodoListItem } from "~/types/database";
@@ -37,12 +39,22 @@ export function useTodoHandlers() {
   const editingTodoAsListItem = computed(() => {
     if (!editingTodo.value)
       return null;
-    return {
-      ...editingTodo.value,
-      name: editingTodo.value.title,
-      checked: editingTodo.value.completed,
-      notes: editingTodo.value.description,
-    } as any;
+    const todo = editingTodo.value;
+    const item: TodoListItem = {
+      id: todo.id,
+      name: todo.title,
+      checked: todo.completed,
+      order: todo.order,
+      notes: todo.description,
+      description: todo.description ?? "",
+      priority: todo.priority,
+      dueDate: todo.dueDate,
+      todoColumnId: todo.todoColumnId ?? "",
+      shoppingListId: "",
+      recurringGroupId: todo.recurringGroupId,
+      rrule: todo.rrule as TodoListItem["rrule"],
+    };
+    return item;
   });
 
   function openCreateColumn() {
@@ -113,7 +125,14 @@ export function useTodoHandlers() {
         showSuccess("Todo Updated", "The task has been updated.");
       }
       else {
-        await createTodo(todoData as any);
+        await createTodo({
+          ...todoData,
+          todoColumnId: todoData.todoColumnId || null,
+          completed: data.checked ?? false,
+          order: data.order ?? 0,
+          recurringGroupId: data.recurringGroupId ?? null,
+          rrule: (data.rrule ?? null) as Prisma.JsonValue,
+        });
         showSuccess("Todo Created", "The task has been created.");
       }
     }

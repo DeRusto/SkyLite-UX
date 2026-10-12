@@ -230,7 +230,7 @@ export function useSyncManager() {
       );
 
       const response = await $fetch("/api/sync/trigger", {
-        method: "POST" as any,
+        method: "POST",
         body: {
           integrationId,
           integrationType,

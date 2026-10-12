@@ -7,12 +7,8 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    // Carried over from the fork: OAuth credentials used by the fork's
-    // Google Calendar / Photos integration endpoints.
+    // Fork addition: key used to encrypt third-party API keys at rest.
     oauthEncryptionKey: "", // NUXT_OAUTH_ENCRYPTION_KEY
-    googleClientId: "", // NUXT_GOOGLE_CLIENT_ID
-    googleClientSecret: "", // NUXT_GOOGLE_CLIENT_SECRET
-    googleRedirectUri: "", // NUXT_GOOGLE_REDIRECT_URI
     public: {
       skyliteVersion: pkg.version,
       nuxtVersion: pkg.devDependencies.nuxt,

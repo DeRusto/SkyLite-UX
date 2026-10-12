@@ -171,10 +171,6 @@ model Integration {
   icon      String?
   enabled   Boolean  @default(true)
   settings  Json?
-  accessToken     String?
-  refreshToken    String?
-  tokenExpiry     DateTime?
-  tokenType       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

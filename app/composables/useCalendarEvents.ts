@@ -83,12 +83,12 @@ export function useCalendarEvents() {
             : null;
 
           if (integration && config) {
-            if (config.capabilities.includes("add_events")) {
-              await $fetch(`/api/integrations/${integration.service}/events`, {
+            if (config.capabilities.includes("add_events") && integration.service === "google") {
+              await $fetch("/api/integrations/google_calendar/events", {
                 method: "POST",
                 body: {
+                  ...event,
                   integrationId: integration.id,
-                  calendarEvent: event,
                   calendarId: user.calendarId,
                 },
               });
@@ -122,7 +122,7 @@ export function useCalendarEvents() {
         start: event.start.toISOString(),
         end: event.end.toISOString(),
         id: tempId,
-      } as any; // Temporary cast to match CalendarEventResponse shape for optimistic cache
+      };
 
       const createdEvent = await performOptimisticUpdate(
         () => $fetch<CalendarEventResponse>("/api/calendar-events", {
@@ -231,7 +231,7 @@ export function useCalendarEvents() {
                 ...event,
                 start: event.start.toISOString(),
                 end: event.end.toISOString(),
-              } as any;
+              } as CalendarEventResponse;
             }
           }
         },

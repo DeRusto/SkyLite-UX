@@ -34,7 +34,7 @@ export function useUsers() {
   const createUser = async (userData: CreateUserInput) => {
     try {
       const newUser = await $fetch<UserWithOrder>("/api/users", {
-        method: "POST" as any,
+        method: "POST",
         body: userData,
       });
 
@@ -54,7 +54,7 @@ export function useUsers() {
   const updateUser = async (id: string, updates: Partial<User>) => {
     try {
       const updatedUser = await $fetch<User>(`/api/users/${id}`, {
-        method: "PUT" as any,
+        method: "PUT",
         body: updates,
       });
 
@@ -103,7 +103,7 @@ export function useUsers() {
   const deleteUser = async (userId: string) => {
     try {
       await $fetch(`/api/users/${userId}`, {
-        method: "DELETE" as any,
+        method: "DELETE",
       });
 
       if (currentUser.value?.id === userId) {
@@ -170,7 +170,7 @@ export function useUsers() {
         .map(user => user.id);
 
       await $fetch("/api/users/reorder", {
-        method: "POST" as any,
+        method: "POST",
         body: { userIds: newOrder },
       });
 
