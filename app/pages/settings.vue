@@ -4,6 +4,7 @@ import { consola } from "consola";
 import type {
   CreateIntegrationInput,
   CreateUserInput,
+  HouseholdSettingsData,
   Integration,
   User,
 } from "~/types/database";
@@ -61,11 +62,11 @@ async function handlePinProtectionToggle(enabled: boolean) {
 }
 
 // Household settings (needed by SettingsHouseholdCalendars) — fork addition
-const householdSettings = ref<any>(null);
+const householdSettings = ref<HouseholdSettingsData | null>(null);
 
 onMounted(async () => {
   try {
-    const settings = await $fetch<any>("/api/household/settings");
+    const settings = await $fetch<HouseholdSettingsData>("/api/household/settings");
     householdSettings.value = settings;
   }
   catch (err) {

@@ -1,4 +1,5 @@
 import type { Priority, Prisma } from "@prisma/client";
+import type { JsonObject } from "type-fest";
 
 export type User = Prisma.UserGetPayload<Record<string, never>> & {
   avatar?: string | null;
@@ -96,7 +97,7 @@ export type ShoppingListItem = BaseListItem & {
   unit: string | null;
   label: string | null;
   food: string | null;
-  integrationData?: Record<string, any>;
+  integrationData?: JsonObject;
   source?: "native" | "integration";
   integrationId?: string;
 };
@@ -120,7 +121,7 @@ export type Integration = {
   baseUrl: string | null;
   icon: string | null;
   enabled: boolean;
-  settings: Record<string, any> | null;
+  settings: JsonObject | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -215,7 +216,25 @@ export type RawIntegrationItem = {
   quantity: number;
   unit: string | null;
   food: string | null;
-  integrationData?: Record<string, any>;
+  integrationData?: JsonObject;
 };
 
 export type { Priority };
+
+export type LinkedCalendarEntry = {
+  type: "HOLIDAY" | "FAMILY";
+  integrationId: string;
+  calendarId: string;
+};
+
+// Response shape of GET /api/household/settings
+export type HouseholdSettingsData = {
+  id: string;
+  familyName: string;
+  choreCompletionMode: "SELF_CLAIM" | "ADULT_VERIFY";
+  rewardApprovalThreshold: number | null;
+  linkedCalendars: LinkedCalendarEntry[] | null;
+  holidayColor: string | null;
+  familyColor: string | null;
+  pinProtectionEnabled: boolean;
+};

@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { consola } from "consola";
 
-import type { Integration } from "~/types/database";
+import type { HouseholdSettingsData, Integration, LinkedCalendarEntry } from "~/types/database";
 import type { CalendarConfig } from "~/types/integrations";
 
 import { useAlertToast } from "~/composables/useAlertToast";
 
 const props = defineProps<{
-  householdSettings: any;
+  householdSettings: HouseholdSettingsData | null;
   integrations: Integration[];
 }>();
 
 const emit = defineEmits<{
-  "update:householdSettings": [settings: any];
+  "update:householdSettings": [settings: HouseholdSettingsData];
   "triggerSync": [];
 }>();
 
@@ -67,8 +67,8 @@ function getLinkedCalendarsByType(type: "HOLIDAY" | "FAMILY"): string[] {
     return [];
 
   return props.householdSettings.linkedCalendars
-    .filter((l: any) => l.type === type)
-    .map((l: any) => `${l.integrationId}:${l.calendarId}`);
+    .filter((l: LinkedCalendarEntry) => l.type === type)
+    .map((l: LinkedCalendarEntry) => `${l.integrationId}:${l.calendarId}`);
 }
 
 async function toggleHouseholdCalendar(type: "HOLIDAY" | "FAMILY", value: string, checked: boolean) {
@@ -76,13 +76,16 @@ async function toggleHouseholdCalendar(type: "HOLIDAY" | "FAMILY", value: string
     return;
 
   const [integrationId, calendarId] = value.split(":");
-  let currentLinks = Array.isArray(props.householdSettings.linkedCalendars)
+  if (!integrationId || !calendarId)
+    return;
+
+  let currentLinks: LinkedCalendarEntry[] = Array.isArray(props.householdSettings.linkedCalendars)
     ? [...props.householdSettings.linkedCalendars]
     : [];
 
   if (checked) {
     const exists = currentLinks.some(
-      (l: any) => l.type === type && l.integrationId === integrationId && l.calendarId === calendarId,
+      (l: LinkedCalendarEntry) => l.type === type && l.integrationId === integrationId && l.calendarId === calendarId,
     );
     if (!exists) {
       currentLinks.push({ type, integrationId, calendarId });
@@ -90,7 +93,7 @@ async function toggleHouseholdCalendar(type: "HOLIDAY" | "FAMILY", value: string
   }
   else {
     currentLinks = currentLinks.filter(
-      (l: any) => !(l.type === type && l.integrationId === integrationId && l.calendarId === calendarId),
+      (l: LinkedCalendarEntry) => !(l.type === type && l.integrationId === integrationId && l.calendarId === calendarId),
     );
   }
 

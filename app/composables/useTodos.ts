@@ -115,7 +115,7 @@ export function useTodos() {
           if (todos.value && Array.isArray(todos.value)) {
             const todoIndex = todos.value.findIndex((t: TodoWithOrderResponse) => t.id === id);
             if (todoIndex !== -1) {
-              todos.value[todoIndex] = { ...todos.value[todoIndex], ...updates } as any;
+              todos.value[todoIndex] = { ...todos.value[todoIndex], ...updates } as TodoWithOrderResponse;
             }
           }
         },

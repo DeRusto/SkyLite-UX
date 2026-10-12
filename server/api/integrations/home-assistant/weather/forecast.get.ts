@@ -4,6 +4,8 @@
 import { PrismaClient } from "@prisma/client";
 import { consola } from "consola";
 
+import type { HourlyForecast } from "~/composables/useWeather";
+
 type HomeAssistantForecastItem = {
   condition: string;
   datetime: string;
@@ -86,7 +88,7 @@ export default defineEventHandler(async (event) => {
 
   const baseUrl = integration.baseUrl;
   const apiKey = integration.apiKey;
-  const targetEntityId = entityId || (integration.settings as any)?.entityId || "weather.home";
+  const targetEntityId = entityId || (integration.settings as { entityId?: string } | null)?.entityId || "weather.home";
 
   if (!baseUrl || !apiKey) {
     throw createError({
@@ -146,7 +148,7 @@ export default defineEventHandler(async (event) => {
 
     // Estimate hourly data (HA daily forecast doesn't give hourly, so we might return empty or mock it if needed)
     // For now, we will leave hourly empty as the UI handles missing hourly gracefully
-    const hourly: any[] = [];
+    const hourly: HourlyForecast[] = [];
 
     return {
       hourly,
@@ -157,14 +159,16 @@ export default defineEventHandler(async (event) => {
       fetchedAt: new Date().toISOString(),
     };
   }
-  catch (error: any) {
+  catch (error: unknown) {
     consola.error("Failed to fetch Home Assistant forecast:", error);
-    if (error.data) {
-      consola.error("HA Response Data:", error.data);
+    const data = error && typeof error === "object" && "data" in error ? error.data : undefined;
+    if (data) {
+      consola.error("HA Response Data:", data);
     }
+    const message = error instanceof Error ? error.message : String(error);
     throw createError({
       statusCode: 503,
-      statusMessage: `Failed to fetch forecast from Home Assistant: ${error.message}`,
+      statusMessage: `Failed to fetch forecast from Home Assistant: ${message}`,
     });
   }
 });
