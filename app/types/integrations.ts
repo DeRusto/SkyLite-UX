@@ -149,9 +149,6 @@ export async function createIntegrationService(
       integration.apiKey || "",
       integration.baseUrl || "",
       integration.settings as Record<string, unknown>,
-      integration.accessToken,
-      integration.refreshToken,
-      integration.tokenExpiry,
     ) as IntegrationService | null;
   }
   catch (error) {

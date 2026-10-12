@@ -83,12 +83,12 @@ export function useCalendarEvents() {
             : null;
 
           if (integration && config) {
-            if (config.capabilities.includes("add_events")) {
-              await $fetch(`/api/integrations/${integration.service}/events`, {
+            if (config.capabilities.includes("add_events") && integration.service === "google") {
+              await $fetch("/api/integrations/google_calendar/events", {
                 method: "POST",
                 body: {
+                  ...event,
                   integrationId: integration.id,
-                  calendarEvent: event,
                   calendarId: user.calendarId,
                 },
               });

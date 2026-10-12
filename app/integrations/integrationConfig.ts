@@ -6,7 +6,6 @@ import type {
 } from "~/types/integrations";
 import type { DialogField } from "~/types/ui";
 
-import type { GooglePhotosSettings } from "./google-photos/googlePhotos";
 import type { HomeAssistantWeatherSettings } from "./home-assistant/homeAssistantWeather";
 import type { ImmichSettings } from "./immich/immichPhotos";
 import type { OpenMeteoWeatherSettings } from "./open-meteo/openMeteoWeather";
@@ -15,8 +14,6 @@ import {
   createGoogleCalendarService,
   handleGoogleCalendarSave,
 } from "./google_calendar/googleCalendar";
-import { createGoogleCalendarService as createForkGoogleCalendarService } from "./google-calendar/googleCalendar";
-import { createGooglePhotosService } from "./google-photos/googlePhotos";
 import { createHomeAssistantWeatherService } from "./home-assistant/homeAssistantWeather";
 import { createICalService } from "./iCal/iCalendar";
 import { createImmichService } from "./immich/immichPhotos";
@@ -85,31 +82,6 @@ export const integrationConfigs: IntegrationConfig[] = [
     dialogFields: [],
     syncInterval: 10,
     idPrefix: "iCal",
-  },
-  {
-    type: "calendar",
-    service: "google-calendar",
-    settingsFields: [
-      {
-        key: "oauth",
-        label: "Google Account",
-        type: "oauth" as const,
-        required: true,
-        description: "Connect your Google account to sync calendars",
-      },
-      {
-        key: "selectedCalendars",
-        label: "Calendars to Sync",
-        type: "multiselect" as const,
-        required: false,
-        description: "Select which Google Calendars to sync",
-      },
-    ],
-    capabilities: ["get_events", "add_events", "edit_events", "delete_events"],
-    icon: "https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_48dp.png",
-    dialogFields: [],
-    syncInterval: 1,
-    idPrefix: "google",
   },
   // ================================================
   // Weather integration configs
@@ -180,30 +152,6 @@ export const integrationConfigs: IntegrationConfig[] = [
   // - get_albums: List available albums
   // - get_photos: Get photos from selected albums
   // ================================================
-  {
-    type: "photos",
-    service: "google-photos",
-    settingsFields: [
-      {
-        key: "oauth",
-        label: "Google Account",
-        type: "oauth" as const,
-        required: true,
-        description: "Connect your Google account to access photos",
-      },
-      {
-        key: "selectedAlbums",
-        label: "Albums to Display",
-        type: "multiselect" as const,
-        required: false,
-        description: "Select which albums to use for screensaver",
-      },
-    ],
-    capabilities: ["get_albums", "get_photos"],
-    icon: "https://www.gstatic.com/images/branding/product/1x/photos_2020q4_48dp.png",
-    dialogFields: [],
-    syncInterval: 60,
-  },
   {
     type: "photos",
     service: "immich",
@@ -417,14 +365,12 @@ const serviceFactoryMap = {
     const useUserColors = iCalSettings?.useUserColors || false;
     return createICalService(_id, baseUrl, eventColor, user, useUserColors);
   },
-  "calendar:google-calendar": (id: string, _apiKey: string, _baseUrl: string, _settings?: unknown, accessToken?: string | null, refreshToken?: string | null, tokenExpiry?: Date | null) => createForkGoogleCalendarService(id, accessToken, refreshToken, tokenExpiry),
   "weather:open-meteo": (_id: string, _apiKey: string, _baseUrl: string, settings?: OpenMeteoWeatherSettings) => {
     return createOpenMeteoWeatherService(_id, settings);
   },
   "weather:home-assistant": (id: string, apiKey: string, baseUrl: string, settings?: HomeAssistantWeatherSettings) => {
     return createHomeAssistantWeatherService(id, apiKey, baseUrl, settings);
   },
-  "photos:google-photos": (id: string, _apiKey: string, _baseUrl: string, _settings?: GooglePhotosSettings, accessToken?: string | null, refreshToken?: string | null, tokenExpiry?: Date | null) => createGooglePhotosService(id, accessToken, refreshToken, tokenExpiry),
   "photos:immich": (id: string, apiKey: string, baseUrl: string, settings?: ImmichSettings) => createImmichService(id, apiKey, baseUrl, settings),
   "calendar:google": (
     _id: string,
@@ -482,19 +428,15 @@ export function getFieldsForItem(
 
   return allFields;
 }
-// Merge note: the fork widened the factory calling convention with optional
-// OAuth token arguments (used by the fork's google-calendar / google-photos
-// factories). The map's individual factories keep their own narrower
-// signatures, so getServiceFactories normalizes them to this shared
-// signature at this single boundary.
+// The map's individual factories keep their own narrower settings types
+// (the fork's weather and Immich factories differ from upstream's), so
+// getServiceFactories normalizes them to this shared signature at this
+// single boundary.
 export type ServiceFactoryFn = (
   id: string,
   apiKey: string,
   baseUrl: string,
   settings?: Record<string, unknown>,
-  accessToken?: string | null,
-  refreshToken?: string | null,
-  tokenExpiry?: Date | null,
 ) => unknown;
 
 export function getServiceFactories(): { key: string; factory: ServiceFactoryFn }[] {

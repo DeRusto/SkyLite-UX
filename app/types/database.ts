@@ -121,13 +121,6 @@ export type Integration = {
   icon: string | null;
   enabled: boolean;
   settings: Record<string, any> | null;
-  // Fork-added OAuth token columns (merge note: optional at the app-type
-  // level so upstream code/tests that construct Integration objects
-  // without token data still type-check; the DB columns are nullable).
-  accessToken?: string | null;
-  refreshToken?: string | null;
-  tokenExpiry?: Date | null;
-  tokenType?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

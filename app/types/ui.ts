@@ -61,7 +61,7 @@ export type DialogField = {
 export type IntegrationSettingsField = {
   key: string;
   label: string;
-  type: "text" | "password" | "url" | "color" | "boolean" | "oauth" | "multiselect" | "select";
+  type: "text" | "password" | "url" | "color" | "boolean" | "multiselect" | "select";
   placeholder?: string;
   required?: boolean;
   description?: string;

@@ -83,7 +83,7 @@ function handleTriggerSync() {
 function handleUserSaved() {
   const calendarIntegrations = (integrations.value as Integration[] || []).filter(i => i.type === "calendar" && i.enabled);
   for (const integration of calendarIntegrations) {
-    if (integration.service === "google-calendar") {
+    if (integration.service === "google") {
       consola.debug(`Settings: Triggering sync for integration ${integration.id} to update user colors`);
       triggerImmediateSync("calendar", integration.id).catch((err) => {
         consola.warn(`Settings: Failed to trigger sync for ${integration.id}:`, err);

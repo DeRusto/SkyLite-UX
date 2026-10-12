@@ -2,6 +2,7 @@
 import { consola } from "consola";
 
 import type { Integration } from "~/types/database";
+import type { CalendarConfig } from "~/types/integrations";
 
 import { useAlertToast } from "~/composables/useAlertToast";
 
@@ -24,34 +25,35 @@ const availableCalendars = computed(() => {
     return calendars;
 
   for (const integration of props.integrations) {
-    if (integration.service === "google-calendar" && integration.enabled && integration.settings) {
-      let settings: unknown = integration.settings;
-      if (typeof settings === "string") {
-        try {
-          settings = JSON.parse(settings);
-        }
-        catch (e) {
-          consola.error("Failed to parse integration settings:", e);
-          continue;
-        }
-      }
+    if (integration.service !== "google" || !integration.enabled || !integration.settings)
+      continue;
 
-      if (!settings || typeof settings !== "object")
+    let settings: unknown = integration.settings;
+    if (typeof settings === "string") {
+      try {
+        settings = JSON.parse(settings);
+      }
+      catch (e) {
+        consola.error("Failed to parse integration settings:", e);
         continue;
-
-      const metadata = (settings as any).calendarMetadata || {};
-      const selectedIds = Array.isArray((settings as any).selectedCalendars)
-        ? (settings as any).selectedCalendars
-        : [];
-
-      for (const calId of selectedIds) {
-        const meta = metadata[calId];
-        calendars.push({
-          label: meta?.summary || "Unknown Calendar",
-          value: `${integration.id}:${calId}`,
-          color: meta?.color,
-        });
       }
+    }
+
+    if (!settings || typeof settings !== "object")
+      continue;
+
+    const calendarConfigs = (settings as { calendars?: CalendarConfig[] }).calendars;
+    if (!Array.isArray(calendarConfigs))
+      continue;
+
+    for (const cal of calendarConfigs) {
+      if (!cal.enabled)
+        continue;
+      calendars.push({
+        label: cal.name || "Unknown Calendar",
+        value: `${integration.id}:${cal.id}`,
+        color: cal.eventColor,
+      });
     }
   }
   return calendars;

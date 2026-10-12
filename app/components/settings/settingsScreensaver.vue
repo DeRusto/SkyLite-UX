@@ -60,7 +60,6 @@ watch(immichIntegration, (newVal) => {
         :last-sync="lastSync"
         @photo-source-change="(id: string) => saveSettings({ selectedPhotoSource: id })"
         @immich-albums-selected="(ids: string[]) => updateIntegrationAlbums('immich', ids)"
-        @google-photos-albums-selected="(ids: string[]) => updateIntegrationAlbums('google-photos', ids)"
         @sync-now="syncNow"
       />
 
